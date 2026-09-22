@@ -1,0 +1,40 @@
+name: Kennisbank bijwerken (TARIC)
+
+# Haalt maandelijks de nieuwste EU TARIC-extractie op en regenereert de
+# kennisbank in data/. Wijzigingen worden automatisch gecommit.
+on:
+  schedule:
+    - cron: '0 5 3 * *'      # de 3e van elke maand, 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      maand:
+        description: 'Extractiemaand (JJJJ-MM), leeg = nieuwste'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: TARIC downloaden en kennisbank bouwen
+        run: |
+          python3 sync/run.py ${{ inputs.maand && format('--maand {0}', inputs.maand) || '' }}
+      - name: Tests
+        run: node test/engine.test.js
+      - name: Wijzigingen committen
+        run: |
+          git config user.name "kennisbank-sync"
+          git config user.email "kennisbank-sync@users.noreply.github.com"
+          if git diff --quiet -- data; then
+            echo "Geen wijzigingen in de kennisbank."
+          else
+            git add data
+            git commit -m "Kennisbank bijgewerkt: TARIC-extractie $(python3 -c "import json;print(json.load(open('data/taric-meta.json'))['extractieDatum'])")"
+            git push
+          fi

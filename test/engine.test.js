@@ -177,3 +177,74 @@ test('validateRules vindt fouten', () => {
 });
 
 console.log('\n' + passed + ' tests geslaagd');
+
+// ---------------------------------------------------------------------------
+// Uitbreidingen: GN-match in beide richtingen, meldingen en de TARIC-regels
+// ---------------------------------------------------------------------------
+const fs = require('fs');
+const path = require('path');
+
+test('regelcode op 10 cijfers matcht ook een 8-cijferige invoer', () => {
+  const rule = { id: 'x', type: '*', gn: ['0306179220'], animo: '*', landen: '*', documenten: [{ type: 'HC', niveau: 'verplicht' }] };
+  assert.ok(engine.matchRule(rule, { type: 'PRD', gn: '03061792', land: 'IN' }));
+  assert.ok(engine.matchRule(rule, { type: 'PRD', gn: '0306179220', land: 'IN' }));
+  assert.ok(!engine.matchRule(rule, { type: 'PRD', gn: '03061791', land: 'IN' }));
+  assert.ok(!engine.matchRule(rule, { type: 'PRD', gn: '03', land: 'IN' }));
+});
+
+test('regels met alleen meldingen (bijv. invoerverbod) werken', () => {
+  const rule = { id: 'verbod', type: '*', gn: ['0306'], animo: '*', landen: ['KP'], meldingen: [{ niveau: 'fout', tekst: 'Invoerverbod' }] };
+  assert.deepStrictEqual(engine.validateRules([rule]), []);
+  const res = engine.checkItem({ type: 'PRD', landOorsprong: 'KP', documenten: [] }, { gn: '03061792' }, [rule]);
+  assert.strictEqual(res.status, 'fout');
+  assert.ok(res.meldingen.some(m => m.tekst === 'Invoerverbod'));
+  const r2 = engine.requirementsFor({ type: 'PRD', gn: '03061792', land: 'KP' }, [rule]);
+  assert.strictEqual(r2.meldingen.length, 1);
+});
+
+const taricPath = path.join(__dirname, '..', 'data', 'rules.taric.json');
+if (fs.existsSync(taricPath)) {
+  const TARIC_RULES = JSON.parse(fs.readFileSync(taricPath, 'utf8'));
+  const ALL = DEFAULT_RULES.concat(TARIC_RULES);
+
+  test('TARIC-regels zijn geldig volgens validateRules', () => {
+    assert.deepStrictEqual(engine.validateRules(ALL), []);
+  });
+
+  test('TARIC: garnalen uit India -> veterinaire controle (HC) + IUU (vangstcertificaat ter beoordeling)', () => {
+    const r = engine.requirementsFor({ type: 'PRD', gn: '03061792', animo: '206107', land: 'IN' }, TARIC_RULES);
+    const hc = r.vereisten.find(v => v.type === 'HC');
+    const catchDoc = r.vereisten.find(v => v.type === 'CATCH');
+    assert.ok(hc && hc.niveau === 'verplicht');
+    assert.ok(catchDoc && catchDoc.niveau === 'aandacht');
+    assert.ok(r.regels.every(x => x.bronType === 'taric'));
+  });
+
+  test('TARIC: Noorwegen is uitgezonderd van veterinaire controle', () => {
+    const r = engine.requirementsFor({ type: 'PRD', gn: '03061792', animo: '', land: 'NO' }, TARIC_RULES);
+    assert.ok(!r.vereisten.some(v => v.type === 'HC'));
+  });
+
+  test('TARIC: sesamzaad uit India -> Ver. 2019/1793 (officieel certificaat + labrapport ter beoordeling)', () => {
+    const r = engine.requirementsFor({ type: 'LNV', gn: '12074090', animo: '', land: 'IN' }, TARIC_RULES);
+    assert.ok(r.vereisten.some(v => v.type === 'OFFCERT'));
+    assert.ok(r.vereisten.some(v => v.type === 'LAB' && v.verwijstNaar === 'OFFCERT'));
+    const brazil = engine.requirementsFor({ type: 'LNV', gn: '12074090', animo: '', land: 'BR' }, TARIC_RULES);
+    assert.ok(!brazil.vereisten.some(v => v.type === 'OFFCERT'));
+  });
+
+  test('TARIC: invoerverbod Noord-Korea geeft status fout', () => {
+    const res = engine.checkItem({ type: 'PRD', landOorsprong: 'KP', documenten: [{ type: 'HC', identificatie: 'X', datum: '01-01-2026' }] }, { gn: '03061792' }, ALL);
+    assert.strictEqual(res.status, 'fout');
+  });
+
+  test('handmatig + TARIC gecombineerd: India-garnalen vereisen HC (beide) en LAB (handmatig)', () => {
+    const r = engine.requirementsFor({ type: 'PRD', gn: '03061792', animo: '206107', land: 'IN' }, ALL);
+    const lab = r.vereisten.find(v => v.type === 'LAB');
+    assert.ok(lab && lab.niveau === 'verplicht' && lab.verwijstNaar === 'HC');
+    const hc = r.vereisten.find(v => v.type === 'HC');
+    assert.ok(hc.regelIds.length >= 2);
+  });
+}
+
+console.log('\n' + passed + ' tests geslaagd (totaal)');

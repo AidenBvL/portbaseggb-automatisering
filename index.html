@@ -57,6 +57,11 @@
         </div>
       </div>
 
+      <div class="card" id="taric-card">
+        <h2>Douanetarief (TARIC) <span class="muted" id="taric-card-sub"></span></h2>
+        <div id="taric-result" class="result-area"><p class="muted">Na het opzoeken zie je hier de invoermaatregelen uit het EU-douanetarief voor deze goederencode en dit land van oorsprong, met de bijbehorende documentcodes (vak 44).</p></div>
+      </div>
+
       <div class="card">
         <h2>Meerdere combinaties in één keer</h2>
         <p class="muted">Eén regel per combinatie: <code>type;GN-code;Animo-code;land</code> (type en Animo mogen leeg zijn). Klik daarna op <em>Alles opzoeken</em>.</p>
@@ -138,9 +143,20 @@ LNV;12074090;;IN"></textarea>
     <!-- ============ REGELS ============ -->
     <section id="tab-regels" class="panel">
       <div class="card">
-        <h2>Regelbank</h2>
-        <p class="muted">Dit is de kennisbank die bepaalt welke documenten vereist zijn. Standaardregels staan in <code>js/rules.default.js</code>; aanpassingen hier worden in je browser bewaard. <strong>Controleer de regels altijd tegen de actuele NVWA/EU-eisen.</strong></p>
+        <h2>Bronnen van de kennisbank</h2>
+        <div id="bronnen"></div>
+        <label class="check"><input type="checkbox" id="taric-enabled" checked> TARIC-regels meenemen bij het controleren</label>
+      </div>
+      <div class="card">
+        <h2>Handmatige regels (NVWA / praktijk)</h2>
+        <p class="muted">Regels die niet uit het douanetarief af te leiden zijn, zoals het analyseverslag voor aquacultuur uit India. Standaardregels staan in <code>js/rules.default.js</code>; aanpassingen hieronder worden in je browser bewaard. <strong>Controleer deze regels tegen de actuele NVWA/EU-eisen.</strong></p>
         <div id="rules-table"></div>
+      </div>
+      <div class="card">
+        <h2>Automatische regels uit TARIC <span class="muted" id="taric-rules-count"></span></h2>
+        <p class="muted">Afgeleid uit de controlemaatregelen in het EU-douanetarief (veterinaire controle, IUU, Ver. 2019/1793, CITES, biologisch, invoerverboden). Worden bijgewerkt door <code>sync/run.py</code> of de maandelijkse GitHub-workflow. Niet handmatig te bewerken.</p>
+        <input id="taric-rules-filter" placeholder="Filter op GN-code, land of tekst…" autocomplete="off">
+        <div id="taric-rules-table"></div>
       </div>
       <div class="card">
         <h2>Regels bewerken (JSON)</h2>
@@ -156,8 +172,12 @@ LNV;12074090;;IN"></textarea>
     </section>
   </main>
 
-  <footer class="muted">Regelbank versie <span id="rules-version"></span>. Deze tool is een hulpmiddel; de NVWA-eisen zijn leidend.</footer>
+  <footer class="muted">Handmatige regelbank <span id="rules-version"></span> · <span id="taric-version">TARIC niet geladen</span>. Deze tool is een hulpmiddel; de NVWA-eisen zijn leidend.</footer>
 
+  <script src="data/landen.js"></script>
+  <script src="data/nomenclatuur.js"></script>
+  <script src="data/taric-controls.js"></script>
+  <script src="data/rules.taric.js"></script>
   <script src="js/rules.default.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/parser.js"></script>

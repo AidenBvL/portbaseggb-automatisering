@@ -1,6 +1,7 @@
 /*
- * Standaard regelbank: welke documenten horen bij een GGB/CHED-aanvraag
- * op basis van GN-code, Animo-code en land van oorsprong.
+ * Handmatige regelbank: NVWA-/praktijkregels die niet uit het douanetarief
+ * (TARIC) af te leiden zijn, zoals het analyseverslag voor aquacultuur uit
+ * India. De automatisch afgeleide TARIC-regels staan in data/rules.taric.js.
  *
  * LET OP: dit is een startset. EU/NVWA-eisen wijzigen regelmatig.
  * Controleer de regels tegen de actuele wetgeving en pas ze aan via het
@@ -22,6 +23,8 @@
  *                   alternatieven (optioneel) documentcodes die ook voldoen
  *                   verwijstNaar  (optioneel) documentcode waarnaar dit document moet verwijzen
  *                   opmerking     toelichting
+ *   meldingen     (optioneel, i.p.v. of naast documenten) lijst {niveau, tekst}
+ *                 niveau: 'info' | 'aandacht' | 'ontbreekt' | 'fout'
  *   bron          wettelijke basis / bron
  */
 (function (root) {
@@ -34,6 +37,8 @@
     OFFCERT: { code: 'OFFCERT', naam: 'Officieel certificaat (Ver. (EU) 2019/1793)', portbase: 'Official certificate' },
     PRIVATT: { code: 'PRIVATT', naam: 'Private attestation (samengesteld product)', portbase: 'Private attestation' },
     CITES:   { code: 'CITES',   naam: 'CITES-invoervergunning',                    portbase: 'CITES permit' },
+    COI:     { code: 'COI',     naam: 'Controlecertificaat biologisch (COI)',       portbase: 'Certificate of inspection' },
+    PHYTO:   { code: 'PHYTO',   naam: 'Fytosanitair certificaat',                  portbase: 'Phytosanitary certificate' },
     COMM:    { code: 'COMM',    naam: 'Handelsdocument',                           portbase: 'Commercial document' },
     OTHER:   { code: 'OTHER',   naam: 'Overig document',                           portbase: 'Other' }
   };

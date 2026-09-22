@@ -35,7 +35,13 @@
     return inList(list, value, matcher);
   }
 
-  var gnMatch = function (prefix, gn) { return gn.indexOf(normGn(prefix)) === 0; };
+  // Match als de regelcode een prefix is van de ingevoerde code, of andersom
+  // (een TARIC-regel op 10 cijfers geldt mogelijk ook voor de 8-cijferige GN-code).
+  var gnMatch = function (prefix, gn) {
+    prefix = normGn(prefix);
+    if (!prefix || !gn) return false;
+    return gn.indexOf(prefix) === 0 || (gn.length >= 4 && prefix.indexOf(gn) === 0);
+  };
   var codeMatch = function (a, b) { return normCode(a) === b; };
 
   /** Geeft true als een regel van toepassing is op de context. */
@@ -93,9 +99,17 @@
       });
     });
 
+    var meldingen = [];
+    matched.forEach(function (rule) {
+      (rule.meldingen || []).forEach(function (m) {
+        meldingen.push({ niveau: m.niveau || 'info', tekst: m.tekst, regelId: rule.id });
+      });
+    });
+
     return {
       regels: matched,
-      vereisten: order.map(function (k) { return byType[k]; })
+      vereisten: order.map(function (k) { return byType[k]; }),
+      meldingen: meldingen
     };
   }
 
@@ -130,8 +144,10 @@
     var resultaten = [];
     var meldingen = [];
 
-    if (normGn(goed.gn).length !== 8) {
-      meldingen.push({ niveau: 'aandacht', tekst: 'GN-code "' + norm(goed.gn) + '" heeft niet de verwachte 8 cijfers.' });
+    reqs.meldingen.forEach(function (m) { meldingen.push(m); });
+
+    if (normGn(goed.gn).length !== 8 && normGn(goed.gn).length !== 10) {
+      meldingen.push({ niveau: 'aandacht', tekst: 'GN-code "' + norm(goed.gn) + '" heeft niet de verwachte 8 (of 10) cijfers.' });
     }
 
     reqs.vereisten.forEach(function (req) {
@@ -209,7 +225,7 @@
       regels: reqs.regels,
       vereisten: resultaten,
       meldingen: meldingen,
-      status: worst(resultaten.map(function (r) { return r.status; }).concat(meldingen.map(function (m) { return m.niveau === 'aandacht' ? 'aandacht' : 'ok'; })))
+      status: worst(resultaten.map(function (r) { return r.status; }).concat(meldingen.map(function (m) { return m.niveau; })))
     };
   }
 
@@ -268,8 +284,14 @@
       if (!r.id) errors.push(p + 'id ontbreekt.');
       else if (ids[r.id]) errors.push(p + 'id komt dubbel voor.');
       ids[r.id] = true;
-      if (!Array.isArray(r.documenten) || r.documenten.length === 0) errors.push(p + 'documenten ontbreken.');
-      else r.documenten.forEach(function (d, j) {
+      var heeftDocs = Array.isArray(r.documenten) && r.documenten.length > 0;
+      var heeftMeld = Array.isArray(r.meldingen) && r.meldingen.length > 0;
+      if (!heeftDocs && !heeftMeld) errors.push(p + 'documenten (of meldingen) ontbreken.');
+      if (heeftMeld) r.meldingen.forEach(function (m, j) {
+        if (!m || !m.tekst) errors.push(p + 'melding ' + (j + 1) + ' heeft geen tekst.');
+        if (m && m.niveau && ['info', 'aandacht', 'ontbreekt', 'fout'].indexOf(m.niveau) < 0) errors.push(p + 'melding ' + (j + 1) + ' heeft ongeldig niveau "' + m.niveau + '".');
+      });
+      if (heeftDocs) r.documenten.forEach(function (d, j) {
         if (!d.type) errors.push(p + 'document ' + (j + 1) + ' heeft geen type.');
         if (d.niveau && ['verplicht', 'aandacht'].indexOf(d.niveau) < 0) errors.push(p + 'document ' + (j + 1) + ' heeft ongeldig niveau "' + d.niveau + '".');
       });
