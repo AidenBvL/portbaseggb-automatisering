@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GGB Documentcheck</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">GGB</span>
+      <div>
+        <h1>Documentcheck GGB / CHED</h1>
+        <p>Welke certificaten en documenten horen bij je Portbase-aanvraag op basis van GN-code, Animo-code en land van oorsprong.</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="opzoeken" role="tab">Opzoeken</button>
+      <button class="tab" data-tab="declaraties" role="tab">Declaraties controleren</button>
+      <button class="tab" data-tab="regels" role="tab">Regels</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ OPZOEKEN ============ -->
+    <section id="tab-opzoeken" class="panel active">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Snel opzoeken</h2>
+          <form id="lookup-form" class="form">
+            <label>Declaratietype
+              <select name="type">
+                <option value="PRD">Producten van dierlijke oorsprong (CHED-P)</option>
+                <option value="LNV">Levensmiddelen/diervoeders niet-dierlijk (CHED-D)</option>
+              </select>
+            </label>
+            <label>GN-code (I.31)
+              <input name="gn" placeholder="bijv. 03061792" autocomplete="off" required>
+            </label>
+            <label>Animo-code (I.31)
+              <input name="animo" placeholder="bijv. 206107 (optioneel)" autocomplete="off">
+            </label>
+            <label>Land van oorsprong (I.11)
+              <input name="land" placeholder="ISO-code, bijv. IN" list="landen-list" maxlength="2" autocomplete="off" required>
+              <datalist id="landen-list"></datalist>
+            </label>
+            <div class="actions">
+              <button type="submit" class="btn primary">Opzoeken</button>
+              <button type="button" class="btn" id="lookup-example">Voorbeeld: garnalen India</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Vereiste documenten</h2>
+          <div id="lookup-result" class="result-area"><p class="muted">Vul een GN-code en land in en klik op <em>Opzoeken</em>.</p></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Meerdere combinaties in één keer</h2>
+        <p class="muted">Eén regel per combinatie: <code>type;GN-code;Animo-code;land</code> (type en Animo mogen leeg zijn). Klik daarna op <em>Alles opzoeken</em>.</p>
+        <textarea id="bulk-input" rows="5" placeholder="PRD;03061792;206107;IN
+PRD;03061792;206107;EC
+LNV;12074090;;IN"></textarea>
+        <div class="actions">
+          <button type="button" class="btn primary" id="bulk-run">Alles opzoeken</button>
+        </div>
+        <div id="bulk-result" class="result-area"></div>
+      </div>
+    </section>
+
+    <!-- ============ DECLARATIES ============ -->
+    <section id="tab-declaraties" class="panel">
+      <div class="layout-side">
+        <aside class="card side">
+          <h2>Declaraties</h2>
+          <div class="actions column">
+            <button type="button" class="btn primary" id="decl-new">+ Nieuwe declaratie</button>
+            <button type="button" class="btn" id="decl-paste-toggle">Plakken uit Portbase</button>
+            <button type="button" class="btn accent" id="decl-check-all">Controleer alles</button>
+          </div>
+          <div id="paste-box" class="paste-box hidden">
+            <p class="muted">Kopieer de tekst van het declaratie-overzicht in Portbase (Ctrl+A, Ctrl+C op de pagina) en plak hier. Meerdere declaraties kun je scheiden met een regel <code>---</code>.</p>
+            <textarea id="paste-input" rows="8" placeholder="Plak hier de Portbase-tekst…"></textarea>
+            <div class="actions">
+              <button type="button" class="btn primary" id="paste-import">Importeren en controleren</button>
+              <button type="button" class="btn" id="paste-example">Voorbeeld laden</button>
+            </div>
+          </div>
+          <ul id="decl-list" class="decl-list"></ul>
+        </aside>
+
+        <div class="main-col">
+          <div class="card" id="decl-editor">
+            <p class="muted" id="decl-empty">Geen declaratie geselecteerd. Maak een nieuwe declaratie of plak er een uit Portbase.</p>
+            <form id="decl-form" class="form hidden">
+              <div class="row-2">
+                <label>Eigen referentie <input name="eigenReferentie" placeholder="bijv. 1002002123 - 2026-468"></label>
+                <label>Declaratietype
+                  <select name="type">
+                    <option value="PRD">Dierlijk (CHED-P)</option>
+                    <option value="LNV">Niet-dierlijk (CHED-D)</option>
+                  </select>
+                </label>
+              </div>
+              <div class="row-3">
+                <label>Land van oorsprong (I.11) <input name="landOorsprong" maxlength="2" list="landen-list" placeholder="IN"></label>
+                <label>Land van lading (I.14) <input name="landLading" maxlength="2" list="landen-list" placeholder="IN"></label>
+                <label>Verwachte aankomst (I.10) <input name="eta" placeholder="dd-mm-jjjj"></label>
+              </div>
+
+              <h3>Documenten (I.9)</h3>
+              <table class="edit-table" id="doc-table">
+                <thead><tr><th>#</th><th>Type</th><th>Identificatie</th><th>Datum afgifte</th><th>Verwijst naar (nr.)</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <button type="button" class="btn small" id="doc-add">+ Document</button>
+
+              <h3>Goederenitems (I.31)</h3>
+              <table class="edit-table" id="goods-table">
+                <thead><tr><th>#</th><th>GN-code</th><th>Animo-code</th><th>Omschrijving</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <button type="button" class="btn small" id="goods-add">+ Goederenitem</button>
+
+              <div class="actions">
+                <button type="submit" class="btn primary">Controleer deze declaratie</button>
+                <button type="button" class="btn danger" id="decl-delete">Verwijderen</button>
+              </div>
+            </form>
+          </div>
+          <div id="decl-result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ REGELS ============ -->
+    <section id="tab-regels" class="panel">
+      <div class="card">
+        <h2>Regelbank</h2>
+        <p class="muted">Dit is de kennisbank die bepaalt welke documenten vereist zijn. Standaardregels staan in <code>js/rules.default.js</code>; aanpassingen hier worden in je browser bewaard. <strong>Controleer de regels altijd tegen de actuele NVWA/EU-eisen.</strong></p>
+        <div id="rules-table"></div>
+      </div>
+      <div class="card">
+        <h2>Regels bewerken (JSON)</h2>
+        <textarea id="rules-json" rows="18" spellcheck="false"></textarea>
+        <div id="rules-errors" class="errors"></div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="rules-save">Opslaan</button>
+          <button type="button" class="btn" id="rules-export">Exporteren (JSON)</button>
+          <label class="btn file-btn">Importeren (JSON) <input type="file" id="rules-import" accept="application/json" hidden></label>
+          <button type="button" class="btn danger" id="rules-reset">Terug naar standaard</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="muted">Regelbank versie <span id="rules-version"></span>. Deze tool is een hulpmiddel; de NVWA-eisen zijn leidend.</footer>
+
+  <script src="js/rules.default.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
