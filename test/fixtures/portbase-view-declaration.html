@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Portbase fixture</title></head>
+<body>
+<!-- Gereduceerde kopie van de Portbase-sidebar "view-declaration": alleen de structuur en attributen die de extractor gebruikt. -->
+<mat-sidenav class="mat-drawer mat-sidenav secondary mat-drawer-end mat-drawer-over mat-drawer-opened">
+<app-declaration-view>
+<ic-sidebar-page data-test="view-declaration">
+<mat-toolbar><h1>26100649</h1></mat-toolbar>
+<app-declaration-form>
+<div data-test="info-message-form-not-editable" class="inline-message info"> It’s not possible to update the declaration. </div>
+<mat-card><form novalidate="" id="form">
+<mat-card-content><mat-card-title>General</mat-card-title>
+<app-form-general><form>
+  <div class="row"><div class="col"><mat-label class="label">Reference NVWA <span>(I.3)</span></mat-label> 26100649 </div></div>
+  <div class="row"><div class="col"><mat-label class="label">CHED-reference <span>(I.2)</span></mat-label> CHEDP.NL.2026.0056316 </div>
+    <div class="col"><mat-label class="label">Equipment(s) to be inspected </mat-label><div><div> HLBU9066045 <span>(Material check exemption)</span></div></div></div></div>
+  <div class="row"><div class="col error-placeholder"><mat-label class="label">Declaration type </mat-label>
+    <mat-radio-group role="radiogroup" id="goodsClassificationCode" data-test="goods-classification-code">
+      <mat-radio-button class="mat-mdc-radio-button mat-mdc-radio-checked"><input type="radio" name="goodsClassificationCode" value="PRD" checked><label>Products of animal origin (CHED-P)</label></mat-radio-button>
+      <mat-radio-button class="mat-mdc-radio-button"><input type="radio" name="goodsClassificationCode" value="LNV"><label>Food/feed of non-animal origin (CHED-D)</label></mat-radio-button>
+    </mat-radio-group></div>
+    <div class="col"><mat-form-field><input matinput type="text" id="billOfLadingNumber" formcontrolname="billOfLadingNumber" data-test="bill-of-lading-number" disabled></mat-form-field></div></div>
+  <div class="row"><div class="col"><mat-select formcontrolname="purposeCode" data-test="purpose-code"><div class="mat-mdc-select-value"><span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">Import</span></span></div></mat-select></div>
+    <div class="col"><input matinput type="text" id="customerReference" formcontrolname="customerReference" data-test="customer-reference" disabled></div></div>
+  <div class="row"><div class="col"><input matinput type="text" id="exporterSelector" readonly data-test="organisation-selector" disabled></div>
+    <div class="col"><input matinput type="text" id="importerSelector" readonly disabled></div></div>
+  <div class="row"><div class="col"><input matinput type="text" id="borderControlPostSelector" readonly data-test="border-control-post-selector" disabled></div></div>
+  <div class="row"><div class="col"><input matinput type="text" id="countryOfOriginUnCode" formcontrolname="countryOfOriginUnCode" data-test="country-of-origin-un-code" disabled></div>
+    <div class="col"><input matinput type="text" id="countryOfLoadingUnCode" formcontrolname="countryOfLoadingUnCode" data-test="country-of-loading-un-code" disabled></div></div>
+</form></app-form-general></mat-card-content>
+<mat-card-content><mat-card-title>Goods</mat-card-title><app-form-goods><form>
+  <mat-select formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code"><div class="mat-mdc-select-value"><span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">Human consumption</span></span></div></mat-select>
+  <mat-select formcontrolname="transportConditionsCode" data-test="transport-conditions-code"><div class="mat-mdc-select-value"><span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">Frozen</span></span></div></mat-select>
+</form></app-form-goods></mat-card-content>
+<mat-card-content><mat-card-title>Means of transport before border</mat-card-title><app-form-means-of-transport-before-border><form>
+  <input name="dateTimeEstimated" id="dateTimeEstimated" formcontrolname="dateTimeEstimated" matinput class="hidden" disabled>
+  <input matinput data-test="arrival-date-time-estimated" class="mat-datepicker-input" placeholder="e.g. 25-03-2023" disabled>
+</form></app-form-means-of-transport-before-border></mat-card-content>
+<mat-card-content><mat-card-title>Document(s) <span>(I.9)</span></mat-card-title><app-form-documents><form data-test="document-form">
+  <!-- bewerkbare rij (zoals in de echte pagina) -->
+  <mat-card class="mat-mdc-card mdc-card first"><mat-card-content>
+    <div class="row"><div class="col"><mat-form-field><mat-label>Type</mat-label>
+      <mat-select formcontrolname="documentType" data-test="document-type"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">Health certificate (636)</span></span></div></div></mat-select></mat-form-field></div>
+      <div class="col"><mat-form-field><mat-label>Identification</mat-label><input matinput type="text" id="documentNumber" formcontrolname="documentNumber" data-test="document-number"></mat-form-field></div></div>
+    <div class="row"><div class="col"><input name="dateOfIssue" id="dateOfIssue" formcontrolname="dateOfIssue" matinput data-test="document-date-of-issue" placeholder="e.g. 25-03-2023"></div>
+      <div class="col"><input matinput type="text" id="organisationSelector" readonly data-test="organisation-selector"></div></div>
+    <div class="row"><div class="col"><input matinput type="text" id="countryUnCodeOfIssue" formcontrolname="countryUnCodeOfIssue" data-test="document-country-un-code-of-issue"></div></div>
+    <div class="upload"><mat-label>Upload document</mat-label><div class="upload-area"><span class="file-name"><a class="download-pdf">SKM_C251i26092210170_compressed.pdf</a><span> (1.83 MB)</span></span></div></div>
+  </mat-card-content></mat-card>
+  <!-- opgeslagen rij -->
+  <mat-card data-test="document-form-item-saved" class="mat-mdc-card mdc-card saved"><mat-card-content><div class="row">
+    <div class="col sequence-number"><mat-label>#</mat-label><div>2</div></div>
+    <div class="col"><mat-label>Type</mat-label><div>Certified lab report</div></div>
+    <div class="col"><mat-label>Identification</mat-label><div>EIA/VZ/26-27/0003572</div></div>
+    <div class="col"><mat-label>Date of issue</mat-label><div>07-08-2026</div></div>
+    <div class="col-button"><button data-test="edit-document" type="button">Edit</button></div>
+  </div></mat-card-content></mat-card>
+  <div class="align-right"><button type="button" data-test="add-document">Add document</button></div>
+</form></app-form-documents></mat-card-content>
+<mat-card-content><mat-card-title>Goods item(s)</mat-card-title><app-form-goods-items><form>
+  <mat-card class="mat-mdc-card mdc-card first"><mat-card-content>
+    <div class="row"><div class="col"><input matinput type="text" id="gnCodeSelector" readonly data-test="gn-code-selector" disabled></div>
+      <div class="col"><input matinput type="text" id="animoCodeSelector" readonly data-test="animo-code-selector" disabled></div></div>
+    <div class="row"><div class="col"><input matinput type="text" id="goodsDescription" formcontrolname="goodsDescription" data-test="goods-description" disabled></div></div>
+    <div class="row"><div class="col"><input matinput type="text" id="grossWeight" formcontrolname="grossWeight" data-test="gross-weight" disabled></div>
+      <div class="col"><input matinput type="text" id="nettWeight" formcontrolname="nettWeight" data-test="nett-weight" disabled></div></div>
+    <div class="row"><div class="col"><mat-select formcontrolname="equipmentNumber"><div class="mat-mdc-select-value"><span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">HLBU9066045</span></span></div></mat-select></div></div>
+  </mat-card-content></mat-card>
+  <div class="align-right"><button type="button" data-test="add-goods-item" disabled>Add goods item</button></div>
+</form></app-form-goods-items></mat-card-content>
+</form></mat-card>
+</app-declaration-form>
+</ic-sidebar-page>
+</app-declaration-view>
+</mat-sidenav>
+<script>
+  // Simuleert de waarden die Angular via de value-property zet (staan niet in de HTML).
+  function setv(sel, v) { var el = document.querySelector(sel); if (el) el.value = v; }
+  setv('[data-test="bill-of-lading-number"]', 'HLCUMA3260712342');
+  setv('[data-test="customer-reference"]', '1002002123 - 2026-468');
+  setv('#exporterSelector', 'GHAN MARINE PRODUCTS (IN)');
+  setv('#importerSelector', 'EUROFOODLINK B.V. (NL)');
+  setv('[data-test="border-control-post-selector"]', 'Rotterdam (NLRTM1)');
+  setv('[data-test="country-of-origin-un-code"]', 'IN');
+  setv('[data-test="country-of-loading-un-code"]', 'IN');
+  setv('[data-test="arrival-date-time-estimated"]', '26-09-2026');
+  setv('[data-test="document-number"]', 'EIA/VSP/2026-27/02937');
+  setv('[data-test="document-date-of-issue"]', '07-08-2026');
+  setv('[data-test="document-country-un-code-of-issue"]', 'IN');
+  setv('[data-test="gn-code-selector"]', '03061792');
+  setv('[data-test="animo-code-selector"]', '206107 (Visproducten aquacult. en 2-kleppige weekdieren MC, tenzij hermetisch verpakt én ambient)');
+  setv('[data-test="goods-description"]', 'Garnalen van het geslacht "Penaeus"');
+  setv('[data-test="gross-weight"]', '21516');
+  setv('[data-test="nett-weight"]', '13447.5');
+</script>
+</body></html>

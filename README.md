@@ -9,7 +9,35 @@ certificaat verwijst.
 
 ## Gebruik
 
-Open `index.html` in een browser. Er is geen installatie of build nodig.
+Er zijn twee manieren:
+
+1. **Browserextensie (Edge / Chrome)** – toont de documentcheck direct op de
+   Portbase-pagina *Declaration Food and Consumer Products*, zodra je een
+   declaratie opent (bijv. `…/declarations/inbox(sidebar:view-declaration/…)`).
+   De gegevens (declaratietype, land van oorsprong, ETA, documenten,
+   goederenitems met GN- en Animo-code) worden rechtstreeks uit de pagina
+   gelezen; niets wordt naar een server gestuurd.
+2. **Losse webapp** – open `index.html` in een browser (geen installatie of
+   build nodig), of klik op het extensie-icoon.
+
+### Extensie installeren in Edge
+
+1. Download of clone deze repository.
+2. Ga in Edge naar `edge://extensions`, zet **Ontwikkelaarsmodus** aan.
+3. Kies **Uitgepakt laden** en selecteer de map van de repository (de map
+   met `manifest.json`).
+4. Open in Portbase een declaratie. Rechtsonder verschijnt het paneel
+   *GGB Documentcheck* met per goederenitem de vereiste documenten, de
+   status (compleet / ontbreekt / controleren) en, uitklapbaar, de
+   TARIC-maatregelen. Het paneel ververst automatisch als je documenten
+   toevoegt of een andere declaratie opent.
+5. **Openen in tool** zet de uitgelezen declaratie in de volledige webapp
+   (nieuw tabblad), bijv. om het certificaatnummer waarnaar het labrapport
+   verwijst in te vullen. In Chrome werkt het op dezelfde manier via
+   `chrome://extensions`.
+
+Na een update van de kennisbank (`data/`) of de code: op de extensiepagina
+op **Opnieuw laden** klikken.
 
 Drie tabbladen:
 
@@ -112,11 +140,16 @@ node test/engine.test.js
 ## Structuur
 
 ```
+manifest.json                 browserextensie (Manifest V3, Edge/Chrome)
+extension/content.js          paneel op de Portbase-pagina
+extension/portbase-dom.js     leest de declaratie uit de Portbase-DOM
+extension/background.js       service worker: levert kennisbank, opent de tool
 index.html                    GUI
 css/style.css
 js/rules.default.js           handmatige regelbank + documenttypen
 js/engine.js                  regel-engine (browser + Node)
 js/parser.js                  parser voor geplakte Portbase-tekst
+js/render.js                  gedeelde weergave (webapp + extensie)
 js/app.js                     GUI-logica
 data/rules.taric.js(.json)    automatisch afgeleide regels uit TARIC
 data/taric-controls.js(.json) controlemaatregelen per goederencode (ruwe kennisbank)
@@ -129,4 +162,5 @@ sync/build_taric.py           conversie TARIC -> kennisbank en regels
 sync/xlsx_reader.py           minimale xlsx-lezer (geen dependencies)
 .github/workflows/sync-kennisbank.yml  maandelijkse automatische update
 test/engine.test.js           tests voor engine, parser en TARIC-regels
+test/fixtures/                gereduceerde Portbase-DOM voor de extractortest
 ```

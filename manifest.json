@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "GGB Documentcheck voor Portbase",
+  "version": "0.2.0",
+  "description": "Toont op de Portbase-declaratiepagina (Food and Consumer Products) welke certificaten en documenten bij de GGB/CHED-aanvraag horen, op basis van GN-code, Animo-code en land van oorsprong.",
+  "action": { "default_title": "GGB Documentcheck openen" },
+  "icons": { "16": "extension/icons/16.png", "48": "extension/icons/48.png", "128": "extension/icons/128.png" },
+  "background": { "service_worker": "extension/background.js" },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://food-and-consumer-products.pcs.portbase.com/*"],
+      "js": ["js/rules.default.js", "js/engine.js", "js/parser.js", "js/render.js", "extension/portbase-dom.js", "extension/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

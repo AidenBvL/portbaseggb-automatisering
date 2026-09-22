@@ -368,6 +368,11 @@ def main():
         json.dump(regels, f, ensure_ascii=False, indent=1)
     schrijf_js(os.path.join(a.uit, 'landen.js'), 'GGB_LANDEN', landen)
     schrijf_js(os.path.join(a.uit, 'nomenclatuur.js'), 'GGB_NOMENCLATUUR', nomen)
+    # JSON-varianten voor de browserextensie (die laadt data via fetch).
+    with open(os.path.join(a.uit, 'landen.json'), 'w', encoding='utf-8') as f:
+        json.dump(landen, f, ensure_ascii=False, separators=(',', ':'))
+    with open(os.path.join(a.uit, 'nomenclatuur.json'), 'w', encoding='utf-8') as f:
+        json.dump(nomen, f, ensure_ascii=False, separators=(',', ':'))
     meta = {
         'bron': kb['bron'], 'extractieDatum': kb['extractieDatum'], 'gegenereerd': kb['gegenereerd'],
         'aantalProfielen': len(kb['profielen']), 'aantalGoederencodes': len(kb['goederen']),
