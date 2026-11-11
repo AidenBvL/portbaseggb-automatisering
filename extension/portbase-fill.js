@@ -6,16 +6,19 @@
  *  - zoek het element via data-test / formcontrolname / id, anders via de
  *    zichtbare label-tekst (mat-label) van het veld;
  *  - gewone invoer: waarde zetten + input/change/blur, zodat Angular het oppakt;
- *  - mat-select: openen en de optie met de best passende tekst kiezen;
- *  - autocomplete (combobox): typen en de eerste passende optie kiezen;
- *  - velden die Portbase via een zoekdialoog laat kiezen (exporteur, importeur,
- *    grenscontrolepost, plaats van bestemming, inrichting van oorsprong,
- *    GN-code, erkenningsnummer) worden NIET automatisch gekozen maar als
- *    "handmatig" gemeld; vanuit het verslag kan de dialoog met de zoekterm
- *    worden geopend (zoekInDialoog).
+ *  - mat-select: openen, wachten tot de lijst staat, de best passende optie
+ *    kiezen en controleren dat Angular die overneemt (anders pijltjes + Enter);
+ *  - autocomplete (combobox): typen, wachten op een passende suggestie, kiezen
+ *    en controleren;
+ *  - mat-button-toggle (EU standard, Consumer package indicator): altijd Yes;
+ *  - zoekvensters (exporteur, importeur, grenscontrolepost, plaats van
+ *    bestemming, inrichting van oorsprong, GN-code, Animo-code,
+ *    erkenningsnummer): land, zoeken, wachten op stabiele resultaten, regel
+ *    kiezen, wachten tot die als gekozen wordt getoond en dan Save in het
+ *    venster; zonder duidelijke winnaar Cancel en "handmatig".
  *
- * Er wordt nooit op Opslaan/Verzenden geklikt: de declarant controleert en
- * verstuurt zelf.
+ * Er wordt nooit op Save/Send van de declaratie geklikt: de declarant
+ * controleert en verstuurt zelf.
  */
 (function (root) {
   'use strict';
@@ -31,6 +34,13 @@
   function wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
 
+  /**
+   * Pauze tussen stappen. Portbase (Angular) verwerkt een klik pas na change
+   * detection en haalt zoekresultaten via de API op; te snel doorklikken gaf
+   * lege keuzes en "Save" zonder gekozen regel.
+   */
+  var TEMPO = 350;
+
   async function wachtOp(fn, timeout) {
     var eind = Date.now() + (timeout || 2500);
     while (Date.now() < eind) {
@@ -41,12 +51,50 @@
     return null;
   }
 
-  function eerste(selectors, ctx) {
-    for (var i = 0; i < selectors.length; i++) {
-      var el = q(selectors[i], ctx);
-      if (el) return el;
+  /**
+   * Wacht tot fn() een waarde geeft die minstens rustMs gelijk blijft (zelfde
+   * element of zelfde handtekening). Zo wordt niet gekozen uit een lijst die nog
+   * wordt opgebouwd of gefilterd.
+   */
+  async function wachtStabiel(fn, rustMs, timeout, sleutel) {
+    sleutel = sleutel || function (x) { return x; };
+    var eind = Date.now() + (timeout || 4000), vorige = null, sinds = 0;
+    while (Date.now() < eind) {
+      var r = fn();
+      var k = r ? sleutel(r) : null;
+      if (k !== vorige) { vorige = k; sinds = Date.now(); }
+      else if (r && Date.now() - sinds >= rustMs) return r;
+      await wacht(60);
     }
-    return null;
+    var laatst = fn();
+    return laatst || null;
+  }
+
+  /** Klik zoals een gebruiker: pointer- en muisgebeurtenissen gevolgd door click. */
+  function klik(el) {
+    var o = { bubbles: true, cancelable: true, composed: true, button: 0, buttons: 1 };
+    try { el.dispatchEvent(new PointerEvent('pointerdown', Object.assign({ pointerType: 'mouse', isPrimary: true }, o))); } catch (e) { /* oudere browser */ }
+    el.dispatchEvent(new MouseEvent('mousedown', o));
+    try { el.dispatchEvent(new PointerEvent('pointerup', Object.assign({ pointerType: 'mouse', isPrimary: true }, o, { buttons: 0 }))); } catch (e) { /* oudere browser */ }
+    el.dispatchEvent(new MouseEvent('mouseup', Object.assign({}, o, { buttons: 0 })));
+    el.click();
+  }
+
+  function toets(el, key, keyCode) {
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: key, code: key, keyCode: keyCode, which: keyCode, bubbles: true, cancelable: true }));
+  }
+
+  /** Eerste element voor de selectors; zichtbare elementen gaan voor (verborgen secties hergebruiken data-test-namen). */
+  function eerste(selectors, ctx) {
+    var verborgen = null;
+    for (var i = 0; i < selectors.length; i++) {
+      var els = qa(selectors[i], ctx);
+      for (var j = 0; j < els.length; j++) {
+        if (zichtbaar(els[j])) return els[j];
+        if (!verborgen) verborgen = els[j];
+      }
+    }
+    return verborgen;
   }
 
   /** Zoekt een veld op label-tekst (mat-label in een mat-form-field of losse label). */
@@ -98,12 +146,19 @@
    * popover="manual") zet het paneel naast het veld en niet in
    * .cdk-overlay-container; het veld wijst er via aria-controls naar.
    */
+  function eigenPaneel(el) {
+    if (!el || !el.getAttribute) return null;
+    var ids = [el.getAttribute('aria-controls'), el.id ? el.id + '-panel' : ''];
+    for (var i = 0; i < ids.length; i++) {
+      var p = ids[i] ? document.getElementById(ids[i]) : null;
+      if (p) return p;
+    }
+    return null;
+  }
+
   function opties(el) {
-    var panelen = [];
-    var id = el && el.getAttribute && el.getAttribute('aria-controls');
-    var eigen = id ? document.getElementById(id) : null;
-    if (eigen) panelen.push(eigen);
-    else panelen = qa('[role="listbox"], .mat-mdc-select-panel, .mat-mdc-autocomplete-panel, .cdk-overlay-container, .cdk-overlay-popover').filter(zichtbaar);
+    var eigen = eigenPaneel(el);
+    var panelen = eigen ? [eigen] : qa('[role="listbox"], .mat-mdc-select-panel, .mat-mdc-autocomplete-panel, .cdk-overlay-container, .cdk-overlay-popover').filter(zichtbaar);
     var gezien = [];
     panelen.forEach(function (p) {
       qa('mat-option, [role="option"]', p).forEach(function (o) { if (gezien.indexOf(o) < 0) gezien.push(o); });
@@ -113,25 +168,35 @@
     });
   }
 
+  /** Hoe goed past tekst t bij zoekterm (0 = niet, 4 = exact). Spaties tellen niet mee voor codes als OTPU 605155 7. */
+  function termScore(tekst, term) {
+    var t = norm(tekst), n = norm(term);
+    if (!n || !t) return 0;
+    if (t === n || t.replace(/ /g, '') === n.replace(/ /g, '')) return 4;
+    if (new RegExp('(^| )' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '( |$)').test(t)) return 3;
+    if (t.indexOf(n) === 0) return 2;
+    if (n.length > 3 && (t.indexOf(n) >= 0 || (n.length >= 6 && t.replace(/ /g, '').indexOf(n.replace(/ /g, '')) >= 0))) return 1;
+    return 0;
+  }
+
   /** Kiest de optie die het best bij een van de zoektermen past. */
   function besteOptie(lijst, termen) {
     var best = null, score = 0;
     lijst.forEach(function (o) {
-      var t = norm(txt(o));
+      var t = txt(o);
       termen.forEach(function (term, ti) {
-        var n = norm(term);
-        if (!n) return;
-        var sc = 0;
-        if (t === n) sc = 4;
-        else if (new RegExp('(^| )' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '( |$)').test(t)) sc = 3;
-        else if (t.indexOf(n) === 0) sc = 2;
-        else if (n.length > 3 && t.indexOf(n) >= 0) sc = 1;
+        var sc = termScore(t, term);
         if (!sc) return;
         sc = sc * 100 - ti; // bij gelijke match wint de eerste (eigenlijke) zoekterm
         if (sc > score) { score = sc; best = o; }
       });
     });
     return best;
+  }
+
+  /** Past de tekst (minstens als heel woord) bij een van de termen? */
+  function pastBij(tekst, termen) {
+    return (termen || []).some(function (t) { return termScore(tekst, t) >= 3; });
   }
 
   /** Sluit een open keuzelijst. Met el: alleen het paneel van dat veld (veilig binnen een dialoog). */
@@ -143,27 +208,94 @@
     if (bd) bd.click();
   }
 
-  async function kiesInSelect(el, termen) {
-    var trigger = q('.mat-mdc-select-trigger', el) || el;
-    trigger.click();
-    var lijst = await wachtOp(function () { var o = opties(el); return o.length ? o : null; }, 3000);
-    if (!lijst) { sluitOverlay(el); return { ok: false, melding: 'keuzelijst ging niet open' }; }
-    var o = besteOptie(lijst, termen);
-    if (!o) { sluitOverlay(el); return { ok: false, melding: 'geen passende optie voor "' + termen[0] + '" (opties: ' + lijst.slice(0, 8).map(txt).join(', ') + ')' }; }
-    o.click();
-    await wacht(150);
-    return { ok: true, gekozen: txt(o) };
+  /** Tekst van de gekozen waarde in een mat-select ('' als leeg). */
+  function selectTekst(el) { return txt(q('.mat-mdc-select-value-text, .mat-select-value-text', el)); }
+  function paneelOpen(el) { return el.getAttribute('aria-expanded') === 'true' || !!eigenPaneel(el); }
+  function optieGekozen(o) { return o.getAttribute('aria-selected') === 'true'; }
+
+  /**
+   * Terugval als een klik op de optie niet aankomt: met de pijltjestoetsen naar
+   * de optie (aria-activedescendant, zoals de CDK ListKeyManager) en Enter.
+   */
+  async function kiesMetToetsen(el, doelTekst, klaar) {
+    el.focus();
+    for (var i = 0; i < 80; i++) {
+      var lijst = opties(el);
+      var doel = lijst.filter(function (o) { return txt(o) === doelTekst; })[0];
+      if (!doel) return false;
+      var actief = el.getAttribute('aria-activedescendant');
+      if (actief && actief === doel.id) {
+        toets(el, 'Enter', 13);
+        return !!(await wachtOp(klaar, 1500));
+      }
+      var pos = lijst.map(function (o) { return o.id; }).indexOf(actief);
+      if (pos >= 0 && pos > lijst.indexOf(doel)) toets(el, 'ArrowUp', 38);
+      else toets(el, 'ArrowDown', 40);
+      await wacht(50);
+    }
+    return false;
   }
 
-  async function kiesInAutocomplete(el, zoekterm, termen) {
+  async function kiesInSelect(el, termen) {
+    var huidig = selectTekst(el);
+    if (huidig && termen.some(function (t) { return termScore(huidig, t) === 4; })) return { ok: true, gekozen: huidig };
+    for (var poging = 0; poging < 2; poging++) {
+      if (!paneelOpen(el)) {
+        el.focus();
+        klik(q('.mat-mdc-select-trigger', el) || el);
+      }
+      // Wachten tot het paneel klaar is (opties aanwezig en niet meer veranderend).
+      var lijst = await wachtStabiel(function () { var o = opties(el); return o.length ? o : null; }, 250, 4000,
+        function (l) { return l.length + ':' + (l[0].id || txt(l[0])); });
+      if (!lijst) { sluitOverlay(el); continue; }
+      var o = besteOptie(lijst, termen);
+      if (!o) { sluitOverlay(el); return { ok: false, melding: 'geen passende optie voor "' + termen[0] + '" (opties: ' + lijst.slice(0, 8).map(txt).join(', ') + ')' }; }
+      var tekst = txt(o);
+      var klaar = function () { return optieGekozen(o) || (selectTekst(el) && termScore(selectTekst(el), tekst) === 4); };
+      try { o.scrollIntoView({ block: 'nearest' }); } catch (e) { /* geen scroll */ }
+      klik(o);
+      var ok = await wachtOp(klaar, 1200);
+      if (!ok) ok = await kiesMetToetsen(el, tekst, klaar);
+      if (ok) {
+        // Angular sluit het paneel en zet de waarde na change detection.
+        await wachtOp(function () { return termScore(selectTekst(el), tekst) === 4; }, 1500);
+        if (paneelOpen(el)) sluitOverlay(el);
+        await wacht(TEMPO);
+        return { ok: true, gekozen: selectTekst(el) || tekst };
+      }
+      sluitOverlay(el);
+      await wacht(TEMPO);
+    }
+    if (!opties(el).length && !selectTekst(el)) return { ok: false, melding: 'keuzelijst ging niet open of Portbase nam de keuze niet over; kies zelf' };
+    return { ok: false, melding: 'optie voor "' + termen[0] + '" aangeklikt, maar Portbase nam die niet over; kies zelf' };
+  }
+
+  /**
+   * Autocomplete: zoekterm typen, wachten tot er een passende suggestie staat
+   * (de lijst wordt via de API gefilterd), die kiezen en controleren dat het
+   * veld de keuze heeft overgenomen.
+   */
+  async function kiesInAutocomplete(el, zoekterm, termen, timeout) {
+    termen = termen && termen.length ? termen : [zoekterm];
+    try { el.scrollIntoView({ block: 'center' }); } catch (e) { /* geen scroll */ }
     zetWaarde(el, zoekterm);
-    var lijst = await wachtOp(function () { var o = opties(el); return o.length ? o : null; }, 5000);
-    if (!lijst) { blur(el); return { ok: false, melding: 'geen suggesties verschenen; kies zelf uit de lijst' }; }
-    var o = besteOptie(lijst, termen);
-    if (!o) { sluitOverlay(el); return { ok: false, melding: 'geen passende suggestie voor "' + zoekterm + '"' }; }
-    o.click();
-    await wacht(150);
-    return { ok: true, gekozen: txt(o) };
+    var o = await wachtStabiel(function () { var l = opties(el); return l.length ? besteOptie(l, termen) : null; }, 300, timeout || 8000);
+    if (!o) {
+      var l = opties(el);
+      sluitOverlay(el); blur(el);
+      return { ok: false, melding: l.length ? 'geen passende suggestie voor "' + zoekterm + '" (opties: ' + l.slice(0, 6).map(txt).join(', ') + ')' : 'geen suggesties verschenen voor "' + zoekterm + '"; kies zelf uit de lijst' };
+    }
+    var tekst = txt(o);
+    var klaar = function () {
+      var w = String(el.value || '');
+      return optieGekozen(o) || (norm(w) && norm(w) !== norm(zoekterm)) || (!opties(el).length && termScore(w, tekst) >= 3);
+    };
+    klik(o);
+    var ok = await wachtOp(klaar, 1500);
+    if (!ok) ok = await kiesMetToetsen(el, tekst, klaar);
+    await wacht(TEMPO);
+    if (!ok) { sluitOverlay(el); return { ok: false, melding: 'suggestie "' + tekst + '" aangeklikt, maar Portbase nam die niet over; kies zelf' }; }
+    return { ok: true, gekozen: String(el.value || '').trim() || tekst };
   }
 
   /**
@@ -189,6 +321,10 @@
       var dres = await afhandelen(el, r.zoek, opts);
       r.status = dres.opgeslagen ? 'ingevuld' : 'handmatig';
       r.melding = dres.melding || '';
+      if (dres.opgeslagen && !(await keuzeOvergenomen(def, ctx, el))) {
+        r.status = 'handmatig';
+        r.melding += ' (Save geklikt, maar Portbase toont geen keuze; controleer en kies zelf)';
+      }
       return r;
     }
     if (!opts.overschrijven && el.tagName === 'INPUT' && String(el.value || '').trim()) {
@@ -232,6 +368,22 @@
     return t && !/^(select\b|edit$)/i.test(t) ? t : '';
   }
 
+  /**
+   * Heeft Portbase de keuze uit het zoekvenster overgenomen? Alleen te zien bij
+   * een alleen-lezen veld naast de knop of een knop "Select …" die van tekst
+   * verandert; anders (bijv. alleen "Edit") wordt de Save vertrouwd.
+   */
+  async function keuzeOvergenomen(def, ctx, knop) {
+    function nu() { var k = (knop && knop.isConnected ? knop : zoek(def, ctx)); return k || null; }
+    var ok = await wachtOp(function () { var k = nu(); return k && huidigeKeuze(k) ? true : null; }, 2500);
+    if (ok) return true;
+    var k = nu();
+    if (!k) return true;
+    var vak = k.closest('mat-form-field');
+    var controleerbaar = !!(vak && q('input[readonly], input[data-test$="-selector"]', vak)) || /^select\b/i.test(txt(k));
+    return !controleerbaar;
+  }
+
   /* ---------------- velddefinities ---------------- */
 
   function landTermen(code) { var naam = (root.GGB_LANDNAMEN || {})[code]; return [code, naam].filter(Boolean); }
@@ -262,6 +414,9 @@
       dialoogZoek: function (r) { return orgZoek(r.plaatsBestemming, 'bestemming', r.plaatsBestemming.land || r.importeur.land || 'NL', r); } },
     { naam: 'Country of origin (I.11)', key: 'landOorsprong', sel: ['app-form-general input[formcontrolname="countryOfOriginUnCode"]', 'input[data-test="country-of-origin-un-code"]'], label: /^country of origin/i, termen: landTermen },
     { naam: 'Country of loading (I.14)', key: 'landLading', sel: ['app-form-general input[formcontrolname="countryOfLoadingUnCode"]', 'input[formcontrolname="countryOfLoadingUnCode"]'], label: /^country of loading/i, termen: landTermen },
+    // Altijd dezelfde cargo handler (autocomplete; zoeken op "Cory Brothers", kiezen "Cory Brothers B.V.").
+    { naam: 'Cargo handler', key: 'cargoHandler', vast: 'Cory Brothers B.V.', sel: ['app-form-general input[data-test="cargo-handler"]', 'input[data-test="cargo-handler"]', 'input#cargoHandler', 'input[formcontrolname="cargoHandler"]'], label: /^cargo handler/i,
+      soort: 'autocomplete', zoekterm: function () { return 'Cory Brothers'; } },
     { naam: 'Goods certified as or for (I.18)', key: 'gecertificeerdVoor', sectie: 'Goods', sel: ['mat-select[data-test="goods-intended-use-code"]', 'mat-select[formcontrolname="goodsIntendedUseCode"]'], label: /^goods certified/i },
     { naam: 'Transport conditions (I.16)', key: 'transportconditie', sectie: 'Goods', sel: ['mat-select[data-test="transport-conditions-code"]', 'mat-select[formcontrolname="transportConditionsCode"]'], label: /^transport conditions/i },
     { naam: 'Means of transport (I.13)', key: 'vervoermiddel', sectie: 'Means of transport', sel: ['mat-select[data-test="arrival-means-of-transport-mode"]', 'app-form-means-of-transport-before-border mat-select[formcontrolname="mode"]'],
@@ -296,14 +451,14 @@
     { naam: 'GN-code (I.31)', key: 'gnCode', sel: ['button[data-test="gn-code-dialog"]'], label: /^gn-code/i, soort: 'dialoog',
       dialoogZoek: function (r, g) {
         var a = animoInfo(g.animoCode);
-        return { gn: g.gnCode, term: g.gnCode, wetenschappelijk: g.wetenschappelijkeNaam, aard: g.aardProduct, animo: g.animoCode, hints: [g.aardProduct, a ? a.omschrijving : '', g.omschrijving].join(' ') };
+        return { gn: g.gnCode, hc: g.gnCodeHc, term: g.gnCodeHc || g.gnCode, wetenschappelijk: g.wetenschappelijkeNaam, aard: g.aardProduct, animo: g.animoCode, hints: [g.aardProduct, a ? a.omschrijving : '', g.omschrijving].join(' ') };
       } },
     { naam: 'Goods description (I.31)', key: 'omschrijving', nietInvullen: true, sel: ['input[data-test="goods-description"]', 'input[formcontrolname="goodsDescription"]'], label: /^goods description/i },
     { naam: 'Gross weight (I.34)', key: 'brutoGewicht', sel: ['input[data-test="gross-weight"]', 'input[formcontrolname="grossWeight"]'], label: /^gross weight/i },
     { naam: 'Nett weight (I.34)', key: 'nettoGewicht', sel: ['input[data-test="nett-weight"]', 'input[formcontrolname="nettWeight"]'], label: /^nett? weight/i },
     { naam: 'Number of packages (I.32)', key: 'aantalColli', sel: ['input[data-test="packaging-number-of-packages"]', 'input[formcontrolname="numberOfPackages"]'], label: /^number of packages/i },
     { naam: 'Package type (I.32)', key: 'verpakkingstype', sel: ['mat-select[data-test="packaging-package-type"]', 'mat-select[formcontrolname="packageType"]'], label: /^package type/i,
-      termen: function (v) { return [v, String(v).replace(/s$/i, ''), /carton/i.test(v) ? 'Box' : '']; } },
+      termen: verpakkingTermen },
     { naam: 'Batch number (I.34)', key: 'batchnummer', sel: ['input[formcontrolname="batchNumber"]'], label: /^batch number/i },
     { naam: 'Additional units (I.33)', key: 'aanvullendeEenheden', sel: ['input[formcontrolname="additionalUnits"]'], label: /^additional units/i },
     { naam: 'Activity / approval number (I.15)', key: 'erkenningsnummer', sel: ['button[data-test="establishment-dialog"]', 'button[data-test="organisation-dialog"]'], label: /^activity \/ approval number/i, soort: 'dialoog',
@@ -312,6 +467,27 @@
         return orgZoek(Object.assign({}, pv, { erkenningsnummer: g.erkenningsnummer || pv.erkenningsnummer }), 'inrichting', pv.land || r.landOorsprong.waarde || r.exporteur.land, r);
       } },
     { naam: 'Equipment number', key: 'containernummer', sel: ['mat-select[formcontrolname="equipmentNumber"]'], label: /^equipment number/i }
+  ];
+
+  /** Verpakkingssoort van het HC/de paklijst naar de Portbase-opties, bijv. "Carton (CT)", "Bag (BG)". */
+  var VERPAKKING = [
+    [/^(ctns?|cartons?|carton box(es)?|cartoon)$/i, 'Carton (CT)'], [/^(box(es)?|bx)$/i, 'Box (BX)'],
+    [/^(bags?|sacks?|bg)$/i, 'Bag (BG)'], [/^(pallets?|plts?|px)$/i, 'Pallet (PX)'], [/^(packages?|pkgs?|pk|packs?)$/i, 'Package (PK)'],
+    [/^(cases?|cs)$/i, 'Case (CS)'], [/^(cans?|tins?)$/i, 'Can (CA)'], [/^(drums?|dr)$/i, 'Drum (DR)'], [/^(jars?)$/i, 'Jar (JR)'],
+    [/^(trays?)$/i, 'Tray (DT)'], [/^(crates?)$/i, 'Crate (CR)'], [/^(bulk)$/i, 'Bulk (VR)'], [/^(totes?)$/i, 'Tote (TT)'],
+    [/^(containers?)$/i, 'Container (CN)'], [/^(unpacked|unpackaged|loose)$/i, 'Unpacked or unpackaged (NA)']
+  ];
+  function verpakkingTermen(v) {
+    var w = String(v || '').trim();
+    var kaal = w.replace(/\s*\([A-Z0-9]{2}\)\s*$/, '');
+    var t = VERPAKKING.filter(function (x) { return x[0].test(kaal); }).map(function (x) { return x[1]; });
+    return t.concat([w, kaal, kaal.replace(/e?s$/i, '')]).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+  }
+
+  /** Knoppen Yes/No (mat-button-toggle) die altijd op Yes moeten. */
+  var TOGGLES = [
+    { naam: 'EU standard', sel: ['mat-button-toggle-group[formcontrolname="euStandard"]', 'mat-button-toggle-group[data-test="eu-standard"]', 'mat-button-toggle-group[formcontrolname*="euStandard" i]'], label: /^eu[\s-]*standards?\b/i, waarde: 'Yes' },
+    { naam: 'Consumer package indicator (I.31)', sel: ['mat-button-toggle-group[formcontrolname="consumerPackageIndicator"]', 'mat-button-toggle-group[data-test="consumer-package-indicator"]'], label: /^consumer package indicator/i, waarde: 'Yes' }
   ];
 
   /** Zoekopdracht voor de organisatiedialoog. Met erkenningsnummer eerst daarop zoeken, anders op naam. */
@@ -330,6 +506,47 @@
   function animoInfo(code) {
     var lijst = (root.GGB_AI && root.GGB_AI.ANIMO_CODES) || [];
     return lijst.filter(function (a) { return a.code === code; })[0] || null;
+  }
+
+  /** Alle zichtbare Yes/No-groepen voor een toggle-definitie (via selector of de label-tekst ervoor). */
+  function toggleGroepen(def, ctx) {
+    var groepen = [];
+    function voegToe(g) { if (g && groepen.indexOf(g) < 0) groepen.push(g); }
+    def.sel.forEach(function (s) { qa(s, ctx).forEach(voegToe); });
+    qa('mat-label, label', ctx).filter(function (l) { return def.label.test(txt(l)); }).forEach(function (l) {
+      var box = l.closest('.col, .error-placeholder, mat-form-field') || l.parentElement;
+      voegToe(box && q('mat-button-toggle-group', box));
+    });
+    return groepen.filter(zichtbaar);
+  }
+
+  function toggleAan(b) {
+    var t = b.closest('mat-button-toggle');
+    return b.getAttribute('aria-checked') === 'true' || b.getAttribute('aria-pressed') === 'true' || !!(t && t.classList.contains('mat-button-toggle-checked'));
+  }
+
+  /** Zet een mat-button-toggle-group op de knop met de gegeven tekst en controleert dat Angular die overneemt. */
+  async function zetToggle(groep, waarde) {
+    var knoppen = qa('mat-button-toggle button, button.mat-button-toggle-button', groep);
+    var doel = knoppen.filter(function (b) { return norm(txt(b)) === norm(waarde); })[0];
+    if (!doel) return { status: 'niet gevonden', melding: 'knop "' + waarde + '" niet gevonden' };
+    if (toggleAan(doel)) return { status: 'ingevuld', melding: 'stond al op ' + waarde };
+    if (doel.disabled || groep.getAttribute('aria-disabled') === 'true') return { status: 'handmatig', melding: 'niet bewerkbaar' };
+    var was = knoppen.filter(function (b) { return b !== doel && toggleAan(b); }).map(txt)[0];
+    try { doel.scrollIntoView({ block: 'center' }); } catch (e) { /* geen scroll */ }
+    klik(doel);
+    var ok = await wachtOp(function () { return toggleAan(doel); }, 1500);
+    await wacht(TEMPO / 2);
+    if (!ok) return { status: 'handmatig', melding: 'klik op "' + waarde + '" werd niet overgenomen; kies zelf' };
+    return { status: 'ingevuld', melding: was ? 'was ' + was : '' };
+  }
+
+  /** Sectienaam voor het verslag: "Goods item 2" als de groep in een goederenitem staat. */
+  function sectieVan(el, standaard) {
+    var kaart = el.closest('app-form-goods-items mat-card');
+    if (!kaart) return standaard;
+    var alle = qa('app-form-goods-items mat-card').filter(function (k) { return q('input, mat-select', k); });
+    return 'Goods item ' + (alle.indexOf(kaart) + 1);
   }
 
   /** Waarde van een algemeen veld uit het AI-resultaat. */
@@ -426,7 +643,7 @@
     for (var i = 0; i < ALGEMEEN.length; i++) {
       var def = ALGEMEEN[i];
       push(def.sectie || 'General',
-        await vulVeld(def, algemeneWaarde(r, def.key), form, opts, zoekVoor(def)));
+        await vulVeld(def, def.vast || algemeneWaarde(r, def.key), form, opts, zoekVoor(def)));
     }
 
     var gebruikt = [];
@@ -490,6 +707,17 @@
       }
     }
 
+    // Vaste Yes/No-keuzes: EU standard en Consumer package indicator (elk goederenitem) altijd Yes.
+    meld('Vaste keuzes…');
+    for (var t = 0; t < TOGGLES.length; t++) {
+      var groepen = toggleGroepen(TOGGLES[t], form);
+      if (!groepen.length) { push('General', { naam: TOGGLES[t].naam, waarde: TOGGLES[t].waarde, status: 'overgeslagen', melding: 'veld niet op deze pagina' }); continue; }
+      for (var tg = 0; tg < groepen.length; tg++) {
+        var tres = await zetToggle(groepen[tg], TOGGLES[t].waarde);
+        push(sectieVan(groepen[tg], 'General'), Object.assign({ naam: TOGGLES[t].naam, waarde: TOGGLES[t].waarde }, tres));
+      }
+    }
+
     meld('');
     return verslag;
   }
@@ -511,12 +739,30 @@
     return raak / Math.min(wa.length, wb.length);
   }
 
-  function selecteerRij(rij) {
-    // Native input eerst: in Angular Material reageert alleen die (of het label) op een klik.
-    var keuze = eerste(['.mat-column-selection input[type="radio"]', '.mat-column-selection input[type="checkbox"]', '.mat-column-selection label', '.mat-column-selection button'], rij);
-    (keuze || rij).click();
-    rij.style.outline = '3px solid #0b5fa5';
+  /** Is de regel door Angular als gekozen verwerkt (klasse op mat-radio-button/checkbox of de rij)? */
+  function rijGekozen(rij) {
+    if (q('.mat-mdc-radio-checked, .mat-radio-checked, .mat-mdc-checkbox-checked, .mat-checkbox-checked', rij)) return true;
+    return /\b(selected|mat-mdc-row-selected|highlight)\b/.test(rij.className || '');
+  }
+
+  /**
+   * Kiest een regel in een zoekvenster en wacht tot Angular de keuze heeft
+   * verwerkt. Pas daarna mag Save: anders sluit het venster zonder keuze.
+   */
+  async function selecteerRij(rij) {
     rij.scrollIntoView({ block: 'center' });
+    rij.style.outline = '3px solid #0b5fa5';
+    // Native input eerst: in Angular Material reageert alleen die (of het label) op een klik.
+    var invoer = eerste(['.mat-column-selection input[type="radio"]', '.mat-column-selection input[type="checkbox"]', 'input[type="radio"]', 'input[type="checkbox"]'], rij);
+    var pogingen = [invoer, q('.mat-column-selection label, .mat-column-selection .mdc-radio, .mat-column-selection button', rij), q('mat-radio-button, mat-checkbox', rij), rij]
+      .filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+    for (var i = 0; i < pogingen.length; i++) {
+      if (i === 0 && pogingen[0] === invoer) pogingen[0].click(); else klik(pogingen[i]);
+      if (!invoer && pogingen[i] === rij && !q('mat-radio-button, mat-checkbox', rij)) { await wacht(TEMPO); return true; } // lijst zonder keuzerondje
+      if (await wachtOp(function () { return rijGekozen(rij); }, 1500)) { await wacht(TEMPO); return true; }
+    }
+    // Native vinkje staat wel aan maar Angular toont het (nog) niet: niet op Save vertrouwen.
+    return false;
   }
 
   /** Kies de beste regel als die duidelijk wint; anders kandidaten markeren. */
@@ -579,23 +825,36 @@
   async function zoekOrganisatieEenmaal(dialoog, zoek, type, term) {
     var termEl = q('input[data-test="search-term"]', dialoog);
     var radio = q('[data-test="search-type"] input[value="' + type + '"]', dialoog);
-    if (radio && !radio.checked) { radio.click(); await wacht(100); }
+    if (radio && !radio.checked) { radio.click(); await wachtOp(function () { return radio.checked; }, 1000); await wacht(TEMPO / 2); }
     term = String(term || '').trim();
-    if (term.length < 3) return null;
+    if (term.length < 3 || !termEl) return null;
     zetWaarde(termEl, term);
     blur(termEl);
+    await wacht(TEMPO);
     var knop = q('button[data-test="select-search"]', dialoog);
     if (!knop) return null;
     var r = await zoekEnWacht(dialoog, knop, orgRijen);
     return r && r.length ? r : null;
   }
 
+  /** Staat het land al goed in het landveld van een zoekvenster? (bijv. "VN - Viet Nam") */
+  function landKlopt(landEl, land) {
+    var w = String(landEl.value || '').trim();
+    return !!w && pastBij(w, landTermen(land));
+  }
+
+  /** Land kiezen in het zoekvenster (autocomplete); een ander, eerder gekozen land wordt vervangen. */
+  async function kiesLand(landEl, land) {
+    if (!landEl || !land || landKlopt(landEl, land)) return { ok: true };
+    var l = await kiesInAutocomplete(landEl, land, landTermen(land));
+    if (!l.ok || !(await wachtOp(function () { return landKlopt(landEl, land); }, 1500))) return { ok: false };
+    await wacht(TEMPO);
+    return { ok: true };
+  }
+
   async function zoekOrganisatie(dialoog, zoek) {
     var landEl = q('input[data-test="search-country"]', dialoog);
-    if (landEl && zoek.land && !String(landEl.value || '').trim()) {
-      var l = await kiesInAutocomplete(landEl, zoek.land, landTermen(zoek.land));
-      if (!l.ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ') en klik Search' };
-    }
+    if (!(await kiesLand(landEl, zoek.land)).ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ') en klik Search' };
     var type = zoek.type || 'NAME', term = zoek.term;
     var rijen = await zoekOrganisatieEenmaal(dialoog, zoek, type, term);
     if (!rijen && zoek.terugval && zoek.terugval.term) {
@@ -605,8 +864,8 @@
     if (!rijen) return { ok: true, melding: String(term || '').trim().length < 3 ? 'zoekterm te kort; zoek zelf' : 'geen resultaten voor "' + term + '" (' + (zoek.land || '?') + '); zoek zelf of voeg handmatig toe' };
     var keuze = kiesBeste(rijen, rijen.map(function (r) { return rijScore(r, zoek); }), 40, 8);
     if (keuze.rij) {
-      selecteerRij(keuze.rij);
       var c = keuze.rij;
+      if (!(await selecteerRij(c))) return { ok: true, melding: 'regel ' + cel(c, 'name') + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
       return { ok: true, gekozen: true, melding: 'gekozen: ' + [cel(c, 'name'), cel(c, 'city'), cel(c, 'approvalNumber'), cel(c, 'activity')].filter(Boolean).join(' · ') };
     }
     return { ok: true, melding: rijen.length + ' resultaten voor "' + term + '"' + (keuze.kandidaten.length ? ', ' + keuze.kandidaten.length + ' mogelijk (gemarkeerd)' : ', geen duidelijke match') + '; kies zelf' };
@@ -629,11 +888,9 @@
 
   async function kiesUitLijst(dialoog, zoek) {
     var landEl = eerste(['input[data-test="search-country"]', 'input[formcontrolname*="ountry"]', 'input[aria-autocomplete="list"]'], dialoog);
-    if (landEl && zoek.land && !String(landEl.value || '').trim()) {
-      var l = await kiesInAutocomplete(landEl, zoek.land, landTermen(zoek.land));
-      if (!l.ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ')' };
-    }
-    var rijen = await wachtOp(function () { var r = lijstRijen(dialoog); return r.length ? r : null; }, 8000);
+    if (!(await kiesLand(landEl, zoek.land)).ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ')' };
+    var rijen = await wachtStabiel(function () { var r = lijstRijen(dialoog); return r.length && !bezig(dialoog) ? r : null; }, 500, 10000,
+      function (r) { return r.length + ':' + txt(r[0]); });
     if (!rijen) return { ok: true, melding: 'geen lijst verschenen; kies zelf' };
     var code = norm(zoek.code), naam = norm(zoek.term);
     var scores = rijen.map(function (rij) {
@@ -644,7 +901,7 @@
     });
     var keuze = kiesBeste(rijen, scores, 3, 1);
     if (keuze.rij) {
-      selecteerRij(keuze.rij);
+      if (!(await selecteerRij(keuze.rij))) return { ok: true, melding: 'regel aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
       return { ok: true, gekozen: true, melding: 'gekozen: ' + qa('mat-cell, td, [role="cell"]', keuze.rij).map(txt).filter(Boolean).join(' · ') };
     }
     return { ok: true, melding: keuze.kandidaten.length ? keuze.kandidaten.length + ' mogelijke regels gemarkeerd; kies zelf' : '"' + (zoek.term || zoek.code) + '" niet in de lijst; kies zelf' };
@@ -677,6 +934,7 @@
       var p = 0;
       hw.forEach(function (h) {
         if (h === w || (Math.min(h.length, w.length) >= 5 && (h.indexOf(w) === 0 || w.indexOf(h) === 0))) p = Math.max(p, 2);
+        else if (w.length >= 8 && h.indexOf(w) > 0) p = Math.max(p, 2); // "vleesproducten" in "pluimveevleesproducten"
         else if (h.length >= 6 && w.length >= 6 && h.slice(0, 6) === w.slice(0, 6)) p = Math.max(p, 1);
       });
       return som + p;
@@ -686,26 +944,49 @@
 
   function geenResultaat(dialoog) { return q('.mat-mdc-no-data-row, .cdk-no-data-row, ic-no-results', dialoog); }
 
-  /** Klikt Search en wacht op nieuwe regels ([]: "geen resultaten"; null: geen reactie). */
+  /** Laadt het venster nog (spinner/voortgangsbalk)? */
+  function bezig(dialoog) {
+    return qa('mat-progress-bar, mat-progress-spinner, mat-spinner, .mat-mdc-progress-bar, .mat-mdc-progress-spinner, [role="progressbar"], .spinner, .loading, .loader', dialoog).some(zichtbaar);
+  }
+
+  /**
+   * Klikt Search en wacht op het antwoord van Portbase: regels ([...]),
+   * "geen resultaten" ([]) of geen reactie (null). Angular toont tijdens het
+   * zoeken vaak al de lege staat ("No results") en vult de tabel pas als de
+   * API antwoordt; daarom geldt "geen resultaten" pas als die staat een tijd
+   * onveranderd blijft, en regels pas als ze niet meer veranderen.
+   */
   async function zoekEnWacht(dialoog, knop, rijenFn) {
-    var oud = rijenFn(dialoog)[0], oudLeeg = geenResultaat(dialoog), oudTekst = oudLeeg ? txt(oudLeeg) : '';
+    var oud = rijenFn(dialoog)[0];
+    await wachtOp(function () { return !knop.disabled; }, 3000);
+    var start = Date.now();
     knop.click();
-    return wachtOp(function () {
-      var r = rijenFn(dialoog);
-      if (r.length && r[0] !== oud) return r;
-      var leeg = geenResultaat(dialoog);
-      if (leeg && (leeg !== oudLeeg || txt(leeg) !== oudTekst) && !r.length) return [];
-      return null;
-    }, 6000);
+    var eind = start + 15000, vorige = null, sinds = start;
+    while (Date.now() < eind) {
+      await wacht(100);
+      var r = rijenFn(dialoog), leeg = geenResultaat(dialoog);
+      var sig = r.length ? 'R' + r.length + ':' + txt(r[0]).slice(0, 120) : (leeg ? 'L:' + txt(leeg) : '-');
+      if (sig !== vorige) { vorige = sig; sinds = Date.now(); }
+      if (bezig(dialoog)) continue;
+      var rust = Date.now() - sinds, verstreken = Date.now() - start;
+      if (r.length && (r[0] !== oud || verstreken > 4000) && rust >= 600) return r;
+      if (!r.length && leeg && verstreken >= 2500 && rust >= 2000) return [];
+      if (!r.length && !leeg && verstreken >= 6000 && rust >= 3000) return []; // geen tabel en geen melding
+    }
+    var laatst = rijenFn(dialoog);
+    return laatst.length ? laatst : (geenResultaat(dialoog) ? [] : null);
   }
 
   async function zoekGn(dialoog, zoek) {
     var gn = String(zoek.gn || zoek.term || '').replace(/\D/g, '');
+    var hc = String(zoek.hc || '').replace(/\D/g, '');
     var termEl = eerste(['input[data-test="name"]', 'input[formcontrolname="name"]'], dialoog);
     var wnEl = q('input[data-test="scientific-name"], input[formcontrolname="scientificName"]', dialoog);
     var knop = q('button[data-test="select-search"]', dialoog);
     if (!termEl || !knop) return { ok: true, melding: 'zoekveld niet gevonden; zoek zelf op ' + gn };
-    var codes = [gn, gn.slice(0, 6), gn.slice(0, 4)].filter(function (p, i, a) { return p.length >= 4 && a.indexOf(p) === i; });
+    // Zoals de declarant: de code zoals op het HC (HS-code, meestal 6 cijfers) + wetenschappelijke naam.
+    var codes = [hc, gn.slice(0, 6), gn, gn.slice(0, 4)].filter(function (p, i, a) { return p && p.length >= 4 && a.indexOf(p) === i; });
+    if (!gn) gn = hc;
     if (!codes.length) return { ok: true, melding: 'GN-code "' + gn + '" te kort om te zoeken' };
     // Eerst GN-code + Latijnse naam (zoals de declarant doet), dan zonder naam.
     var soort = String(zoek.wetenschappelijk || '').trim();
@@ -716,6 +997,7 @@
     for (var i = 0; i < pogingen.length && !(rijen && rijen.length); i++) {
       zetWaarde(termEl, pogingen[i][0]); blur(termEl);
       if (wnEl) { zetWaarde(wnEl, pogingen[i][1]); blur(wnEl); }
+      await wacht(TEMPO);
       gebruikt = pogingen[i][0] + (pogingen[i][1] ? ' + ' + pogingen[i][1] : '');
       rijen = await zoekEnWacht(dialoog, knop, gnRijen);
     }
@@ -728,7 +1010,7 @@
     var info = function (r) { return [txt(q('.mat-column-gnCode', r)), txt(q('.mat-column-scientificName', r)), txt(q('.mat-column-productType', r))].filter(Boolean).join(' · '); };
     var keuze = kiesBeste(rijen, scores, 100, 3);
     if (keuze.rij) {
-      selecteerRij(keuze.rij);
+      if (!(await selecteerRij(keuze.rij))) return { ok: true, melding: 'regel ' + info(keuze.rij) + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
       return { ok: true, gekozen: true, melding: 'gekozen: ' + info(keuze.rij) };
     }
     var types = keuze.kandidaten.map(function (r) { return txt(q('.mat-column-productType', r)); }).filter(function (x, j, a) { return x && a.indexOf(x) === j; });
@@ -745,19 +1027,22 @@
     var code = String(zoek.animo || zoek.term || '').trim();
     if (!code) return { ok: true, melding: 'geen Animo-code in het voorstel; kies zelf' };
     function vind() { return animoRijen(dialoog).filter(function (r) { return txt(q('.mat-column-animoCode', r)) === code; })[0] || null; }
-    var rij = await wachtOp(vind, 1500);
+    // De volledige lijst komt via de API; eerst wachten tot die er staat.
+    await wachtStabiel(function () { var r = animoRijen(dialoog); return r.length && !bezig(dialoog) ? r : null; }, 400, 3000, function (r) { return r.length; });
+    var rij = vind();
     if (!rij) {
       var termEl = q('input[data-test="search-term"], input[formcontrolname="searchTerm"]', dialoog);
       var knop = q('button[data-test="search-button"], button[type="submit"]', dialoog);
       if (termEl && knop) {
         zetWaarde(termEl, code);
         blur(termEl);
-        knop.click();
-        rij = await wachtOp(vind, 5000);
+        await wacht(TEMPO);
+        await zoekEnWacht(dialoog, knop, animoRijen);
+        rij = vind();
       }
     }
     if (!rij) return { ok: true, melding: 'Animo-code ' + code + ' niet in de lijst; kies zelf' };
-    selecteerRij(rij);
+    if (!(await selecteerRij(rij))) return { ok: true, melding: 'Animo-code ' + code + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
     return { ok: true, gekozen: true, melding: 'gekozen: ' + code + ' · ' + txt(q('.mat-column-description', rij)) };
   }
 
@@ -800,9 +1085,13 @@
   /** Klikt Save (bij een duidelijke keuze) of Cancel in de dialoog en wacht tot die dicht is. */
   async function sluitDialoog(dialoog, opslaan) {
     var knop = q(opslaan ? 'button[data-test="save"]' : 'button[data-test="cancel"], button[mat-dialog-close]', dialoog);
-    if (!knop || knop.disabled) return false;
+    if (!knop) return false;
+    if (!(await wachtOp(function () { return !knop.disabled && knop.getAttribute('aria-disabled') !== 'true'; }, 3000))) return false;
+    await wacht(TEMPO);
     knop.click();
-    return !!(await wachtOp(function () { return !dialoog.isConnected; }, 4000));
+    var dicht = !!(await wachtOp(function () { return !dialoog.isConnected; }, 5000));
+    if (dicht) await wacht(TEMPO);
+    return dicht;
   }
 
   /**
@@ -856,6 +1145,11 @@
     res = await afronden(res, opts);
     r.status = res.opgeslagen ? 'ingevuld' : 'handmatig';
     r.melding = res.melding || '';
+    var veld = q('input[data-test="animo-code-selector"], #animoCodeSelector', kaart);
+    if (res.opgeslagen && veld && !(await wachtOp(function () { return String(veld.value || '').trim(); }, 2500))) {
+      r.status = 'handmatig';
+      r.melding += ' (Save geklikt, maar het Animo-veld is leeg; kies zelf)';
+    }
     return r;
   }
 

@@ -48,7 +48,8 @@
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label for="goodsIntendedUseCode">Goods certified as or for <span>(I.18)</span></mat-label></label>
     <mat-select role="combobox" formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code" class="mat-mdc-select" aria-disabled="false" data-opties="Other|Feedstuff|Pharmaceutical use|Trade sample|Human consumption|Technical use|Further processing"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label for="transportConditionsCode">Transport conditions <span>(I.16)</span></mat-label></label>
-    <mat-select role="combobox" formcontrolname="transportConditionsCode" data-test="transport-conditions-code" class="mat-mdc-select" aria-disabled="false" data-opties="Chilled|Frozen|Ambient"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+    <mat-select role="combobox" formcontrolname="transportConditionsCode" data-test="transport-conditions-code" class="mat-mdc-select" aria-disabled="false" data-klik-negeren="1" data-opties="Chilled|Frozen|Ambient"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
+    <div class="col error-placeholder"><mat-label class="label"> EU standard <i class="fal fa-info-circle"></i></mat-label><mat-button-toggle-group formcontrolname="euStandard" data-test="eu-standard" role="radiogroup"><mat-button-toggle><button type="button" role="radio" aria-checked="false" class="mat-button-toggle-button"><span class="mat-button-toggle-label-content"> Yes </span></button></mat-button-toggle><mat-button-toggle><button type="button" role="radio" aria-checked="false" class="mat-button-toggle-button"><span class="mat-button-toggle-label-content"> No </span></button></mat-button-toggle></mat-button-toggle-group></div></div>
 </form></app-form-goods></mat-card-content>
 
 <!-- Verborgen secties; hergebruiken data-test="country-of-loading-un-code" en id="billOfLadingNumber" -->
@@ -123,7 +124,7 @@
     <div class="row"><div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Batch number <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="batchNumber" formcontrolname="batchNumber"></mat-form-field></div>
       <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Additional units <span>(I.33)</span></mat-label></label><input matinput="" type="text" min="0" id="additionalUnits" formcontrolname="additionalUnits"></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field inline-button"><label><mat-label>Activity / approval number <span>(I.15)</span></mat-label></label><input matinput="" type="text" id="organisationSelector" data-test="organisation-selector" readonly="true"><div class="mat-mdc-form-field-icon-suffix"><button type="button" data-test="establishment-dialog" data-dialoog="Select establishment of origin" data-org="1" class="selector-suffix-button"><span class="mdc-button__label"><span>Edit</span></span></button></div></mat-form-field></div>
-      <div class="col error-placeholder"><mat-label class="label"> Consumer package indicator <span>(I.31) </span></mat-label><mat-button-toggle-group data-test="consumer-package-indicator" role="radiogroup"><mat-button-toggle class="mat-button-toggle-checked"><button type="button" role="radio" aria-checked="true" class="mat-button-toggle-button">Yes</button></mat-button-toggle><mat-button-toggle><button type="button" role="radio" aria-checked="false" class="mat-button-toggle-button">No</button></mat-button-toggle></mat-button-toggle-group></div></div>
+      <div class="col error-placeholder"><mat-label class="label"> Consumer package indicator <span>(I.31) </span></mat-label><mat-button-toggle-group id="type" formcontrolname="consumerPackageIndicator" name="consumerPackageIndicator" data-test="consumer-package-indicator" role="radiogroup"><mat-button-toggle><button type="button" role="radio" aria-checked="false" name="consumerPackageIndicator" class="mat-button-toggle-button"><span class="mat-button-toggle-label-content"> Yes </span></button></mat-button-toggle><mat-button-toggle><button type="button" role="radio" aria-checked="false" name="consumerPackageIndicator" class="mat-button-toggle-button"><span class="mat-button-toggle-label-content"> No </span></button></mat-button-toggle></mat-button-toggle-group></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Equipment number </mat-label></label><mat-select role="combobox" formcontrolname="equipmentNumber" class="mat-mdc-select" aria-disabled="false" data-opties-dyn="containers"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
   </mat-card-content></mat-card>
   <div class="align-right"><button type="button" data-test="add-goods-item" class="add-new-row-button"><span class="mdc-button__label"><i class="fal fa-plus"></i><span>Add goods item</span></span></button></div>
@@ -223,6 +224,31 @@
   // Zoals de echte Portbase: het paneel staat als <div popover="manual" class="cdk-overlay-popover"> naast het veld
   // (niet in .cdk-overlay-container) en het veld wijst ernaar met aria-controls.
   var paneelNr = 0;
+  // Zoals Angular bij een nieuwe zoekopdracht: rijen weg, direct de lege staat "No results" (nieuw element), resultaten volgen later.
+  function leegTabel(tab, kolommen) {
+    tab.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
+    tab.insertAdjacentHTML('beforeend', '<tr class="mat-row cdk-no-data-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="' + kolommen + '"><ic-no-results><p>No results</p></ic-no-results></td></tr>');
+  }
+  // Keuze in een dialoogtabel: Angular verwerkt de radio-change pas na change detection (asynchroon).
+  document.addEventListener('change', function (e) {
+    var rij = e.target.type === 'radio' && e.target.closest('mat-dialog-container mat-row');
+    if (!rij) return;
+    setTimeout(function () {
+      rij.parentElement.querySelectorAll('mat-row').forEach(function (r) { r.__gekozen = false; var rb = r.querySelector('mat-radio-button'); if (rb) rb.classList.remove('mat-mdc-radio-checked'); });
+      rij.__gekozen = true;
+      var rb = rij.querySelector('mat-radio-button'); if (rb) rb.classList.add('mat-mdc-radio-checked');
+    }, 150);
+  });
+  // mat-button-toggle: asynchroon aria-checked + klasse
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('mat-button-toggle button');
+    if (!b) return;
+    setTimeout(function () {
+      b.closest('mat-button-toggle-group').querySelectorAll('mat-button-toggle').forEach(function (t) {
+        var aan = t.contains(b); t.classList.toggle('mat-button-toggle-checked', aan); t.querySelector('button').setAttribute('aria-checked', String(aan));
+      });
+    }, 50);
+  });
   function sluitPanelen() {
     document.querySelectorAll('.cdk-overlay-popover.mock').forEach(function (p) { p.remove(); });
     document.querySelectorAll('[aria-controls^="mock-panel"]').forEach(function (x) { x.removeAttribute('aria-controls'); x.setAttribute('aria-expanded', 'false'); });
@@ -235,10 +261,12 @@
     pop.className = 'cdk-overlay-popover cdk-overlay-connected-position-bounding-box mock';
     pop.innerHTML = '<div class="cdk-overlay-backdrop cdk-overlay-transparent-backdrop"></div><div class="cdk-overlay-pane"><div role="listbox" class="mat-mdc-select-panel mdc-menu-surface" id="' + id + '"></div></div>';
     var lb = pop.querySelector('[role="listbox"]');
-    opties.forEach(function (t) {
+    opties.forEach(function (t, n) {
       var o = document.createElement('mat-option'); o.setAttribute('role', 'option'); o.className = 'mat-mdc-option mdc-list-item';
+      o.id = id + '-optie-' + n; o.setAttribute('aria-selected', 'false');
       o.innerHTML = '<span class="mdc-list-item__primary-text"> ' + t + ' </span>';
-      o.addEventListener('click', function () { kies(t, o); sluitPanelen(); });
+      o.__kies = function () { o.setAttribute('aria-selected', 'true'); setTimeout(function () { kies(t, o); sluitPanelen(); }, 60); };
+      o.addEventListener('click', function () { if (!veld.dataset.klikNegeren) o.__kies(); });
       lb.appendChild(o);
     });
     (veld.tagName === 'MAT-SELECT' ? veld : veld.parentElement).appendChild(pop);
@@ -246,7 +274,18 @@
     veld.setAttribute('aria-controls', id);
     veld.setAttribute('aria-expanded', 'true');
   }
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') sluitPanelen(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { sluitPanelen(); return; }
+    var veld = e.target, lb = veld.getAttribute && veld.getAttribute('aria-controls') && document.getElementById(veld.getAttribute('aria-controls'));
+    if (!lb) return;
+    var os = Array.prototype.slice.call(lb.querySelectorAll('mat-option')), i = os.findIndex(function (o) { return o.id === veld.getAttribute('aria-activedescendant'); });
+    if (e.keyCode === 40 || e.keyCode === 38) i = Math.max(0, Math.min(os.length - 1, i + (e.keyCode === 40 ? 1 : -1)));
+    else if (e.keyCode === 13 && os[i]) { os[i].__kies(); return; }
+    else return;
+    os.forEach(function (o) { o.classList.remove('mat-mdc-option-active'); });
+    os[i].classList.add('mat-mdc-option-active');
+    veld.setAttribute('aria-activedescendant', os[i].id);
+  });
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target : e.target.parentElement;
     var knop = t.closest('button');
@@ -303,6 +342,8 @@
       e.preventDefault();
       var gdl = knop.closest('mat-dialog-container');
       var zt = gdl.querySelector('[data-test="name"]').value, wn = gdl.querySelector('[data-test="scientific-name"]').value.toLowerCase();
+      window.__gnZoek = (window.__gnZoek || []).concat([zt + (wn ? ' + ' + wn : '')]);
+      leegTabel(gdl.querySelector('[data-test="gn-codes-list"]'), 5);
       setTimeout(function () {
         var tab = gdl.querySelector('[data-test="gn-codes-list"]');
         tab.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
@@ -312,7 +353,7 @@
           tab.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="gn-codes-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell cell field selection mat-column-selection" role="cell"><mat-radio-button class="mat-mdc-radio-button"><div class="mdc-radio"><input type="radio" class="mdc-radio__native-control"></div><label class="mdc-label"></label></mat-radio-button></mat-cell>' +
             '<mat-cell class="mat-mdc-cell mat-column-gnCode" role="cell"> ' + x[0] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-description" role="cell"> ' + x[1] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-scientificName" role="cell"> ' + x[2] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-productType" role="cell"> ' + x[3] + ' </mat-cell></mat-row>');
         });
-      }, 300);
+      }, 700);
     }
     // Search in de organisatiedialoog: resultaten met vertraging (API)
     if (knop && knop.dataset.test === 'select-search' && !knop.closest('app-gn-code-dialog')) {
@@ -321,6 +362,7 @@
       var land = (dlg.querySelector('[data-test="search-country"]').value || '').slice(0, 2);
       var term = dlg.querySelector('[data-test="search-term"]').value.toUpperCase();
       var type = dlg.querySelector('[data-test="search-type"] input:checked').value;
+      leegTabel(dlg.querySelector('[data-test="organisations-list"]'), 11);
       setTimeout(function () {
         var hits = ORGANISATIES.filter(function (o) {
           return o.land === land && (type === 'APPROVAL_NUMBER' ? o.erk.toUpperCase().indexOf(term) >= 0 : o.naam.toUpperCase().indexOf(term) >= 0);
@@ -333,7 +375,7 @@
           tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="organisations-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection" role="cell"><mat-radio-button><div class="mdc-radio"><input type="radio" name="org-keuze" value="' + ORGANISATIES.indexOf(o) + '" class="mdc-radio__native-control"></div></mat-radio-button></mat-cell>' +
             c('name', o.naam) + c('address', o.adres) + c('postalCode', '') + c('city', o.plaats) + c('approvalNumber', o.erk) + c('identificationType', 'OAI') + c('identificationNumber', '1') + c('activity', o.act) + c('section', o.sec) + c('activityDepartment', o.hfd) + '</mat-row>');
         });
-      }, 300);
+      }, 900);
     }
     if (knop && knop.dataset.test === 'search-button' && knop.closest('app-animo-code-dialog')) {
       e.preventDefault();
@@ -348,9 +390,11 @@
       var dl = knop.closest('mat-dialog-container'), bron = dl.__bron;
       var vak = bron && bron.closest('mat-form-field'), doelVeld = vak && vak.querySelector('input[readonly]');
       function schrijf(tekst) { if (doelVeld) doelVeld.value = tekst; else bron.querySelector('span span:last-child, span').textContent = tekst; }
-      var gekozenOrg = dl.querySelector('input[name="org-keuze"]:checked');
-      var gnKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="gn-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
-      var animoKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="animo-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
+      // Save leest de keuze van de component (pas gezet na change detection), niet het native vinkje
+      var orgRij = Array.prototype.filter.call(dl.querySelectorAll('[data-test="organisations-list-row"]'), function (r) { return r.__gekozen; })[0];
+      var gekozenOrg = orgRij && orgRij.querySelector('input[name="org-keuze"]');
+      var gnKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="gn-codes-list-row"]'), function (r) { return r.__gekozen; })[0];
+      var animoKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="animo-codes-list-row"]'), function (r) { return r.__gekozen; })[0];
       var rijKeuze = dl.querySelector('mat-row.mat-mdc-row-selected .mat-column-name');
       if (gnKeuze) {
         schrijf(gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim());
@@ -369,6 +413,11 @@
     var i = e.target;
     if (i.getAttribute && i.getAttribute('aria-autocomplete') === 'list') {
       var term = i.value.toUpperCase();
+      if (i.id === 'cargoHandler') {
+        var ch = ['Cory Brothers B.V.', 'Cory Logistics Antwerp'].filter(function (n) { return term.length >= 3 && n.toUpperCase().indexOf(term) >= 0; });
+        setTimeout(function () { toon(ch, function (t) { i.value = t; }, i); }, 400);
+        return;
+      }
       var lijst = Object.keys(LANDEN).filter(function (k) { return k.indexOf(term) === 0 || LANDEN[k].toUpperCase().indexOf(term) === 0; }).map(function (k) { return k + ' - ' + LANDEN[k]; });
       setTimeout(function () { toon(lijst, function (t) { i.value = t; i.dispatchEvent(new Event('mock-gekozen')); }, i); }, 100);
     }

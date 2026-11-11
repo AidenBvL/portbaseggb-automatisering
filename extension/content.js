@@ -460,6 +460,7 @@
       html += groep('Goods item ' + (i + 1) + ' (I.31-I.34)', FILL.GOED.map(function (d) {
         return '<tr><td class="l">' + esc(d.naam) + '</td><td>' + invoer('goederen.' + i + '.' + d.key, g[d.key]) + '</td><td class="z">' + (d.key === 'gnCode' ? zekerheidBadge(g.zekerheid, g.bron) : '') + '</td></tr>';
       }).join('') +
+        '<tr><td class="l">Code op HC (zoekterm GN)</td><td>' + invoer('goederen.' + i + '.gnCodeHc', g.gnCodeHc) + '</td><td class="z"></td></tr>' +
         '<tr><td class="l">Soort (wetensch. naam, I.28)</td><td>' + invoer('goederen.' + i + '.wetenschappelijkeNaam', g.wetenschappelijkeNaam) + '</td><td class="z"></td></tr>' +
         '<tr><td class="l">Aard product (HC I.28)</td><td>' + invoer('goederen.' + i + '.aardProduct', g.aardProduct) + '</td><td class="z"></td></tr>' +
         '<tr><td class="l">ANIMO code</td><td><select data-animo="' + i + '"><option value="">– kies –</option>' + AI.ANIMO_CODES.map(function (a) {

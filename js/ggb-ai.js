@@ -95,6 +95,38 @@
     ['400304', "Overig / Mengsels van onder 307000 t/m 316000 genoemde meelsoorten"]
   ].map(function (x) { return { code: x[0], omschrijving: x[1] }; });
 
+  /*
+   * Hoe de declarant de Animo-code kiest: productgroep (GN-hoofdstuk/soort),
+   * bestemming (menselijke consumptie = MC, diervoeder, technisch/farmaceutisch)
+   * en bewerking/temperatuur. Gaat mee in de prompt zodat de AI altijd een code kiest.
+   */
+  var ANIMO_KEUZE = [
+    'Vis, schaal- en weekdieren (GN 03, 1604, 1605) voor MC: 206107 bij aquacultuur/kweek (farmed, aquaculture) en bij',
+    '  tweekleppige weekdieren (mosselen, oesters, sint-jakobsschelpen, kokkels, venusschelpen), tenzij hermetisch verpakt én ambient;',
+    '  102108 bij wild gevangen vis, schaaldieren, inktvis/octopus en overige visserijproducten en bij hermetisch verpakte ambient',
+    '  visconserven; 102148 alleen voor levende schaaldieren of verse vis manueel ontdaan van kop en ingewanden uit Canada.',
+    'Vlees van runderen, varkens, schapen, geiten, paarden (hoefdieren; GN 0201-0206, 0209, 0210): vers/gekoeld/bevroren vlees en',
+    '  slachtafvallen 101101; gehakt vlees, vleesbereidingen (gemarineerd, gekruid, rauw) en separatorvlees 101105.',
+    'Pluimvee (Gallus gallus, kalkoen, eend; GN 0207, 1602 31/32/39): vers/bevroren vlees 201102; gehakt, vleesbereidingen en',
+    '  separatorvlees 201105; vleesproducten (verhit, gekookt, gerookt, gedroogd, ingeblikt; GN 1601/1602) 201100.',
+    'Konijn en wild (GN 0208): konijn 202102, gekweekt wild 202103, vrij wild 202104, gehakt/bereidingen 202105.',
+    'Samengestelde producten (GN 1601-1602 met plantaardige bestanddelen, 1704, 1806, 1901, 1902, 1905, 2004, 2005, 2104, 2106 e.d.):',
+    '  121000 hoog risico (met vleesproducten, of niet houdbaar: gekoeld/bevroren); 121001 laag risico (houdbaar, zonder vlees).',
+    'Melk en zuivel (GN 0401-0406, 1901 90, 3501, 3502 20) voor MC: 2031092 rauwe melk/colostrum gekoeld of bevroren; 2031093 overige',
+    '  zuivel ambient; diervoeder 304302; technisch/farmaceutisch 304002.',
+    'Eieren (GN 0407, 0408): hele eieren voor MC 103110; broedeieren 106110; eiproducten gekoeld/bevroren 107110, ambient 204110.',
+    'Honing (0409) 207000; overige bijenteeltproducten (was, propolis, koninginnengelei) 311000; insecten voor MC 119000;',
+    '  kikkerbilletjes en slakken 306111; zeer verfijnde producten (chondroïtine, glucosamine, chitosan, hyaluronzuur) 120116;',
+    '  verwerkte dierlijke eiwitten voor MC 205000.',
+    'Vet en reuzel (GN 1501-1506, 1516 dierlijk): MC 104112, diervoeder 1041122, technisch/farmaceutisch 1041123. Darmen/magen/blazen (0504) 105113.',
+    'Gelatine en collageen (3503, 3504, 9602): MC/technisch/farmaceutisch 305114, collageen technisch/farmaceutisch 305115,',
+    '  diervoeder 305145, fotografische industrie 305416.',
+    'Bijproducten (niet voor MC): petfood (2309) 313304; grondstoffen voor petfood 314000; beenderen en beendermeel 307001 (technisch)',
+    '  of 307304 (diervoeder); veren/haar/wol 309304; hoornen/hoeven 310304; huiden (4101-4103) 308000; bloedproducten technisch 316304;',
+    '  farmaceutische grondstoffen (bloed, klieren, organen) 315000; mengsels van meelsoorten 400304; tussenproducten 319000;',
+    '  jachttrofeeën 312000; sperma 301201; embryo\'s 302202; mest 303000; pathogenen 317000; hooi en stro 318000.'
+  ];
+
   var DOC_CODES = ['HC', 'LAB', 'CATCH', 'OFFCERT', 'PRIVATT', 'CITES', 'COI', 'PHYTO', 'COMM', 'OTHER'];
   var ZEKERHEID = ['hoog', 'middel', 'laag'];
 
@@ -178,6 +210,7 @@
       description: 'Goods item(s) (I.31-I.34): één item per GN-code / partij zoals op het HC.',
       items: obj({
         gnCode: str('GN-code (I.31), 8 cijfers zonder punten/spaties, bijv. 03061792'),
+        gnCodeHc: str('De code precies zoals op het HC in vak I.27/I.28 ("CN code", "HS code", "Commodity"), alleen de cijfers, bijv. 160232 of 030617. Daarmee + de wetenschappelijke naam zoekt de declarant de GN-code in Portbase. Leeg als het HC geen code geeft.'),
         omschrijving: str('Goederenomschrijving (I.31), incl. soort (wetenschappelijke naam) indien vermeld'),
         brutoGewicht: str('Brutogewicht van deze HC-regel in kg; leeg als het HC het per regel niet geeft'),
         nettoGewicht: str('Nettogewicht in kg, alleen cijfers met punt als decimaalteken'),
@@ -186,7 +219,7 @@
         batchnummer: str('Batchnummer / lotnummer (I.34)'),
         aanvullendeEenheden: str('Additional units (I.33), indien vermeld'),
         erkenningsnummer: str('Activity / approval number (I.15): erkenningsnummer van de inrichting van oorsprong, bijv. "1234" of "IN-1234"'),
-        animoCode: str('Animo-code (Portbase/NVWA) die bij dit product hoort, uit de lijst: ' + ANIMO_CODES.map(function (a) { return a.code + ' = ' + a.omschrijving; }).join('; ') + '. Vis uit aquacultuur en tweekleppige weekdieren: 206107; wild gevangen vis: 102108. Leeg als je het niet zeker weet.', ANIMO_CODES.map(function (a) { return a.code; }).concat([''])),
+        animoCode: str('Animo-code (Portbase/NVWA) voor dit goederenitem: kies ALTIJD de best passende code uit de lijst (zie de keuzehulp in de instructies): ' + ANIMO_CODES.map(function (a) { return a.code + ' = ' + a.omschrijving; }).join('; ') + '. Alleen leeg als het product helemaal niet in de lijst past.', ANIMO_CODES.map(function (a) { return a.code; }).concat([''])),
         wetenschappelijkeNaam: str('Soort, wetenschappelijke naam zoals op het HC (vak I.28 "Species"), bijv. "Penaeus vannamei" of "Gallus gallus". Leeg als niet vermeld.'),
         aardProduct: str('Aard/behandeling van het product zoals op het HC (vak I.28 "Nature of commodity", "Treatment type", "Type of product"), bijv. "Farmed, frozen", "Wild caught", "Meat preparation, frozen", "Shelf-stable composite product". Letterlijk overnemen.'),
         containernummer: str('Container waarin dit item zit, indien bekend'),
@@ -235,7 +268,13 @@
     '- Neem bij exporteur (I.1), importeur (I.5/I.6), plaats van bestemming (I.7/I.12) en plaats van verzending (I.11,',
     '  inrichting van oorsprong) naam, adres, plaats, land en erkenningsnummer letterlijk over: daarmee wordt in Portbase',
     '  het juiste bedrijf gekozen (dezelfde naam komt vaak meerdere keren voor met een ander adres of andere activiteit).',
-    '- Kies per goederenitem de Animo-code uit de lijst in het schema (bijv. vis uit aquacultuur 206107, wild gevangen 102108).',
+    '- Kies per goederenitem ALTIJD de Animo-code (animoCode) uit de Portbase-lijst in het schema. Bepaal die uit de GN-code, de soort,',
+    '  "Certified as or for" (I.20: menselijke consumptie = MC, diervoeder, technisch/farmaceutisch), de aard/behandeling (vers,',
+    '  bereiding, verhit product, aquacultuur of wild gevangen) en de transportconditie (gekoeld/bevroren of ambient). Keuzehulp:',
+    ANIMO_KEUZE.map(function (r) { return '    ' + r; }).join('\n'),
+    '  Twijfel je tussen twee codes, kies de meest waarschijnlijke en noem beide met de reden onder "waarschuwingen".',
+    '- Neem per goederenitem in gnCodeHc de code over precies zoals op het HC (vak I.27, vaak 6 cijfers, bijv. 160232); de',
+    '  declarant zoekt in Portbase op die code + de wetenschappelijke naam. gnCode is de volledige 8-cijferige GN-code.',
     '- Neem per goederenitem de wetenschappelijke naam en de aard/behandeling van het product (vak I.28) letterlijk over;',
     '  Portbase heeft per GN-code en soort meerdere producttypes en de declarant kiest daarmee het juiste.',
     '- Meld onder "waarschuwingen" elke tegenstrijdigheid (bijv. ander gewicht of containernummer op HC dan op B/L),',
@@ -387,7 +426,8 @@
       var gn = normGn(g.gnCode);
       if (gn && gn.length !== 8 && gn.length !== 10) w.push('Goederenitem ' + (i + 1) + ': GN-code "' + gn + '" heeft niet 8 cijfers; vul de volledige code aan.');
       var item = {
-        gnCode: gn,
+        gnCode: gn || normGn(g.gnCodeHc),
+        gnCodeHc: normGn(g.gnCodeHc),
         omschrijving: s(g.omschrijving),
         brutoGewicht: normGetal(g.brutoGewicht),
         nettoGewicht: normGetal(g.nettoGewicht),

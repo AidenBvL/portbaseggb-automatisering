@@ -217,6 +217,30 @@ test('AI-voorstel bevat soort en aard per goederenitem', () => {
   assert.ok(AI.SCHEMA.properties.goederen.items.required.includes('wetenschappelijkeNaam'));
 });
 
+test('GN-code zoals op het HC (zoekterm GN-dialoog) en Animo-keuzehulp in de prompt', () => {
+  const r = AI.normaliseer({ goederen: [{ gnCode: '1602.32.19', gnCodeHc: '1602 32', omschrijving: 'Chicken', animoCode: '201100' }, { gnCode: '', gnCodeHc: '030617', omschrijving: 'Shrimps' }] });
+  assert.strictEqual(r.goederen[0].gnCodeHc, '160232');
+  assert.strictEqual(r.goederen[0].gnCode, '16023219');
+  assert.strictEqual(r.goederen[0].animoCode, '201100');
+  assert.strictEqual(r.goederen[1].gnCode, '030617', 'zonder volledige GN-code: de code van het HC');
+  assert.ok(AI.SCHEMA.properties.goederen.items.required.includes('gnCodeHc'));
+  const p = AI.handmatigePrompt([], '');
+  assert.ok(/ALTIJD de Animo-code/.test(p) && /Keuzehulp/.test(p) && /206107 bij aquacultuur/.test(p) && /201105/.test(p), 'Animo-keuzehulp');
+  assert.ok(!/Leeg als je het niet zeker weet/.test(p), 'AI mag de Animo-code niet zomaar leeg laten');
+});
+
+test('keuzelijsten: verpakking naar Portbase-optie, containernummer met spaties', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const optie = (t) => ({ textContent: t });
+  const VERP = ['Bag (BG)', 'Box (BX)', 'Carton (CT)', 'Case (CS)', 'Pallet (PX)', 'Package (PK)'].map(optie);
+  const termen = FILL.GOED.filter((d) => d.key === 'verpakkingstype')[0].termen;
+  for (const [in_, uit] of [['Carton', 'Carton (CT)'], ['CTNS', 'Carton (CT)'], ['cartons', 'Carton (CT)'], ['Bags', 'Bag (BG)'], ['Pallets', 'Pallet (PX)'], ['PKGS', 'Package (PK)'], ['Box (BX)', 'Box (BX)']]) {
+    assert.strictEqual(FILL.besteOptie(VERP, termen(in_)).textContent, uit, in_);
+  }
+  assert.strictEqual(FILL.besteOptie([optie(' OTPU6051557 '), optie('HLBU9066045')], ['OTPU 605155 7']).textContent.trim(), 'OTPU6051557');
+  assert.strictEqual(FILL.besteOptie(['Import', 'Transhipment', 'Transit', 'Storage', 'Transfer', 'Re-import'].map(optie), ['Import']).textContent, 'Import');
+});
+
 test('instellingen: oud formaat wordt Claude, standaarden per aanbieder, probleemmelding', () => {
   const oud = AI.instellingen({ apiKey: 'sk-ant-1', model: 'claude-opus-5-5', effort: 'xhigh' });
   assert.strictEqual(oud.provider, 'claude');

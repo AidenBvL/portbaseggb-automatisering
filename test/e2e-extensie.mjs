@@ -42,7 +42,7 @@ const AI_JSON = {
     { type: 'COMM', identificatie: 'HLCUMA3260712342', datumAfgifte: '12-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' }
   ],
   goederen: [
-    { gnCode: '03061792', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '206107', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
+    { gnCode: '03061792', gnCodeHc: '030617', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '206107', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
     { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Carton', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '102108', wetenschappelijkeNaam: 'Penaeus monodon', aardProduct: 'Wild caught, frozen', bron: 'HC', zekerheid: 'hoog' }
   ],
   waarschuwingen: ['Aankomstdatum niet in de documenten; overgenomen uit extra info.']
@@ -109,8 +109,10 @@ try {
   // Correctie door de gebruiker in het voorstel
   await page.locator('input[data-pad="vervoermiddelNaam.waarde"]').fill('MSC ANNA / IMO 9000000');
 
+  const t0 = Date.now();
   await page.locator('#ai-fill').click();
-  await page.locator('#ai-verslag h3').waitFor({ timeout: 60000 });
+  await page.locator('#ai-verslag h3').waitFor({ timeout: 300000 });
+  console.log('Invullen duurde ' + Math.round((Date.now() - t0) / 1000) + ' s');
   const verslag = await page.locator('#ai-verslag').innerText();
 
   const waarde = (sel, n = 0) => page.locator(sel).nth(n).inputValue();
@@ -122,7 +124,10 @@ try {
   assert.strictEqual(await waarde('#countryOfOriginUnCode'), 'IN - India');
   assert.strictEqual(await waarde('app-form-general #countryOfLoadingUnCode'), 'IN - India');
   assert.strictEqual(await keuze('[data-test="goods-intended-use-code"]'), 'Human consumption');
-  assert.strictEqual(await keuze('[data-test="transport-conditions-code"]'), 'Frozen');
+  assert.strictEqual(await keuze('[data-test="transport-conditions-code"]'), 'Frozen', 'Transport conditions via toetsenbord (klik op optie wordt genegeerd)');
+  assert.strictEqual(await waarde('#cargoHandler'), 'Cory Brothers B.V.', 'cargo handler altijd Cory Brothers B.V.');
+  const toggle = (sel, n = 0) => page.locator(sel).nth(n).locator('button[aria-checked="true"]').innerText();
+  assert.strictEqual((await toggle('[data-test="eu-standard"]')).trim(), 'Yes', 'EU standard altijd Yes');
   assert.strictEqual(await keuze('[data-test="arrival-means-of-transport-mode"]'), 'Sea transport', 'Vessel -> Sea transport');
   assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-identification"]'), 'MSC ANNA / IMO 9000000');
   assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-nationality-un-code"]'), 'PA - Panama');
@@ -154,6 +159,10 @@ try {
   assert.strictEqual(await keuze('[data-test="packaging-package-type"]', 0), 'Carton (CT)');
   assert.strictEqual(await keuze('app-form-goods-items mat-select[formcontrolname="equipmentNumber"]', 1), 'HLBU9066045', 'container per goederenitem');
   assert.strictEqual(await waarde('input[formcontrolname="batchNumber"]', 1), 'L124');
+  for (const n of [0, 1]) assert.strictEqual((await toggle('[data-test="consumer-package-indicator"]', n)).trim(), 'Yes', 'consumer package indicator item ' + (n + 1));
+  // GN-code: eerst gezocht op de code zoals op het HC + wetenschappelijke naam
+  const gnZoek = await page.evaluate(() => window.__gnZoek);
+  assert.strictEqual(gnZoek[0], '030617 + penaeus vannamei', gnZoek.join(' | '));
   // Zoekvensters automatisch afgehandeld: zoeken, juiste regel kiezen, Save in het venster
   const knopTekst = (sel, n = 0) => tekst(sel, n);
   assert.strictEqual(await knopTekst('[data-test="organisation-dialog-exporter"]'), 'GHAN MARINE PRODUCTS | KAKINADA | 1234 | EX - exporter', 'exporteur (niet GHAN MARINE EXPORTS)');
@@ -231,7 +240,8 @@ try {
   await opties.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties.png') });
   // Handmatige prompt
   await opties.locator('nav a[data-pagina="prompt"]').click();
-  assert.ok((await opties.locator('#prompt-tekst').inputValue()).includes('"goederen"'));
+  await opties.waitForFunction(() => document.querySelector('#prompt-tekst').value.includes('"goederen"'), null, { timeout: 5000 });
+  assert.ok((await opties.locator('#prompt-tekst').inputValue()).includes('Keuzehulp'), 'Animo-keuzehulp in de prompt');
   await opties.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties-prompt.png') });
 
   /* ================= Paneel met ChatGPT ================= */
@@ -317,8 +327,10 @@ try {
   await p4.locator('#blok-hand:not([hidden])').waitFor();
   await p4.locator('#json-in').fill(JSON.stringify(QUANG));
   await p4.locator('#json-verwerk').click();
+  const t4 = Date.now();
   await p4.locator('#ai-fill').click();
-  await p4.locator('#ai-verslag h3').waitFor({ timeout: 90000 });
+  await p4.locator('#ai-verslag h3').waitFor({ timeout: 400000 });
+  console.log('Quang Phu invullen duurde ' + Math.round((Date.now() - t4) / 1000) + ' s');
   const k4 = (sel, n = 0) => p4.locator(sel).nth(n).innerText();
   const w4 = (sel, n = 0) => p4.locator(sel).nth(n).inputValue();
   // Keuzelijsten (popover-panelen zoals in de echte Portbase) met de echte optieteksten

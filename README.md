@@ -94,7 +94,11 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    declaratietype, B/L, bestemming, land van oorsprong/lading, I.18, I.16,
    vervoermiddel + naam + nationaliteit, ETA, containers + zegels,
    (keuzelijsten met de echte Portbase-opties, bijv. *Sea transport*,
-   *Human consumption*, *Frozen*),
+   *Human consumption*, *Frozen*, *Carton (CT)*; na elke keuze controleert de
+   extensie of Portbase die heeft overgenomen, met als terugval kiezen met
+   de pijltjestoetsen + Enter),
+   **cargo handler** (altijd *Cory Brothers B.V.*), **EU standard** en per
+   goederenitem **Consumer package indicator** (altijd *Yes*),
    documentregels voor de documenten die in de GGB horen (type, nummer,
    datum, land, **en uploadt het bijbehorende bestand**) en goederenitems (gewichten, colli, verpakking,
    batch, erkenningsnummer). Ontbrekende documentregels/goederenitems worden
@@ -104,6 +108,11 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    bestemming, inrichting van oorsprong (documenten en goederenitems),
    grenscontrolepost, GN-code en de bijbehorende **Animo-code**. Per venster:
    land invullen, zoeken, de juiste regel kiezen en **Save in het venster**.
+   De extensie werkt in het tempo van Portbase: na *Search* wacht ze tot de
+   resultaten van de API er staan en niet meer veranderen (een tussentijds
+   "No results" telt niet), en pas als Portbase de gekozen regel echt als
+   gekozen toont, klikt ze op *Save*. Daarna controleert ze dat het veld de
+   keuze toont; zo niet, dan staat het veld als *handmatig* in het verslag.
    - *Organisaties*: dezelfde naam komt vaak meerdere keren voor (bijv. 5×
      "Quang Phu Seafood…" met een andere activiteit en een ander adres). De
      extensie scoort elke regel op naam (exact, op B.V./Ltd na) of
@@ -113,12 +122,17 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
      erkenningsnummer uit HC vak I.11 (*Place of dispatch*, bijv. DL 1022).
    - *Goederenomschrijving* vult de extensie niet in: Portbase doet dat zelf
      na het kiezen van de GN-code.
-   - *GN-code*: zoeken op GN-code **plus Latijnse naam** (zoals de
-     declarant), met 8, 6 of 4 cijfers en zo nodig zonder naam; kiezen op GN-code en soort, en
+   - *GN-code*: zoeken op de **code zoals op het HC** (HS-code, bijv.
+     *160232*) **plus de wetenschappelijke naam** van het HC (bijv. *Gallus
+     gallus*), zoals de declarant; daarna zo nodig met 6, 8 of 4 cijfers van
+     de GN-code en zonder naam; kiezen op GN-code en soort, en
      bij meerdere producttypes op de aard van het product en de omschrijving
      van de Animo-code (bijv. *wild gevangen* vs *aquacultuur*).
-   - *Animo-code*: de AI kiest die uit de Portbase-lijst; in het venster wordt
-     de code opgezocht en gekozen.
+   - *Animo-code*: de AI kiest die **altijd** uit de Portbase-lijst, met een
+     keuzehulp in de prompt (productgroep, MC/diervoeder/technisch, vers of
+     bereid, aquacultuur of wild gevangen, gekoeld/bevroren of ambient; bijv.
+     kip vleesbereiding 201105, kweekgarnalen 206107, wild gevangen inktvis
+     102108); in het venster wordt de code opgezocht en gekozen.
    - Alleen een **duidelijke winnaar** wordt gekozen en opgeslagen. Anders
      klikt de extensie *Cancel* en staat het veld als *handmatig* in het
      verslag, met **Zoek in Portbase** (opent het venster met de zoekterm en
