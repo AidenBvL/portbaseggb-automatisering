@@ -65,7 +65,8 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    vangstcertificaat, factuur, paklijst en B/L in het paneel (PDF, JPG, PNG,
    WEBP). Extra info die niet in de documenten staat (bijv. ETA) kun je in het
    tekstvak zetten.
-2. **Uitlezen met AI** – Claude (Anthropic) leest de documenten en geeft per
+2. **Uitlezen met AI** – de gekozen AI (Claude, ChatGPT of Gemini; of
+   handmatig via een chat, zie hieronder) leest de documenten en geeft per
    GGB-veld een voorstel met bron (bijv. "HC vak I.1") en zekerheid
    (hoog/middel/laag). De extensie normaliseert datums (dd-mm-jjjj),
    landcodes, GN-codes en gewichten, controleert containernummers
@@ -115,16 +116,48 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
 Er wordt **nooit** op Opslaan of Verzenden geklikt: de declarant controleert
 en verstuurt zelf.
 
-### Instellen
+### Instellen: AI-aanbieder kiezen
 
 Rechtsklik op het extensie-icoon → **Opties** (of `edge://extensions` →
-Details → Extensieopties): vul een Anthropic API-sleutel in
-(console.anthropic.com). Standaardmodel: Claude Opus 5.5, grondigheid *hoog*.
-De sleutel blijft lokaal in de browser.
+Details → Extensieopties). De instellingenpagina heeft vier onderdelen:
 
-**Privacy:** bij *Uitlezen met AI* gaan de geselecteerde documenten naar de
-API van Anthropic. Zonder die knop wordt niets verstuurd. Controleer of dat
-past binnen de afspraken van je organisatie.
+- **AI-aanbieder** – kies **Claude** (Anthropic), **ChatGPT** (OpenAI),
+  **Gemini** (Google) of **Handmatig**. Per aanbieder bewaar je een eigen
+  API-sleutel en model, zodat je kunt wisselen zonder opnieuw in te vullen.
+  **Modellen ophalen** test de sleutel en haalt de modellen op die bij die
+  sleutel horen (de lijst komt live van de aanbieder; er staan geen
+  verouderde modelnamen in de extensie). Standaard: Claude
+  `claude-opus-5-5`, Gemini `gemini-pro-latest`; bij ChatGPT kies je na
+  het ophalen (het nieuwste chatmodel wordt voorgesteld). Bij Claude stel je
+  ook de grondigheid in. Wijzigingen worden direct opgeslagen.
+- **Handmatige prompt** – de prompt bekijken, kopiëren of downloaden.
+- **Privacy & gegevens** – wat er waarheen gaat; alle sleutels wissen.
+- **Over** – versie en wat de extensie wel/niet automatisch doet.
+
+Sleutels blijven lokaal in de browser en gaan alleen naar de bijbehorende
+aanbieder. Instellingen van een eerdere versie (alleen Claude) worden
+automatisch overgenomen.
+
+### Handmatig via een chat (zonder API-sleutel)
+
+In het paneel, tabblad **AI invullen → Handmatig (chat)**:
+
+1. Selecteer de documenten (voor de bestandsnamen en het latere uploaden in
+   Portbase) en vul eventueel extra info in.
+2. **Kopieer prompt** – de prompt bevat de instructies, je bestandsnamen,
+   je extra info en het JSON-schema.
+3. Plak de prompt in ChatGPT, Gemini of Claude en voeg **dezelfde
+   documenten** toe.
+4. Plak het antwoord in *Plak het JSON-antwoord* en klik **Verwerken**.
+   Tekst of een ```json-blok rond het antwoord is geen probleem; ook kale
+   waarden (zonder bron/zekerheid) worden geaccepteerd.
+
+Daarna werkt alles hetzelfde: documentcheck, voorstel aanpassen,
+**Invullen in Portbase** en de zoekdialogen.
+
+**Privacy:** bij *Uitlezen* gaan de geselecteerde documenten naar de API
+van de gekozen aanbieder. In de handmatige modus verstuurt de extensie
+niets. Controleer of dit past binnen de afspraken van je organisatie.
 
 ### Beperkingen
 
@@ -148,7 +181,9 @@ past binnen de afspraken van je organisatie.
 
 ### Bundel opnieuw bouwen
 
-De API-aanroep staat in `ai/src/extract.mjs` (Anthropic SDK) en is gebundeld
+De API-aanroepen staan in `ai/src/` (`extract.mjs`: Claude via de Anthropic
+SDK; `aanbieders.mjs`: ChatGPT en Gemini via hun REST-API, plus het ophalen
+van modellen) en zijn gebundeld
 in `extension/ai.bundle.js` (staat in de repository, dus niet nodig om de
 extensie te gebruiken). Na een wijziging:
 
@@ -237,7 +272,8 @@ controleer de regels tegen de actuele wetgeving en pas ze aan.
 ```
 node test/engine.test.js
 node test/ai.test.js                     # normalisatie + documentcheck op AI-voorstel
-node test/ai-extract.test.mjs            # API-aanroep met nagebootste API (na npm install in ai/)
+node test/ai-extract.test.mjs            # Claude-aanroep met nagebootste API (na npm install in ai/)
+node test/ai-aanbieders.test.mjs         # ChatGPT, Gemini, modellenlijst (na npm install in ai/)
 PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1 node test/e2e-extensie.mjs   # extensie in Chromium (Playwright)
 ```
 
@@ -249,9 +285,10 @@ extension/content.js          paneel op de Portbase-pagina
 extension/portbase-dom.js     leest de declaratie uit de Portbase-DOM
 extension/background.js       service worker: levert kennisbank, opent de tool, roept Claude aan
 extension/portbase-fill.js    vult het formulier "New declaration" met het AI-voorstel
-extension/options.html/.js    instellingen (API-sleutel, model)
+extension/options.html/.css/.js  instellingen (aanbieder, sleutels, modellen, prompt, privacy)
 extension/ai.bundle.js        gebundelde Anthropic SDK + extract (gebouwd uit ai/)
 ai/src/extract.mjs            uitlezen van documenten met Claude (structured output)
+ai/src/aanbieders.mjs         ChatGPT en Gemini, verdeler per aanbieder, modellen ophalen
 js/ggb-ai.js                  schema, prompt, normalisatie, koppeling met documentcheck
 index.html                    GUI
 css/style.css

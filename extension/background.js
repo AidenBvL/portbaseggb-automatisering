@@ -1,7 +1,7 @@
 /*
  * Service worker: levert de kennisbank (JSON) aan het content script, opent de
- * volledige tool en voert het uitlezen van documenten met Claude uit
- * (ai.bundle.js, gebouwd uit ai/src/ met de Anthropic SDK).
+ * volledige tool en voert het uitlezen van documenten uit met de gekozen
+ * AI-aanbieder (Claude, ChatGPT of Gemini; ai.bundle.js, gebouwd uit ai/src/).
  */
 'use strict';
 
@@ -39,6 +39,18 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     loadData().then(sendResponse);
     return true; // asynchroon antwoord
   }
+  if (msg && msg.type === 'ggb:openOpties') {
+    chrome.runtime.openOptionsPage();
+    sendResponse({ ok: true });
+    return false;
+  }
+  if (msg && msg.type === 'ggb:modellen') {
+    self.GGB_AI_CLIENT.modellen({ provider: msg.provider, apiKey: msg.apiKey }).then(
+      function (lijst) { sendResponse({ ok: true, modellen: lijst }); },
+      function (e) { sendResponse({ ok: false, melding: e && e.message ? e.message : String(e) }); }
+    );
+    return true;
+  }
   if (msg && msg.type === 'ggb:openTool') {
     chrome.storage.local.set({ 'ggb.import': msg.declaratie }, function () {
       chrome.tabs.create({ url: chrome.runtime.getURL('index.html') + '#import' });
@@ -58,11 +70,8 @@ chrome.runtime.onConnect.addListener(function (port) {
   port.onMessage.addListener(function (msg) {
     if (!msg || msg.type !== 'extract') return;
     chrome.storage.local.get(AI_INSTELLINGEN, function (opgeslagen) {
-      var inst = opgeslagen[AI_INSTELLINGEN] || {};
       self.GGB_AI_CLIENT.extract({
-        apiKey: inst.apiKey,
-        model: inst.model || self.GGB_AI_CLIENT.STANDAARD_MODEL,
-        effort: inst.effort || 'high',
+        instellingen: opgeslagen[AI_INSTELLINGEN] || {},
         bestanden: msg.bestanden,
         context: msg.context
       }).then(function (res) {

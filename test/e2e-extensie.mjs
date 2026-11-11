@@ -222,6 +222,88 @@ try {
 
   await page.screenshot({ path: path.join(os.tmpdir(), 'ggb-e2e.png'), fullPage: false });
   console.log(verslag.split('\n').slice(0, 3).join('\n'));
+
+  /* ================= Instellingenpagina ================= */
+  const extId = new URL(sw.url()).host;
+  let openaiVerzoek = null;
+  await context.route('https://api.openai.com/v1/models', (route) => route.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ data: [{ id: 'gpt-oud', created: 1 }, { id: 'gpt-nieuw', created: 9 }, { id: 'text-embedding-3-small', created: 5 }] }) }));
+  await context.route('https://api.openai.com/v1/chat/completions', async (route) => {
+    openaiVerzoek = JSON.parse(route.request().postData());
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ model: 'gpt-nieuw', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(AI_JSON) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }) });
+  });
+  const opties = await context.newPage();
+  opties.on('pageerror', (e) => fouten.push('opties: ' + e.message));
+  await opties.setViewportSize({ width: 1180, height: 860 });
+  await opties.goto(`chrome-extension://${extId}/extension/options.html`);
+  // Oud formaat is omgezet; Claude is actief met de bestaande sleutel
+  await opties.locator('.kaart[data-provider="claude"][aria-checked="true"]').waitFor();
+  assert.strictEqual(await opties.locator('#sleutel').inputValue(), 'sk-test');
+  const opgeslagen = () => sw.evaluate(() => new Promise((r) => chrome.storage.local.get('ggb.ai', (x) => r(x['ggb.ai']))));
+  assert.strictEqual((await opgeslagen()).provider, 'claude', 'oud formaat omgezet naar nieuw');
+  // Overstappen naar ChatGPT: sleutel invullen, modellen ophalen -> nieuwste chatmodel gekozen
+  await opties.locator('.kaart[data-provider="openai"]').click();
+  await opties.locator('#sleutel').fill('sk-openai-test');
+  await opties.locator('#ophalen').click();
+  await opties.locator('.melding.ok').waitFor();
+  assert.ok(/Sleutel werkt · 2 modellen gevonden/.test(await opties.locator('.melding.ok').innerText()));
+  assert.strictEqual(await opties.locator('#model').inputValue(), 'gpt-nieuw');
+  await opties.waitForTimeout(600);
+  const inst = await opgeslagen();
+  assert.strictEqual(inst.provider, 'openai');
+  assert.deepStrictEqual(inst.openai, { apiKey: 'sk-openai-test', model: 'gpt-nieuw' });
+  assert.strictEqual(inst.claude.apiKey, 'sk-test', 'Claude-sleutel blijft bewaard');
+  await opties.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties.png') });
+  // Handmatige prompt
+  await opties.locator('nav a[data-pagina="prompt"]').click();
+  assert.ok((await opties.locator('#prompt-tekst').inputValue()).includes('"goederen"'));
+  await opties.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties-prompt.png') });
+
+  /* ================= Paneel met ChatGPT ================= */
+  const p2 = await context.newPage();
+  p2.on('pageerror', (e) => fouten.push('p2: ' + e.message));
+  await p2.goto(URL_PB);
+  await p2.locator('#ggb-documentcheck-host').waitFor({ state: 'attached' });
+  await p2.locator('#tab-ai').click();
+  await p2.locator('#ai-via', { hasText: 'ChatGPT' }).waitFor();
+  assert.ok(/gpt-nieuw/.test(await p2.locator('#ai-via').innerText()));
+  await p2.locator('#file').setInputFiles({ name: 'hc.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%test\n') });
+  assert.strictEqual(await p2.locator('#ai-run').innerText(), 'Uitlezen met ChatGPT');
+  await p2.locator('#ai-run').click();
+  await p2.locator('#ai-fill').waitFor({ timeout: 30000 });
+  assert.strictEqual(openaiVerzoek.model, 'gpt-nieuw');
+  assert.strictEqual(openaiVerzoek.messages[1].content[0].file.filename, 'hc.pdf');
+  assert.strictEqual(await p2.locator('input[data-pad="bol.waarde"]').inputValue(), 'HLCUMA3260712342');
+
+  /* ================= Handmatige modus ================= */
+  await sw.evaluate(() => new Promise((r) => chrome.storage.local.set({ 'ggb.ai': { provider: 'handmatig' } }, r)));
+  const p3 = await context.newPage();
+  p3.on('pageerror', (e) => fouten.push('p3: ' + e.message));
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://food-and-consumer-products.pcs.portbase.com' });
+  await p3.goto(URL_PB);
+  await p3.locator('#ggb-documentcheck-host').waitFor({ state: 'attached' });
+  await p3.locator('#tab-ai').click();
+  await p3.locator('#blok-hand:not([hidden])').waitFor();   // handmatig staat vooraan door de instelling
+  await p3.locator('#file').setInputFiles({ name: 'hc-scan.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') });
+  await p3.locator('#ctx').fill('ETA 26-09-2026 07:00');
+  await p3.locator('#prompt-kopie').click();
+  await p3.locator('#prompt-kopie', { hasText: 'Gekopieerd' }).waitFor();
+  const klembord = await p3.evaluate(() => navigator.clipboard.readText());
+  assert.ok(klembord.includes('hc-scan.pdf') && klembord.includes('ETA 26-09-2026 07:00') && klembord.includes('"goederen"'), 'prompt met bestandsnamen, extra info en schema');
+  // Chat-antwoord met tekst eromheen plakken
+  await p3.locator('#json-in').fill('Hier is het JSON-object:\n```json\n' + JSON.stringify(AI_JSON) + '\n```');
+  await p3.locator('#json-verwerk').click();
+  await p3.locator('#ai-fill').waitFor();
+  assert.ok(/handmatig/.test(await p3.locator('#ai-status').innerText()));
+  assert.strictEqual(await p3.locator('input[data-pad="goederen.0.gnCode"]').inputValue(), '03061792');
+  // Fout antwoord geeft duidelijke melding
+  await p3.locator('#json-in').fill('Sorry, ik kan de PDF niet openen.');
+  await p3.locator('#json-verwerk').click();
+  assert.ok(/Geen JSON-object gevonden/.test(await p3.locator('#ai-status').innerText()));
+  await p3.locator('.wrap').screenshot({ path: path.join(os.tmpdir(), 'ggb-paneel-handmatig.png') }).catch(() => {});
+  assert.deepStrictEqual(fouten, []);
+
   console.log('\nE2E geslaagd');
 } finally {
   await context.close();

@@ -4,47 +4,94 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GGB-assistent – instellingen</title>
-  <style>
-    :root { color-scheme: light; }
-    body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color: #1c2430; background: #f6f8fb; margin: 0; }
-    main { max-width: 640px; margin: 2rem auto; background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 1.5rem; }
-    h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
-    label { display: block; font-weight: 600; margin: 1rem 0 .3rem; }
-    input, select { width: 100%; box-sizing: border-box; font: inherit; padding: .45rem .55rem; border: 1px solid #d9dee6; border-radius: 6px; }
-    .hint { color: #5f6b7a; font-size: .85rem; margin: .3rem 0 0; }
-    .actions { margin-top: 1.25rem; display: flex; gap: .75rem; align-items: center; }
-    button { font: inherit; padding: .45rem 1rem; border-radius: 6px; border: 1px solid #0b5fa5; background: #0b5fa5; color: #fff; cursor: pointer; }
-    #msg { color: #157347; }
-    .box { background: #fff4e0; color: #7a4a00; border-radius: 6px; padding: .6rem .8rem; font-size: .88rem; margin-top: 1.25rem; }
-  </style>
+  <link rel="stylesheet" href="options.css">
 </head>
 <body>
-  <main>
-    <h1>GGB-assistent – AI-instellingen</h1>
-    <p class="hint">Voor <b>AI invullen</b> gebruikt de extensie Claude van Anthropic. Je hebt een eigen API-sleutel nodig (console.anthropic.com → API keys).</p>
+  <div class="app">
+    <aside class="nav">
+      <div class="brand"><span class="logo">GGB</span><div><b>GGB-assistent</b><small id="versie">Instellingen</small></div></div>
+      <nav>
+        <a href="#aanbieder" data-pagina="aanbieder"><span class="ico">✦</span>AI-aanbieder</a>
+        <a href="#prompt" data-pagina="prompt"><span class="ico">⧉</span>Handmatige prompt</a>
+        <a href="#privacy" data-pagina="privacy"><span class="ico">⛨</span>Privacy &amp; gegevens</a>
+        <a href="#over" data-pagina="over"><span class="ico">ⓘ</span>Over</a>
+      </nav>
+      <div class="opgeslagen" id="opgeslagen" aria-live="polite"></div>
+    </aside>
 
-    <label for="apiKey">Anthropic API-sleutel</label>
-    <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
-    <p class="hint">Wordt alleen lokaal in deze browser bewaard (chrome.storage.local) en alleen naar api.anthropic.com gestuurd.</p>
+    <main>
+      <!-- ============ AI-AANBIEDER ============ -->
+      <section class="pagina" id="pagina-aanbieder">
+        <header>
+          <h1>AI-aanbieder</h1>
+          <p>Kies welke AI de gezondheidscertificaten en andere documenten uitleest. Je kunt voor elke aanbieder een eigen sleutel en model bewaren en later wisselen.</p>
+        </header>
 
-    <label for="model">Model</label>
-    <select id="model">
-      <option value="claude-opus-5-5">Claude Opus 5.5 (aanbevolen)</option>
-      <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (sneller, goedkoper)</option>
-      <option value="claude-fable-5-2">Claude Fable 5.2 (meest capabel, duurder)</option>
-    </select>
+        <div class="kaarten" role="radiogroup" aria-label="AI-aanbieder" id="kaarten"></div>
 
-    <label for="effort">Grondigheid (effort)</label>
-    <select id="effort">
-      <option value="medium">Gemiddeld – sneller</option>
-      <option value="high">Hoog (aanbevolen)</option>
-      <option value="xhigh">Zeer hoog – langzamer</option>
-    </select>
+        <div class="paneel" id="config"></div>
+      </section>
 
-    <div class="actions"><button id="save">Opslaan</button><span id="msg"></span></div>
+      <!-- ============ HANDMATIGE PROMPT ============ -->
+      <section class="pagina" id="pagina-prompt" hidden>
+        <header>
+          <h1>Handmatige prompt</h1>
+          <p>Geen API-sleutel nodig: je gebruikt de chat van ChatGPT, Gemini of Claude in de browser. In het paneel op de Portbase-pagina staat dezelfde knop, daar worden ook de bestandsnamen en je extra info in de prompt gezet.</p>
+        </header>
+        <ol class="stappen">
+          <li><b>Kopieer de prompt</b> (hieronder of in het paneel, tabblad <i>AI invullen → Handmatig</i>).</li>
+          <li><b>Open een chat</b> en plak de prompt. Voeg <b>dezelfde documenten</b> toe (HC, labrapport, factuur, B/L).</li>
+          <li><b>Kopieer het antwoord</b> (het JSON-object) en plak het in het paneel bij <i>Plak het JSON-antwoord</i> → <i>Verwerken</i>.</li>
+        </ol>
+        <div class="chats">
+          <a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT openen ↗</a>
+          <a href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini openen ↗</a>
+          <a href="https://claude.ai/new" target="_blank" rel="noopener">Claude openen ↗</a>
+        </div>
+        <div class="paneel">
+          <div class="rij-kop"><h2>Prompt</h2><span><button class="knop" id="prompt-download">Download .txt</button> <button class="knop primair" id="prompt-kopie">Kopieer prompt</button></span></div>
+          <textarea id="prompt-tekst" readonly spellcheck="false"></textarea>
+          <p class="hint">Tip: zet in de chat de documenten in hetzelfde bericht als de prompt. Vraagt de AI om verduidelijking, antwoord dan dat het alleen het JSON-object moet geven.</p>
+        </div>
+      </section>
 
-    <div class="box"><b>Privacy:</b> bij <i>Uitlezen met AI</i> worden de geselecteerde documenten (HC, factuur, enz.) naar de API van Anthropic gestuurd. Er wordt niets verstuurd zolang je die knop niet gebruikt. Controleer of dit past binnen de afspraken van je organisatie.</div>
-  </main>
+      <!-- ============ PRIVACY ============ -->
+      <section class="pagina" id="pagina-privacy" hidden>
+        <header>
+          <h1>Privacy &amp; gegevens</h1>
+          <p>Wat er met je documenten en sleutels gebeurt.</p>
+        </header>
+        <div class="paneel lijst">
+          <div><b>Documentcheck</b><span>Leest alleen de Portbase-pagina; er wordt niets verstuurd.</span></div>
+          <div><b>Uitlezen met AI</b><span>Alleen als je op <i>Uitlezen</i> klikt, gaan de geselecteerde documenten naar de gekozen aanbieder: <code>api.anthropic.com</code>, <code>api.openai.com</code> of <code>generativelanguage.googleapis.com</code>.</span></div>
+          <div><b>Handmatige modus</b><span>De extensie verstuurt niets; jij plakt zelf in een chat. Let op de instellingen van je chat-account (bijv. of gesprekken voor training gebruikt mogen worden).</span></div>
+          <div><b>API-sleutels</b><span>Staan alleen lokaal in deze browser (<code>chrome.storage.local</code>) en gaan alleen naar de bijbehorende aanbieder.</span></div>
+        </div>
+        <div class="waarschuwing">Controleer of het versturen van handelsdocumenten naar een AI-dienst past binnen de afspraken van je organisatie en met je klanten.</div>
+        <div class="paneel">
+          <h2>Gegevens wissen</h2>
+          <p class="hint">Verwijdert alle API-sleutels en modelkeuzes uit deze browser.</p>
+          <button class="knop gevaar" id="wis-alles">Alle sleutels en instellingen wissen</button>
+        </div>
+      </section>
+
+      <!-- ============ OVER ============ -->
+      <section class="pagina" id="pagina-over" hidden>
+        <header>
+          <h1>Over</h1>
+          <p>GGB-assistent voor de Portbase-pagina <i>Declaration Food and Consumer Products</i>.</p>
+        </header>
+        <div class="paneel lijst">
+          <div><b>Versie</b><span id="over-versie"></span></div>
+          <div><b>Documentcheck</b><span>Vereiste documenten per GN-code en land (TARIC + NVWA-regels).</span></div>
+          <div><b>AI invullen</b><span>Voorstel uit HC en documenten, controleren, invullen in Portbase. Er wordt nooit op <i>Save</i> of <i>Send</i> geklikt.</span></div>
+          <div><b>Altijd zelf</b><span>Inspectiecentrum, producttype bij meerdere keuzes, en het versturen van de declaratie.</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="../js/ggb-ai.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

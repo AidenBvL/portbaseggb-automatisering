@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "GGB-assistent voor Portbase",
-  "version": "0.3.0",
-  "description": "Documentcheck voor de GGB/CHED in Portbase en de GGB invullen vanuit het gezondheidscertificaat met AI (Claude).",
+  "version": "0.4.0",
+  "description": "Documentcheck voor de GGB/CHED in Portbase en de GGB invullen vanuit het gezondheidscertificaat met AI.",
   "action": { "default_title": "GGB Documentcheck openen" },
   "icons": { "16": "extension/icons/16.png", "48": "extension/icons/48.png", "128": "extension/icons/128.png" },
   "background": { "service_worker": "extension/background.js" },
   "permissions": ["storage"],
-  "host_permissions": ["https://api.anthropic.com/*"],
-  "options_page": "extension/options.html",
+  "host_permissions": ["https://api.anthropic.com/*", "https://api.openai.com/*", "https://generativelanguage.googleapis.com/*"],
+  "options_ui": { "page": "extension/options.html", "open_in_tab": true },
   "content_scripts": [
     {
       "matches": ["https://food-and-consumer-products.pcs.portbase.com/*"],

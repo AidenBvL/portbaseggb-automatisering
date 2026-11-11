@@ -229,7 +229,8 @@
   }
 
   function normVeld(v) {
-    v = v || {};
+    // Een chat-AI (handmatige modus) geeft soms een kale waarde i.p.v. {waarde, bron, zekerheid}.
+    if (v == null || typeof v !== 'object') return { waarde: s(v), bron: '', zekerheid: s(v) ? 'middel' : 'laag' };
     return { waarde: s(v.waarde), bron: s(v.bron), zekerheid: ZEKERHEID.indexOf(v.zekerheid) >= 0 ? v.zekerheid : 'laag' };
   }
 
@@ -268,6 +269,7 @@
 
     ['exporteur', 'importeur'].forEach(function (k) {
       var p = raw[k] || {};
+      if (typeof p !== 'object') p = { naam: p, zekerheid: 'middel' };
       r[k] = { naam: s(p.naam), adres: s(p.adres), land: normLand(p.land), bron: s(p.bron), zekerheid: ZEKERHEID.indexOf(p.zekerheid) >= 0 ? p.zekerheid : 'laag' };
     });
 
@@ -364,7 +366,74 @@
     return t;
   }
 
+  /* ---------------- aanbieders en instellingen ---------------- */
+
+  var PROVIDERS = {
+    claude: { naam: 'Claude', bedrijf: 'Anthropic', standaardModel: 'claude-opus-5-5', sleutelUrl: 'https://console.anthropic.com/settings/keys', sleutelVoorbeeld: 'sk-ant-…', effort: true },
+    openai: { naam: 'ChatGPT', bedrijf: 'OpenAI', standaardModel: '', sleutelUrl: 'https://platform.openai.com/api-keys', sleutelVoorbeeld: 'sk-…' },
+    gemini: { naam: 'Gemini', bedrijf: 'Google', standaardModel: 'gemini-pro-latest', sleutelUrl: 'https://aistudio.google.com/apikey', sleutelVoorbeeld: 'AIza…' },
+    handmatig: { naam: 'Handmatig', bedrijf: 'via een chat (zonder API-sleutel)' }
+  };
+  var EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+  /** Normaliseert opgeslagen instellingen (ook het oude formaat {apiKey, model, effort} voor Claude). */
+  function instellingen(raw) {
+    raw = raw || {};
+    var oud = !raw.provider && (raw.apiKey || raw.model);
+    var claude = raw.claude || (oud ? { apiKey: raw.apiKey, model: raw.model, effort: raw.effort } : {});
+    var r = {
+      provider: PROVIDERS[raw.provider] ? raw.provider : 'claude',
+      claude: { apiKey: s(claude.apiKey), model: s(claude.model) || PROVIDERS.claude.standaardModel, effort: EFFORTS.indexOf(claude.effort) >= 0 ? claude.effort : 'high' },
+      openai: { apiKey: s((raw.openai || {}).apiKey), model: s((raw.openai || {}).model) || PROVIDERS.openai.standaardModel },
+      gemini: { apiKey: s((raw.gemini || {}).apiKey), model: s((raw.gemini || {}).model) || PROVIDERS.gemini.standaardModel }
+    };
+    return r;
+  }
+
+  /** Is de gekozen aanbieder klaar voor automatisch uitlezen? Geeft een foutmelding of ''. */
+  function aanbiederProbleem(inst) {
+    if (inst.provider === 'handmatig') return 'Handmatige modus: kopieer de prompt en plak het JSON-antwoord.';
+    var p = inst[inst.provider];
+    if (!p.apiKey) return 'Geen API-sleutel voor ' + PROVIDERS[inst.provider].naam + ' ingesteld.';
+    if (!p.model) return 'Geen model voor ' + PROVIDERS[inst.provider].naam + ' gekozen.';
+    return '';
+  }
+
+  /** Volledige prompt voor de handmatige modus (in een chat plakken samen met de documenten). */
+  function handmatigePrompt(bestandsnamen, context) {
+    var namen = bestandsnamen && bestandsnamen.length ? bestandsnamen : ['(de bijgevoegde documenten)'];
+    return SYSTEM + '\n\n' +
+      '=== OPDRACHT ===\n' + gebruikersPrompt(namen, context) + '\n\n' +
+      '=== ANTWOORDFORMAAT ===\n' +
+      'Antwoord UITSLUITEND met één JSON-object, zonder uitleg en zonder markdown, dat voldoet aan dit JSON-schema. ' +
+      'Gebruik voor onbekende waarden een lege string "" en zet "zekerheid" dan op "laag". ' +
+      'Vul bij "bestand" de bestandsnaam van het document in zoals hierboven genoemd.\n' +
+      JSON.stringify(SCHEMA);
+  }
+
+  /** Haalt het JSON-object uit een geplakt chat-antwoord (ook met ```json-blokken of tekst eromheen). */
+  function leesJsonAntwoord(tekst) {
+    var t = String(tekst || '').trim();
+    if (!t) throw new Error('Plak eerst het antwoord van de AI.');
+    var blok = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (blok) t = blok[1].trim();
+    var begin = t.indexOf('{'), eind = t.lastIndexOf('}');
+    if (begin < 0 || eind <= begin) throw new Error('Geen JSON-object gevonden in het antwoord.');
+    var json;
+    try {
+      json = JSON.parse(t.slice(begin, eind + 1));
+    } catch (e) {
+      throw new Error('Het antwoord is geen geldige JSON (' + e.message + '). Vraag de AI om alleen het JSON-object te geven.');
+    }
+    if (!json || typeof json !== 'object' || Array.isArray(json)) throw new Error('Het antwoord is geen JSON-object.');
+    var bekend = Object.keys(SCHEMA.properties).filter(function (k) { return k in json; });
+    if (bekend.length < 3) throw new Error('Het JSON-object lijkt niet op een GGB-voorstel (te weinig bekende velden).');
+    return json;
+  }
+
   var exported = {
+    PROVIDERS: PROVIDERS, EFFORTS: EFFORTS, instellingen: instellingen, aanbiederProbleem: aanbiederProbleem,
+    handmatigePrompt: handmatigePrompt, leesJsonAntwoord: leesJsonAntwoord,
     SCHEMA: SCHEMA, SYSTEM: SYSTEM, DOC_CODES: DOC_CODES,
     BCP_NL: BCP_NL, zoekInLijst: zoekInLijst,
     normaliseer: normaliseer, naarDeclaratie: naarDeclaratie, gebruikersPrompt: gebruikersPrompt,

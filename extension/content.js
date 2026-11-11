@@ -58,6 +58,11 @@
     'table.velden input{width:100%;font:inherit;padding:.15rem .3rem;border:1px solid #d9dee6;border-radius:4px}table.velden input:focus{border-color:#0b5fa5;outline:none}',
     '.groep{border:1px solid #d9dee6;border-radius:6px;padding:.35rem .5rem;margin:.4rem 0}.groep .gt{font-weight:600;font-size:.82rem;margin-bottom:.2rem}',
     '.verslag li{font-size:.82rem;margin:.15rem 0;list-style:none}.verslag{padding:0}.verslag button{font:inherit;font-size:.72rem;padding:0 .35rem;margin-left:.3rem;border:1px solid #d9dee6;border-radius:4px;background:#fff;cursor:pointer}',
+    '.via{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;margin-bottom:.5rem}',
+    'button.link{border:0;background:none;color:#0b5fa5;cursor:pointer;font:inherit;padding:0;text-decoration:underline}',
+    '.modus{display:flex;border:1px solid #d9dee6;border-radius:7px;overflow:hidden;margin-bottom:.6rem}.modus button{flex:1;border:0;background:#fff;padding:.35rem;font:inherit;cursor:pointer;color:#5f6b7a}.modus button[aria-pressed="true"]{background:#0b5fa5;color:#fff;font-weight:600}',
+    '.stappen{padding-left:1.2rem;margin:.6rem 0;font-size:.85rem}.stappen li{margin:.3rem 0}',
+    'textarea.json{min-height:7em;font-family:ui-monospace,Consolas,monospace;font-size:.75rem}',
     '.spinner{display:inline-block;width:12px;height:12px;border:2px solid #b7cde3;border-top-color:#0b5fa5;border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}'
   ].join('\n');
 
@@ -158,12 +163,70 @@
 
   function aiHtml() {
     return '' +
-      '<p class="small muted">Upload het gezondheidscertificaat (HC) en eventueel labrapport, factuur, paklijst en B/L. Claude leest ze uit, bepaalt de GGB-gegevens en welke documenten nodig zijn. Controleer het voorstel altijd voordat je invult en verstuurt.</p>' +
-      '<div class="drop" id="drop">Sleep bestanden hierheen of <label>kies bestanden<input type="file" id="file" multiple accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"></label><div class="small">PDF, JPG, PNG of WEBP (Portbase accepteert alleen PDF als bijlage)</div></div>' +
+      '<div class="via"><span id="ai-via"></span><button class="link" id="ai-opties">Instellingen</button></div>' +
+      '<div class="modus" role="tablist"><button id="modus-auto" aria-pressed="true">Automatisch (API)</button><button id="modus-hand" aria-pressed="false">Handmatig (chat)</button></div>' +
+      '<div class="drop" id="drop">Sleep HC, labrapport, factuur, B/L hierheen of <label>kies bestanden<input type="file" id="file" multiple accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"></label><div class="small">PDF, JPG, PNG of WEBP (Portbase accepteert alleen PDF als bijlage)</div></div>' +
       '<ul class="files" id="files"></ul>' +
       '<textarea id="ctx" placeholder="Extra info voor de AI (optioneel), bijv. ETA 26-09-2026 07:00, grenscontrolepost Rotterdam, B/L-nummer…"></textarea>' +
-      '<div class="row-actions"><button class="btn primary" id="ai-run" disabled>Uitlezen met AI</button><span id="ai-status" class="small muted"></span></div>' +
+      '<div id="blok-auto"><div class="row-actions"><button class="btn primary" id="ai-run" disabled>Uitlezen met AI</button></div><div id="ai-probleem"></div></div>' +
+      '<div id="blok-hand" hidden>' +
+        '<ol class="stappen">' +
+          '<li><button class="btn primary" id="prompt-kopie">Kopieer prompt</button> <span class="small muted">bevat je bestandsnamen en extra info</span></li>' +
+          '<li>Plak de prompt in een chat en voeg <b>dezelfde documenten</b> toe: ' +
+            '<a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a> · <a href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a> · <a href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a></li>' +
+          '<li>Plak het JSON-antwoord hieronder:</li>' +
+        '</ol>' +
+        '<textarea id="json-in" class="json" placeholder="{ &quot;declaratieType&quot;: … }" spellcheck="false"></textarea>' +
+        '<div class="row-actions"><button class="btn primary" id="json-verwerk">Verwerken</button></div>' +
+      '</div>' +
+      '<div class="row-actions"><span id="ai-status" class="small muted"></span></div>' +
       '<div id="ai-result"></div>';
+  }
+
+  /* ---- AI-instellingen (gedeeld met de instellingenpagina) ---- */
+  var aiInst = AI.instellingen({});
+  var modus = 'auto';
+
+  function laadInstellingen(klaar) {
+    try {
+      chrome.storage.local.get('ggb.ai', function (r) {
+        var nieuw = !r || !r['ggb.ai'];
+        aiInst = AI.instellingen(r && r['ggb.ai']);
+        if (klaar) klaar(nieuw);
+        renderVia();
+      });
+    } catch (e) { renderVia(); }
+  }
+
+  function renderVia() {
+    if (!$('ai-via')) return;
+    var meta = AI.PROVIDERS[aiInst.provider];
+    var p = aiInst[aiInst.provider];
+    $('ai-via').innerHTML = 'Via <b>' + esc(meta.naam) + '</b>' + (p && p.model ? ' · <span class="muted">' + esc(p.model) + '</span>' : '');
+    var probleem = AI.aanbiederProbleem(aiInst);
+    $('ai-probleem').innerHTML = probleem && aiInst.provider !== 'handmatig'
+      ? '<div class="melding aandacht">' + esc(probleem) + ' <button class="link" data-opties="1">Instellen</button> of gebruik <button class="link" data-modus="hand">Handmatig</button>.</div>'
+      : (aiInst.provider === 'handmatig' ? '<div class="melding info">Handmatige modus gekozen in de instellingen. <button class="link" data-modus="hand">Naar handmatig</button></div>' : '');
+    $('ai-run').textContent = 'Uitlezen met ' + (aiInst.provider === 'handmatig' ? 'AI' : meta.naam);
+    renderBestanden();
+  }
+
+  function zetModus(m) {
+    modus = m;
+    $('modus-auto').setAttribute('aria-pressed', String(m === 'auto'));
+    $('modus-hand').setAttribute('aria-pressed', String(m === 'hand'));
+    $('blok-auto').hidden = m !== 'auto';
+    $('blok-hand').hidden = m !== 'hand';
+  }
+
+  function verwerkJson() {
+    try {
+      aiResultaat = AI.normaliseer(AI.leesJsonAntwoord($('json-in').value));
+      zetStatus('Antwoord verwerkt (handmatig). Controleer het voorstel.');
+      renderAiResultaat();
+    } catch (e) {
+      zetStatus('<span style="color:#b42318">' + esc(e.message) + '</span>');
+    }
   }
 
   function bindAi() {
@@ -177,6 +240,24 @@
       if (i != null) { bestanden.splice(+i, 1); renderBestanden(); }
     });
     $('ai-run').addEventListener('click', aiUitlezen);
+    $('modus-auto').addEventListener('click', function () { zetModus('auto'); });
+    $('modus-hand').addEventListener('click', function () { zetModus('hand'); });
+    $('ai-opties').addEventListener('click', openOpties);
+    $('ai-probleem').addEventListener('click', function (e) {
+      if (e.target.getAttribute('data-opties')) openOpties();
+      if (e.target.getAttribute('data-modus')) zetModus('hand');
+    });
+    $('prompt-kopie').addEventListener('click', function () {
+      var knop = this;
+      var prompt = AI.handmatigePrompt(bestanden.map(function (f) { return f.name; }), $('ctx').value);
+      navigator.clipboard.writeText(prompt).then(function () { knop.textContent = 'Gekopieerd ✓'; setTimeout(function () { knop.textContent = 'Kopieer prompt'; }, 2000); },
+        function () { zetStatus('Kopiëren mislukt; sta het klembord toe voor deze pagina.'); });
+    });
+    $('json-verwerk').addEventListener('click', verwerkJson);
+    try {
+      chrome.storage.onChanged.addListener(function (wijz, gebied) { if (gebied === 'local' && wijz['ggb.ai']) laadInstellingen(); });
+    } catch (e) { /* negeren */ }
+    laadInstellingen(function () { if (aiInst.provider === 'handmatig') zetModus('hand'); });
     var res = $('ai-result');
     res.addEventListener('input', function (e) {
       var p = e.target.getAttribute && e.target.getAttribute('data-pad');
@@ -228,7 +309,7 @@
     $('files').innerHTML = bestanden.map(function (f, i) {
       return '<li><span>' + esc(f.name) + ' <span class="muted">(' + mb(f.size) + ')</span></span><button data-del="' + i + '" title="Verwijderen">✕</button></li>';
     }).join('') + (totaal > 24 * 1048576 ? '<li class="melding aandacht">Samen ' + mb(totaal) + ': te groot voor één verzoek (max. ±24 MB). Laat grote bijlagen weg of comprimeer ze.</li>' : '');
-    $('ai-run').disabled = aiBezig || !bestanden.length || totaal > 24 * 1048576;
+    $('ai-run').disabled = aiBezig || !bestanden.length || totaal > 24 * 1048576 || !!AI.aanbiederProbleem(aiInst);
   }
 
   function zetStatus(html, bezig) {
@@ -268,7 +349,8 @@
     $('ai-run').disabled = true;
     var start = Date.now();
     zetStatus('Documenten lezen…', true);
-    var tik = setInterval(function () { zetStatus('Claude leest de documenten… ' + Math.round((Date.now() - start) / 1000) + 's', true); }, 1000);
+    var naam = AI.PROVIDERS[aiInst.provider].naam;
+    var tik = setInterval(function () { zetStatus(esc(naam) + ' leest de documenten… ' + Math.round((Date.now() - start) / 1000) + 's', true); }, 1000);
     try {
       var payload = [];
       for (var i = 0; i < bestanden.length; i++) {
@@ -285,6 +367,10 @@
       aiBezig = false;
       renderBestanden();
     }
+  }
+
+  function openOpties() {
+    try { chrome.runtime.sendMessage({ type: 'ggb:openOpties' }); } catch (e) { /* negeren */ }
   }
 
   function zetPad(obj, pad, waarde) {

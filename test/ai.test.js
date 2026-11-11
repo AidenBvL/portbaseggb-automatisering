@@ -191,4 +191,42 @@ test('AI-voorstel bevat soort en aard per goederenitem', () => {
   assert.ok(AI.SCHEMA.properties.goederen.items.required.includes('wetenschappelijkeNaam'));
 });
 
+test('instellingen: oud formaat wordt Claude, standaarden per aanbieder, probleemmelding', () => {
+  const oud = AI.instellingen({ apiKey: 'sk-ant-1', model: 'claude-opus-5-5', effort: 'xhigh' });
+  assert.strictEqual(oud.provider, 'claude');
+  assert.deepStrictEqual(oud.claude, { apiKey: 'sk-ant-1', model: 'claude-opus-5-5', effort: 'xhigh' });
+  const leeg = AI.instellingen({});
+  assert.strictEqual(leeg.claude.model, 'claude-opus-5-5');
+  assert.strictEqual(leeg.gemini.model, 'gemini-pro-latest');
+  assert.strictEqual(leeg.openai.model, '', 'geen verouderde OpenAI-modelnaam hardcoden');
+  assert.ok(/Geen API-sleutel voor Claude/.test(AI.aanbiederProbleem(leeg)));
+  assert.ok(/Geen model voor ChatGPT/.test(AI.aanbiederProbleem(AI.instellingen({ provider: 'openai', openai: { apiKey: 'sk' } }))));
+  assert.strictEqual(AI.aanbiederProbleem(AI.instellingen({ provider: 'gemini', gemini: { apiKey: 'AIza' } })), '');
+  assert.strictEqual(AI.instellingen({ provider: 'onzin' }).provider, 'claude');
+});
+
+test('handmatige prompt: instructies, bestandsnamen, extra info en schema', () => {
+  const p = AI.handmatigePrompt(['hc.pdf', 'bl.pdf'], 'ETA 26-09-2026');
+  assert.ok(p.startsWith(AI.SYSTEM));
+  assert.ok(p.includes('hc.pdf, bl.pdf') && p.includes('ETA 26-09-2026'));
+  assert.ok(p.includes('UITSLUITEND met één JSON-object'));
+  assert.ok(p.includes(JSON.stringify(AI.SCHEMA)));
+  assert.ok(AI.handmatigePrompt([], '').includes('(de bijgevoegde documenten)'));
+});
+
+test('geplakt chat-antwoord: met tekst eromheen, codeblok en kale waarden', () => {
+  const plak = 'Natuurlijk! Hier is het resultaat:\n```json\n' + JSON.stringify({ bol: 'HLCU1', landOorsprong: 'in', exporteur: 'GHAN MARINE', declaratieType: { waarde: 'PRD', bron: 'HC', zekerheid: 'hoog' }, goederen: [{ gnCode: '0306.17.92' }] }) + '\n```\nSucces!';
+  const r = AI.normaliseer(AI.leesJsonAntwoord(plak));
+  assert.strictEqual(r.bol.waarde, 'HLCU1');
+  assert.strictEqual(r.bol.zekerheid, 'middel', 'kale waarde -> middel');
+  assert.strictEqual(r.landOorsprong.waarde, 'IN');
+  assert.strictEqual(r.exporteur.naam, 'GHAN MARINE');
+  assert.strictEqual(r.declaratieType.zekerheid, 'hoog');
+  assert.strictEqual(r.goederen[0].gnCode, '03061792');
+  assert.throws(() => AI.leesJsonAntwoord(''), /Plak eerst/);
+  assert.throws(() => AI.leesJsonAntwoord('Ik kan dat niet lezen.'), /Geen JSON-object/);
+  assert.throws(() => AI.leesJsonAntwoord('{"bol": "x",}'), /geen geldige JSON/);
+  assert.throws(() => AI.leesJsonAntwoord('{"naam": "x"}'), /niet op een GGB-voorstel/);
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');
