@@ -172,11 +172,30 @@
     }, 200);
   }
   var ORGANISATIES = [
-    { naam: 'GHAN MARINE PRODUCTS', adres: 'Plot 12, Port Road', plaats: 'KAKINADA', erk: '1234', land: 'IN' },
-    { naam: 'GHAN MARINE EXPORTS PVT LTD', adres: 'Beach Road 4', plaats: 'VISAKHAPATNAM', erk: '5678', land: 'IN' },
-    { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'ROTTERDAM', erk: 'NL 1001 EG', land: 'NL' },
-    { naam: 'EUROFOODLINK LOGISTICS B.V.', adres: 'Maasvlakte 2', plaats: 'ROTTERDAM', erk: '', land: 'NL' }
+    { naam: 'GHAN MARINE PRODUCTS', adres: 'Plot 12, Port Road', plaats: 'KAKINADA', erk: '1234', land: 'IN', act: 'EX - exporter', sec: 'CFFP', hfd: 'fishing' },
+    { naam: 'GHAN MARINE EXPORTS PVT LTD', adres: 'Beach Road 4', plaats: 'VISAKHAPATNAM', erk: '5678', land: 'IN', act: 'EX - exporter', sec: 'CFFP', hfd: 'fishing' },
+    { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'ROTTERDAM', erk: 'NL 1001 EG', land: 'NL', act: 'IM - importer', sec: 'FOOD-OTH', hfd: 'food' },
+    { naam: 'EUROFOODLINK LOGISTICS B.V.', adres: 'Maasvlakte 2', plaats: 'ROTTERDAM', erk: '', land: 'NL', act: 'IM - importer', sec: 'FOOD-OTH', hfd: 'food' },
+    // Echte zoekresultaten uit Portbase (dialoog Exporter, zoekterm "Quang Phu", land VN)
+    { naam: 'Quang Phu Seafood Import Export Company Limited', adres: 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE', plaats: 'Binh An', erk: 'DL 1022', land: 'VN', act: 'PP - establish_pp', sec: 'FFP', hfd: 'food' },
+    { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE. CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'AE - animal_exporter', sec: 'EXP', hfd: 'veterinary' },
+    { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'ES - establishment', sec: 'FOOD-OTH', hfd: 'food' },
+    { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'EX - exporter', sec: 'FOOD-OTH', hfd: 'food' },
+    { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'LAND PLOT N 1358 / MAP SHEET 3 / GROUP 2 / AN PHUOC HAMLET', plaats: 'Binh An', erk: '', land: 'VN', act: 'EX - exporter', sec: 'CFFP', hfd: 'fishing' }
   ];
+  // ANIMO-codedialoog: ingekorte kopie van <app-animo-code-dialog> (opent hier na Save in de GN-codedialoog)
+  var ANIMO = [['101101', 'Vers Vlees, slachtafvallen en vleesproducten / Vlees van als landbouwhuisdier gehouden hoefdieren'], ['101105', 'Vers Vlees, slachtafvallen en vleesproducten / Gehakt vlees, vleesbereidingen en separatorvlees'],
+    ['102108', 'Andere visserijproducten dan 206107 (FQ3)'], ['103110', 'Hele eieren / Eggs and egg products'], ['121000', 'Samengestelde producten hoog risico'], ['206107', 'Visproducten aquacult. en 2-kleppige weekdieren MC, tenzij hermetisch verpakt én ambient'], ['207000', 'Honing']];
+  function animoRij(x) {
+    return '<mat-row role="row" data-test="animo-codes-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection" role="cell"><mat-radio-button><div class="mdc-radio"><input type="radio" class="mdc-radio__native-control"></div></mat-radio-button></mat-cell>' +
+      '<mat-cell class="mat-mdc-cell mat-column-animoCode" role="cell"> ' + x[0] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-description" role="cell"> ' + x[1] + ' </mat-cell></mat-row>';
+  }
+  var ANIMO_DIALOOG = '<app-animo-code-dialog class="mat-mdc-dialog-component-host"><h2 mat-dialog-title="">ANIMO code</h2><mat-dialog-content><p class="mb-1">Scroll through the list or use the search function.</p><form novalidate="" class="responsive-form"><div class="row search">' +
+    '<mat-form-field><label><mat-label>Description or ANIMO code</mat-label></label><input matinput="" formcontrolname="searchTerm" type="text" id="searchTerm" data-test="search-term" placeholder="Description or ANIMO code" required=""></mat-form-field>' +
+    '<button type="submit" data-test="search-button"><span>Search</span></button></div></form>' +
+    '<mat-table data-test="animo-codes-list" class="mat-mdc-table search-results" role="table"><mat-header-row role="row" class="mat-mdc-header-row"><mat-header-cell role="columnheader" class="mat-column-selection"></mat-header-cell><mat-header-cell role="columnheader" class="mat-column-animoCode"> ANIMO code </mat-header-cell><mat-header-cell role="columnheader" class="mat-column-description"> Description </mat-header-cell></mat-header-row>' +
+    ANIMO.slice(0, 5).map(animoRij).join('') + '</mat-table></mat-dialog-content>' +
+    '<mat-dialog-actions align="end"><button mat-dialog-close="" data-test="cancel" type="button"><span>Cancel</span></button><button data-test="save"><span>Save</span></button></mat-dialog-actions></app-animo-code-dialog>';
   // Ingekorte kopie van <app-organisation-dialog> (data-test, radio-waarden en tabelkolommen zoals in Portbase)
   var ORG_DIALOOG = '<app-organisation-dialog><h2 mat-dialog-title="">{titel}</h2><mat-dialog-content>' +
     '<p class="mb-1">Search on organisation name, approval number, postal code or city</p><form novalidate="" class="responsive-form"><div class="row search">' +
@@ -221,6 +240,8 @@
       nieuw.querySelectorAll('input').forEach(function (i) { i.value = ''; });
       nieuw.querySelectorAll('.mat-mdc-select-value').forEach(function (s) { s.innerHTML = '<span class="mat-mdc-select-placeholder"></span>'; });
       nieuw.querySelectorAll('.file-name').forEach(function (s) { s.textContent = ''; });
+      nieuw.querySelectorAll('button[data-dialoog]').forEach(function (b) { var s = b.querySelector('span span:last-child') || b.querySelector('span'); if (s) s.textContent = b.dataset.dialoog; });
+      nieuw.querySelectorAll('.animo-gekozen').forEach(function (s) { s.remove(); });
       var up = nieuw.querySelector('input[type="file"]');
       if (up) { up.id = 'upload_' + kaarten.length; nieuw.querySelector('label[for]').setAttribute('for', up.id); }
       form.insertBefore(nieuw, knop.closest('.align-right'));
@@ -270,22 +291,55 @@
       var type = dlg.querySelector('[data-test="search-type"] input:checked').value;
       setTimeout(function () {
         var hits = ORGANISATIES.filter(function (o) {
-          return o.land === land && (type === 'APPROVAL_NUMBER' ? o.erk.indexOf(term) >= 0 : o.naam.indexOf(term) >= 0);
+          return o.land === land && (type === 'APPROVAL_NUMBER' ? o.erk.toUpperCase().indexOf(term) >= 0 : o.naam.toUpperCase().indexOf(term) >= 0);
         });
         var tabel = dlg.querySelector('[data-test="organisations-list"]');
         tabel.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
         if (!hits.length) tabel.insertAdjacentHTML('beforeend', '<tr class="mat-row cdk-no-data-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="11">No results</td></tr>');
         hits.forEach(function (o) {
-          tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection"><mat-radio-button><input type="radio" name="org-keuze" value="' + o.naam + '"></mat-radio-button></mat-cell><mat-cell class="mat-mdc-cell mat-column-name">' + o.naam + '</mat-cell><mat-cell class="mat-mdc-cell mat-column-address">' + o.adres + '</mat-cell><mat-cell class="mat-mdc-cell mat-column-city">' + o.plaats + '</mat-cell><mat-cell class="mat-mdc-cell mat-column-approvalNumber">' + o.erk + '</mat-cell></mat-row>');
+          var c = function (k, v) { return '<mat-cell class="mat-mdc-cell cell field mat-column-' + k + '" role="cell"> ' + v + ' </mat-cell>'; };
+          tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="organisations-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection" role="cell"><mat-radio-button><div class="mdc-radio"><input type="radio" name="org-keuze" value="' + ORGANISATIES.indexOf(o) + '" class="mdc-radio__native-control"></div></mat-radio-button></mat-cell>' +
+            c('name', o.naam) + c('address', o.adres) + c('postalCode', '') + c('city', o.plaats) + c('approvalNumber', o.erk) + c('identificationType', 'OAI') + c('identificationNumber', '1') + c('activity', o.act) + c('section', o.sec) + c('activityDepartment', o.hfd) + '</mat-row>');
         });
       }, 300);
+    }
+    if (knop && knop.dataset.test === 'search-button' && knop.closest('app-animo-code-dialog')) {
+      e.preventDefault();
+      var adl = knop.closest('mat-dialog-container'), zt2 = adl.querySelector('[data-test="search-term"]').value.toLowerCase();
+      setTimeout(function () {
+        var tab2 = adl.querySelector('[data-test="animo-codes-list"]');
+        tab2.querySelectorAll('mat-row').forEach(function (r) { r.remove(); });
+        ANIMO.filter(function (x) { return x[0].indexOf(zt2) >= 0 || x[1].toLowerCase().indexOf(zt2) >= 0; }).forEach(function (x) { tab2.insertAdjacentHTML('beforeend', animoRij(x)); });
+      }, 250);
     }
     if (knop && knop.dataset.test === 'save' && knop.closest('mat-dialog-container')) {
       var dl = knop.closest('mat-dialog-container'), gekozen = dl.querySelector('input[name="org-keuze"]:checked');
       var gnKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="gn-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
-      if (gnKeuze) { dl.__bron.querySelector('span span:last-child').textContent = gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim(); dl.remove(); return; }
+      if (gnKeuze) {
+        dl.__bron.querySelector('span span:last-child').textContent = gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim();
+        var kaart = dl.__bron.closest('mat-card');
+        dl.remove();
+        // Na de GN-code opent de ANIMO-dialoog
+        setTimeout(function () {
+          var ad = document.createElement('mat-dialog-container');
+          ad.className = 'mat-mdc-dialog-container mdc-dialog cdk-dialog-container'; ad.setAttribute('role', 'dialog');
+          ad.__kaart = kaart;
+          ad.innerHTML = ANIMO_DIALOOG;
+          overlay.parentNode.appendChild(ad);
+        }, 200);
+        return;
+      }
+      var animoKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="animo-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
+      if (animoKeuze) {
+        var doel = dl.__kaart.querySelector('.animo-gekozen') || dl.__kaart.querySelector('mat-card-content').appendChild(document.createElement('span'));
+        doel.className = 'animo-gekozen';
+        doel.textContent = animoKeuze.querySelector('.mat-column-animoCode').textContent.trim();
+        dl.remove();
+        return;
+      }
       var rijKeuze = dl.querySelector('mat-row.mat-mdc-row-selected .mat-column-name');
-      if (gekozen || rijKeuze) dl.__bron.querySelector('span span:last-child, span').textContent = gekozen ? gekozen.value : rijKeuze.textContent;
+      if (gekozen) { var og = ORGANISATIES[+gekozen.value]; dl.__bron.querySelector('span span:last-child, span').textContent = [og.naam, og.plaats, og.erk, og.act].filter(Boolean).join(' | '); }
+      else if (rijKeuze) dl.__bron.querySelector('span span:last-child, span').textContent = rijKeuze.textContent;
       dl.remove();
     }
     if (knop && knop.dataset.test === 'cancel') knop.closest('mat-dialog-container').remove();

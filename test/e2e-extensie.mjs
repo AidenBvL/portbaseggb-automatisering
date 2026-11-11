@@ -27,9 +27,10 @@ const URL_PB = 'https://food-and-consumer-products.pcs.portbase.com/declarations
 const v = (waarde, zekerheid = 'hoog', bron = 'HC') => ({ waarde, bron, zekerheid });
 const AI_JSON = {
   declaratieType: v('PRD'), bol: v('HLCUMA3260712342', 'hoog', 'B/L'), bestemming: v('Import', 'middel'),
-  exporteur: { naam: 'GHAN MARINE PRODUCTS', adres: 'Kakinada', land: 'IN', bron: 'HC I.1', zekerheid: 'hoog' },
-  importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Rotterdam', land: 'NL', bron: 'HC I.5', zekerheid: 'hoog' },
-  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), plaatsBestemming: v('KOELHUIS ONBEKEND, Rotterdam'),
+  exporteur: { naam: 'GHAN MARINE PRODUCTS', adres: 'Plot 12, Port Road', plaats: 'Kakinada', land: 'IN', erkenningsnummer: '', bron: 'HC I.1', zekerheid: 'hoog' },
+  importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'Rotterdam', land: 'NL', erkenningsnummer: '', bron: 'HC I.5', zekerheid: 'hoog' },
+  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'),
+  plaatsBestemming: { naam: 'KOELHUIS ONBEKEND', adres: 'Havenweg 1', plaats: 'Rotterdam', land: 'NL', erkenningsnummer: '', bron: 'HC I.7', zekerheid: 'middel' },
   landOorsprong: v('IN'), landLading: v('IN'), gecertificeerdVoor: v('Human consumption'), transportconditie: v('Frozen'),
   vervoermiddel: v('Vessel'), vervoermiddelNaam: v('MSC ANNA'), vervoermiddelNationaliteit: v('PA'),
   aankomstDatum: v('26-09-2026', 'laag', 'Extra info'), aankomstTijd: v('07:00', 'laag'),
@@ -41,8 +42,8 @@ const AI_JSON = {
     { type: 'COMM', identificatie: 'HLCUMA3260712342', datumAfgifte: '12-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' }
   ],
   goederen: [
-    { gnCode: '03061792', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
-    { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Carton', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', wetenschappelijkeNaam: 'Penaeus monodon', aardProduct: 'Wild caught, frozen', bron: 'HC', zekerheid: 'hoog' }
+    { gnCode: '03061792', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '206107', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
+    { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Carton', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '102108', wetenschappelijkeNaam: 'Penaeus monodon', aardProduct: 'Wild caught, frozen', bron: 'HC', zekerheid: 'hoog' }
   ],
   waarschuwingen: ['Aankomstdatum niet in de documenten; overgenomen uit extra info.']
 };
@@ -150,73 +151,32 @@ try {
   assert.strictEqual(await waarde('[data-test="packaging-number-of-packages"]', 0), '1600');
   assert.strictEqual(await keuze('[data-test="packaging-package-type"]', 0), 'Carton');
   assert.strictEqual(await waarde('input[formcontrolname="batchNumber"]', 1), 'L124');
-  // Dialoogvelden: niet automatisch gekozen, wel "Zoek in Portbase" in het verslag
-  assert.ok(/handmatig/.test(verslag) && /GHAN MARINE PRODUCTS/.test(verslag) && /03061792/.test(verslag));
-  assert.strictEqual(await page.locator('mat-dialog-container').count(), 0, 'geen dialoog vanzelf geopend');
-  const zoekKnoppen = page.locator('#ai-verslag button[data-dialoog]');
-  assert.ok(await zoekKnoppen.count() >= 6, 'zoekknoppen voor exporteur, importeur, BCP, plaats, GN-codes, erkenningsnummer');
+  // Zoekvensters automatisch afgehandeld: zoeken, juiste regel kiezen, Save in het venster
+  const knopTekst = (sel, n = 0) => tekst(sel, n);
+  assert.strictEqual(await knopTekst('[data-test="organisation-dialog-exporter"]'), 'GHAN MARINE PRODUCTS | KAKINADA | 1234 | EX - exporter', 'exporteur (niet GHAN MARINE EXPORTS)');
+  assert.strictEqual(await knopTekst('[data-test="organisation-dialog-importer"]'), 'EUROFOODLINK B.V. | ROTTERDAM | NL 1001 EG | IM - importer', 'importeur (niet EUROFOODLINK LOGISTICS)');
+  assert.strictEqual(await knopTekst('[data-test="border-control-post-dialog"]'), 'Rotterdam', 'BCP NLRTM1');
+  assert.ok(/1234/.test(await knopTekst('app-form-documents [data-test="organisation-dialog"]', 0)), 'inrichting van oorsprong document 1 via erkenningsnummer');
+  assert.ok(/1234/.test(await knopTekst('app-form-documents [data-test="organisation-dialog"]', 1)), 'inrichting van oorsprong document 2');
+  assert.strictEqual(await knopTekst('[data-test="gn-code-dialog"]', 0), '030617 Visserijproducten (aquacultuur)', 'GN item 1: 8 -> 6 cijfers, soort vannamei');
+  assert.strictEqual(await knopTekst('[data-test="gn-code-dialog"]', 1), '030617 Visserijproducten (wild gevangen)', 'GN item 2: producttype via "Wild caught" + Animo 102108');
+  assert.strictEqual(await tekst('app-form-goods-items form > mat-card .animo-gekozen', 0), '206107', 'Animo item 1 (via zoeken in de lijst)');
+  assert.strictEqual(await tekst('app-form-goods-items form > mat-card .animo-gekozen', 1), '102108', 'Animo item 2');
+  assert.ok(/1234/.test(await knopTekst('app-form-goods-items [data-test="organisation-dialog"]', 0)), 'erkenningsnummer goederenitem 1');
+  assert.strictEqual(await page.locator('mat-dialog-container').count(), 0, 'alle zoekvensters weer dicht');
+  assert.ok(/Exporter \(I\.1\): .*gekozen: GHAN MARINE PRODUCTS · KAKINADA · 1234 · EX - exporter/.test(verslag), verslag);
+
+  // Geen treffer (plaats van bestemming): venster gesloten met Cancel, veld handmatig met "Zoek in Portbase"
+  assert.strictEqual(await knopTekst('[data-test="place-of-destination-dialog"]'), 'Select place of destination');
   const dlg = page.locator('mat-dialog-container');
-  async function zoek(rijTekst, n = 0) {
-    const li = page.locator('#ai-verslag li', { hasText: rijTekst }).nth(n);
-    await li.locator('button[data-dialoog]').click();
-    await li.locator('.dlg-melding').waitFor({ timeout: 20000 });
-    return li.locator('.dlg-melding').innerText();
-  }
-  async function sluitDialoog() { await dlg.locator('[data-test="cancel"]').click(); await dlg.waitFor({ state: 'detached' }); }
-
-  // Exporteur: land IN gekozen, op naam gezocht, unieke treffer aangevinkt (niet "GHAN MARINE EXPORTS")
-  let melding = await zoek('Exporter (I.1)');
-  assert.ok(/aangevinkt: GHAN MARINE PRODUCTS, KAKINADA/.test(melding), melding);
-  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'IN - India');
-  assert.strictEqual(await dlg.locator('[data-test="search-term"]').inputValue(), 'GHAN MARINE PRODUCTS');
-  assert.ok(await dlg.locator('[data-test="search-type"] input[value="NAME"]').isChecked());
-  assert.ok(await dlg.locator('input[name="org-keuze"][value="GHAN MARINE PRODUCTS"]').isChecked());
-  await sluitDialoog();
-
-  // Importeur: exacte naam wint van "EUROFOODLINK LOGISTICS B.V."; land NL
-  melding = await zoek('Importer (I.6)');
-  assert.ok(/aangevinkt: EUROFOODLINK B\.V\./.test(melding), melding);
+  const li = page.locator('#ai-verslag li', { hasText: 'Place of destination' });
+  assert.ok(/handmatig/.test(await li.innerText()) && /geen resultaten voor "KOELHUIS ONBEKEND" \(NL\)/.test(await li.innerText()), await li.innerText());
+  await li.locator('button[data-dialoog]').click();
+  await li.locator('.dlg-melding').waitFor({ timeout: 20000 });
+  assert.strictEqual(await dlg.locator('[data-test="search-term"]').inputValue(), 'KOELHUIS ONBEKEND');
   assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'NL - Netherlands');
-  assert.ok(await dlg.locator('input[name="org-keuze"][value="EUROFOODLINK B.V."]').isChecked());
-  // Gebruiker klikt zelf Save -> keuze komt in het formulier
-  await dlg.locator('[data-test="save"]').click();
-  assert.strictEqual(await page.locator('[data-test="organisation-dialog-importer"]').innerText(), 'EUROFOODLINK B.V.');
-
-  // Erkenningsnummer van goederenitem 1: zoektype Approval number
-  melding = await zoek('Activity / approval number (I.15)');
-  assert.ok(/aangevinkt: GHAN MARINE PRODUCTS/.test(melding), melding);
-  assert.ok(await dlg.locator('[data-test="search-type"] input[value="APPROVAL_NUMBER"]').isChecked());
-  assert.strictEqual(await dlg.locator('[data-test="search-term"]').inputValue(), '1234');
-  await sluitDialoog();
-
-  // Geen treffer -> duidelijke melding, niets aangevinkt
-  melding = await zoek('Place of destination');
-  assert.ok(/geen resultaten/.test(melding), melding);
-  await sluitDialoog();
-
-  // Grenscontrolepost: land staat al op NL, rij met code NLRTM1 wordt aangevinkt; gebruiker klikt Save
-  melding = await zoek('Border control post');
-  assert.ok(/aangevinkt: Rotterdam\s*NLRTM1/.test(melding), melding);
-  assert.strictEqual(await dlg.locator('mat-row.mat-mdc-row-selected .mat-column-code').innerText(), 'NLRTM1');
-  await dlg.locator('[data-test="save"]').click();
-  assert.strictEqual(await page.locator('[data-test="border-control-post-dialog"]').innerText(), 'Rotterdam');
-
-  // GN-code item 1: 8 cijfers geven niets, 6 cijfers wel; unieke soort -> aangevinkt; browser-autofill in Scientific name gewist
-  melding = await zoek('GN-code (I.31)', 0);
-  assert.ok(/aangevinkt: 030617 · Penaeus vannamei · Visserijproducten \(aquacultuur\)/.test(melding), melding);
-  assert.strictEqual(await dlg.locator('[data-test="name"]').inputValue(), '030617');
-  assert.strictEqual(await dlg.locator('[data-test="scientific-name"]').inputValue(), '');
-  const gekozenRij = dlg.locator('[data-test="gn-codes-list-row"]', { has: page.locator('input:checked') });
-  assert.strictEqual(await gekozenRij.count(), 1);
-  assert.ok(/Penaeus vannamei/.test(await gekozenRij.innerText()));
-  await dlg.locator('[data-test="save"]').click();
-  assert.ok(/030617 Visserijproducten \(aquacultuur\)/.test(await page.locator('[data-test="gn-code-dialog"]').first().innerText()));
-
-  // GN-code item 2: twee producttypes voor P. monodon -> niets aangevinkt, keuze + HC-omschrijving in de melding
-  melding = await zoek('GN-code (I.31)', 1);
-  assert.ok(/2 regels gemarkeerd; kies het producttype: Visserijproducten \(aquacultuur\) · Visserijproducten \(wild gevangen\) \(HC: Wild caught, frozen\)/.test(melding), melding);
-  assert.strictEqual(await dlg.locator('[data-test="gn-codes-list-row"] input:checked').count(), 0);
-  await sluitDialoog();
+  await dlg.locator('[data-test="cancel"]').click();
+  await dlg.waitFor({ state: 'detached' });
 
   // Inspectiecentrum vult de declarant zelf in: geen regel in het verslag, knop niet aangeraakt
   assert.ok(!/Inspection centre/.test(verslag), 'inspectiecentrum hoort niet in het verslag');
@@ -225,7 +185,8 @@ try {
   const klikken = await page.evaluate(() => window.__klikken);
   assert.ok(!klikken.some((k) => /^(save|send)-declaration$/.test(k)), 'Save/Send van de declaratie niet aangeklikt: ' + klikken.join(','));
   assert.ok(!klikken.includes('inspection-centre-dialog'), 'inspectiecentrum niet aangeraakt');
-  assert.strictEqual(klikken.filter((k) => k === 'save').length, 3, 'dialoog-Save alleen door de gebruiker (3x in deze test)');
+  // Save in vensters: exporteur, importeur, BCP, 2x inrichting (documenten), 2x GN, 2x Animo, 2x erkenningsnummer = 11
+  assert.strictEqual(klikken.filter((k) => k === 'save').length, 11, 'Save alleen in de zoekvensters: ' + klikken.join(','));
   assert.deepStrictEqual(fouten, []);
 
   await page.screenshot({ path: path.join(os.tmpdir(), 'ggb-e2e.png'), fullPage: false });
@@ -310,6 +271,34 @@ try {
   await p3.locator('#json-verwerk').click();
   assert.ok(/Geen JSON-object gevonden/.test(await p3.locator('#ai-status').innerText()));
   await p3.locator('.wrap').screenshot({ path: path.join(os.tmpdir(), 'ggb-paneel-handmatig.png') }).catch(() => {});
+
+  /* ================= Echte Portbase-resultaten: Quang Phu (VN) ================= */
+  const QUANG = {
+    declaratieType: v('PRD'), bestemming: v(''), landOorsprong: v('VN'), landLading: v('VN'), grenscontrolepost: v('Rotterdam (NLRTM1)'),
+    exporteur: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE', plaats: 'Binh An', land: 'VN', erkenningsnummer: '', bron: 'HC I.1', zekerheid: 'hoog' },
+    importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'Rotterdam', land: 'NL', erkenningsnummer: '', bron: 'HC I.5', zekerheid: 'hoog' },
+    plaatsVerzending: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE', plaats: 'Binh An', land: 'VN', erkenningsnummer: 'DL 1022', bron: 'HC I.11', zekerheid: 'hoog' },
+    documenten: [{ type: 'HC', identificatie: 'VN-2026-0001', datumAfgifte: '01-10-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: '', zekerheid: 'hoog' }],
+    goederen: [{ gnCode: '03061792', omschrijving: 'Frozen shrimps', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', animoCode: '206107', erkenningsnummer: '' }],
+    waarschuwingen: []
+  };
+  const p4 = await context.newPage();
+  p4.on('pageerror', (e) => fouten.push('p4: ' + e.message));
+  await p4.goto(URL_PB);
+  await p4.locator('#ggb-documentcheck-host').waitFor({ state: 'attached' });
+  await p4.locator('#tab-ai').click();
+  await p4.locator('#blok-hand:not([hidden])').waitFor();
+  await p4.locator('#json-in').fill(JSON.stringify(QUANG));
+  await p4.locator('#json-verwerk').click();
+  await p4.locator('#ai-fill').click();
+  await p4.locator('#ai-verslag h3').waitFor({ timeout: 90000 });
+  // Van de 5 regels "Quang Phu…" wordt de exporteur in Binh An met activiteit EX gekozen (zoals de declarant deed)
+  assert.strictEqual(await p4.locator('[data-test="organisation-dialog-exporter"]').innerText(), 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED | Binh An | EX - exporter');
+  // Inrichting van oorsprong via erkenningsnummer DL 1022 (I.11 Place of dispatch)
+  assert.strictEqual(await p4.locator('app-form-documents [data-test="organisation-dialog"]').first().innerText(), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
+  assert.strictEqual(await p4.locator('app-form-goods-items [data-test="organisation-dialog"]').first().innerText(), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
+  assert.strictEqual(await p4.locator('[data-test="purpose-code"] .mat-mdc-select-value').innerText(), 'Import', 'Destination standaard Import');
+  await p4.screenshot({ path: path.join(os.tmpdir(), 'ggb-quang.png') });
   assert.deepStrictEqual(fouten, []);
 
   console.log('\nE2E geslaagd');

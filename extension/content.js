@@ -267,6 +267,8 @@
     });
     res.addEventListener('change', function (e) {
       if (e.target.getAttribute && e.target.getAttribute('data-pad')) renderAiCheck();
+      var an = e.target.getAttribute && e.target.getAttribute('data-animo');
+      if (an != null) { aiResultaat.goederen[+an].animoCode = e.target.value; renderAiCheck(); }
       var dt = e.target.getAttribute && e.target.getAttribute('data-doctype');
       if (dt != null) { aiResultaat.documenten[+dt].portbaseType = e.target.value; aiResultaat.documenten[+dt].portbaseTypeHandmatig = true; }
       var o = e.target.getAttribute && e.target.getAttribute('data-opnemen');
@@ -402,7 +404,7 @@
   var ALG_LABELS = [
     ['declaratieType', 'Declaration type (PRD = CHED-P, LNV = CHED-D)'],
     ['bol', 'Bill of lading number (I.13)'], ['bestemming', 'Destination (I.20-25)'],
-    ['grenscontrolepost', 'Border control post (I.4)'], ['plaatsBestemming', 'Place of destination (I.7)'],
+    ['grenscontrolepost', 'Border control post (I.4)'],
     ['landOorsprong', 'Country of origin (I.11)'], ['landLading', 'Country of loading (I.14)'],
     ['gecertificeerdVoor', 'Goods certified as or for (I.18)'], ['transportconditie', 'Transport conditions (I.16)'],
     ['vervoermiddel', 'Means of transport (I.13)'], ['vervoermiddelNaam', 'Name / identification (I.13)'],
@@ -426,12 +428,14 @@
       var v = r[l[0]];
       return '<tr><td class="l">' + esc(l[1]) + '</td><td>' + invoer(l[0] + '.waarde', v.waarde) + '</td><td class="z">' + zekerheidBadge(v.zekerheid, v.bron) + '</td></tr>';
     }).join('');
-    ['exporteur', 'importeur'].forEach(function (k) {
-      var p = r[k];
-      alg += '<tr><td class="l">' + (k === 'exporteur' ? 'Exporter (I.1)' : 'Importer (I.6)') + '</td><td>' + invoer(k + '.naam', p.naam) +
-        '<div class="small muted">' + esc([p.adres, p.land].filter(Boolean).join(', ')) + '</div></td><td class="z">' + zekerheidBadge(p.zekerheid, p.bron) + '</td></tr>';
-    });
     html += groep('General / Goods / Transport', alg);
+    // Organisaties: naam, adres, plaats, land en erkenningsnummer bepalen samen welke regel in de Portbase-dialoog gekozen wordt.
+    [['exporteur', 'Exporter (I.1)'], ['importeur', 'Importer (I.6)'], ['plaatsBestemming', 'Place of destination (I.7)'], ['plaatsVerzending', 'Place of dispatch / establishment of origin (I.11)']].forEach(function (o) {
+      var p = r[o[0]];
+      html += groep(esc(o[1]) + ' ' + zekerheidBadge(p.zekerheid, p.bron), [['naam', 'Naam'], ['adres', 'Adres'], ['plaats', 'Plaats'], ['land', 'Land (ISO)'], ['erkenningsnummer', 'Erkenningsnummer']].map(function (v) {
+        return '<tr><td class="l">' + v[1] + '</td><td>' + invoer(o[0] + '.' + v[0], p[v[0]]) + '</td><td class="z"></td></tr>';
+      }).join(''));
+    });
 
     r.containers.forEach(function (c, i) {
       html += groep('Transport equipment ' + (i + 1) + ' (I.17)', FILL.CONTAINER.map(function (d) {
@@ -456,11 +460,14 @@
         return '<tr><td class="l">' + esc(d.naam) + '</td><td>' + invoer('goederen.' + i + '.' + d.key, g[d.key]) + '</td><td class="z">' + (d.key === 'gnCode' ? zekerheidBadge(g.zekerheid, g.bron) : '') + '</td></tr>';
       }).join('') +
         '<tr><td class="l">Soort (wetensch. naam, I.28)</td><td>' + invoer('goederen.' + i + '.wetenschappelijkeNaam', g.wetenschappelijkeNaam) + '</td><td class="z"></td></tr>' +
-        '<tr><td class="l">Aard product (HC I.28)</td><td>' + invoer('goederen.' + i + '.aardProduct', g.aardProduct) + '</td><td class="z"></td></tr>');
+        '<tr><td class="l">Aard product (HC I.28)</td><td>' + invoer('goederen.' + i + '.aardProduct', g.aardProduct) + '</td><td class="z"></td></tr>' +
+        '<tr><td class="l">ANIMO code</td><td><select data-animo="' + i + '"><option value="">– kies –</option>' + AI.ANIMO_CODES.map(function (a) {
+          return '<option value="' + esc(a.code) + '"' + (a.code === g.animoCode ? ' selected' : '') + '>' + esc(a.code + ' – ' + a.omschrijving) + '</option>'; }).join('') + '</select></td><td class="z"></td></tr>');
     });
 
     html += '<div class="row-actions"><button class="btn primary" id="ai-fill">Invullen in Portbase</button>' +
       '<label class="small"><input type="checkbox" id="ai-overschrijven"> bestaande waarden overschrijven</label></div>' +
+      '<label class="small"><input type="checkbox" id="ai-dialogen" checked> zoekvensters automatisch afhandelen (exporteur, importeur, BCP, bestemming, inrichting, GN-code, Animo): zoeken, juiste regel kiezen en Save in het venster</label>' +
       '<div id="ai-fill-hint" class="small muted"></div><div id="ai-verslag"></div>';
     $('ai-result').innerHTML = html;
     renderAiCheck();
@@ -500,7 +507,7 @@
     if (!knop) return;
     var ok = FILL.formulierAanwezig();
     knop.disabled = !ok;
-    $('ai-fill-hint').textContent = ok ? 'Er wordt niets verstuurd of opgeslagen: controleer het formulier en klik zelf op Opslaan/Verzenden.' : 'Open in Portbase "New declaration" (of een bewerkbare declaratie) om in te vullen.';
+    $('ai-fill-hint').textContent = ok ? 'De declaratie wordt niet opgeslagen of verstuurd: alleen in de zoekvensters klikt de extensie op Save. Controleer het formulier en klik zelf op Save/Send.' : 'Open in Portbase "New declaration" (of een bewerkbare declaratie) om in te vullen.';
   }
 
   async function aiInvullen() {
@@ -514,6 +521,7 @@
     try {
       var verslag = await FILL.vul(aiResultaat, {
         overschrijven: $('ai-overschrijven').checked,
+        dialogen: $('ai-dialogen').checked,
         bestanden: perNaam,
         voortgang: function (t) { if (t) verslagEl.innerHTML = '<span class="spinner"></span> ' + esc(t); }
       });
@@ -526,7 +534,7 @@
         '<ul class="verslag">' + zichtbaar.map(function (v) {
           return '<li><span class="badge ' + esc(v.status.replace(' ', '-')) + '">' + esc(v.status) + '</span> <b>' + esc(v.sectie) + '</b> – ' + esc(v.naam) +
             ': ' + esc(v.waarde) + (v.melding ? ' <span class="muted">(' + esc(v.melding) + ')</span>' : '') +
-            (v.knop ? '<button data-dialoog="' + v.index + '" title="Opent de Portbase-dialoog met de zoekterm (ook gekopieerd)">Zoek in Portbase</button>' :
+            (v.knop && v.status !== 'ingevuld' && v.status !== 'overgeslagen' ? '<button data-dialoog="' + v.index + '" title="Opent de Portbase-dialoog met de zoekterm (ook gekopieerd)">Zoek in Portbase</button>' :
               (v.status === 'handmatig' || v.status === 'niet gevonden' ? '<button data-kopie="' + esc(v.waarde) + '">Kopieer</button>' : '')) + '</li>';
         }).join('') + '</ul>';
       verslagEl.scrollIntoView({ block: 'start', behavior: 'smooth' });

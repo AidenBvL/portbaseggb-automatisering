@@ -149,15 +149,41 @@ test('invuller kiest de best passende optie (eigen waarde gaat voor synoniem)', 
   assert.strictEqual(FILL.besteOptie(opt('Ambient', 'Chilled'), ['Frozen']), null);
 });
 
-test('zoekresultaat in organisatiedialoog: naam (zonder B.V./Pvt Ltd) en erkenningsnummer', () => {
+test('organisatiedialoog: van 5 regels "Quang Phu" wint de exporteur in Binh An; inrichting via DL 1022', () => {
+  global.window = global.window || {};
   const FILL = require('../extension/portbase-fill.js');
-  const rij = (naam, erk) => ({ querySelector: (sel) => ({ textContent: /approvalNumber/.test(sel) ? erk : /name/.test(sel) ? naam : '' }) });
-  assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 4);
-  assert.strictEqual(FILL.rijScore(rij('GHAN MARINE PRODUCTS PVT LTD', ''), { term: 'Ghan Marine Products', type: 'NAME' }), 4);
-  // Andere firma met dezelfde beginnaam: alleen kandidaat (2), nooit exact (4) -> wordt niet automatisch aangevinkt
-  assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK LOGISTICS B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 2);
-  assert.strictEqual(FILL.rijScore(rij('X', '1234'), { term: '1234', type: 'APPROVAL_NUMBER' }), 4);
-  assert.strictEqual(FILL.rijScore(rij('X', 'IN-1234-A'), { term: '1234', type: 'APPROVAL_NUMBER' }), 2);
+  const rij = (o) => ({ querySelector: (sel) => { const m = sel.match(/mat-column-(\w+)/); return { textContent: m ? (o[m[1]] || '') : '' }; }, textContent: o.name });
+  const ADRES = 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE';
+  const NAAM = 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED';
+  const R = [ // echte zoekresultaten uit Portbase
+    { name: 'Quang Phu Seafood Import Export Company Limited', address: ADRES, city: 'Binh An', approvalNumber: 'DL 1022', activity: 'PP - establish_pp', activityDepartment: 'food' },
+    { name: NAAM, address: 'AN PHUOC HAMLET, BINH AN COMMUNE. CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', city: 'Chau Thanh', activity: 'AE - animal_exporter', activityDepartment: 'veterinary' },
+    { name: NAAM, address: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', city: 'Chau Thanh', activity: 'ES - establishment', activityDepartment: 'food' },
+    { name: NAAM, address: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', city: 'Chau Thanh', activity: 'EX - exporter', activityDepartment: 'food' },
+    { name: NAAM, address: 'LAND PLOT N 1358 / MAP SHEET 3 / GROUP 2 / AN PHUOC HAMLET', city: 'Binh An', activity: 'EX - exporter', activityDepartment: 'fishing' },
+  ].map(rij);
+  const r = AI.normaliseer({ landOorsprong: 'VN', goederen: [{ gnCode: '03061792' }],
+    exporteur: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: ADRES, plaats: 'Binh An', land: 'VN' },
+    plaatsVerzending: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: ADRES, plaats: 'Binh An', land: 'VN', erkenningsnummer: 'DL 1022' } });
+  const best = (zoek) => { const s = R.map((x) => FILL.rijScore(x, zoek)); const max = Math.max(...s); return { i: s.indexOf(max), marge: max - [...s].sort((a, b) => b - a)[1] }; };
+  const ex = best(FILL.orgZoek(r.exporteur, 'exporter', 'VN', r));
+  assert.strictEqual(ex.i, 4, 'EX - exporter, fishing, Binh An');
+  assert.ok(ex.marge >= 8, 'duidelijke winnaar');
+  const pvZoek = FILL.orgZoek(r.plaatsVerzending, 'inrichting', 'VN', r);
+  assert.strictEqual(pvZoek.type, 'APPROVAL_NUMBER');
+  assert.strictEqual(pvZoek.term, 'DL 1022');
+  assert.strictEqual(best(pvZoek).i, 0);
+  // Andere firma met dezelfde beginnaam is nooit een exacte naam-match
+  const ander = rij({ name: 'EUROFOODLINK LOGISTICS B.V.', city: 'Rotterdam' });
+  assert.ok(FILL.rijScore(ander, { type: 'NAME', term: 'EUROFOODLINK B.V.', naam: 'EUROFOODLINK B.V.' }) < 40);
+});
+
+test('GN-producttype: aard product + Animo-omschrijving kiezen tussen aquacultuur en wild gevangen', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const hints = 'Wild caught, frozen Andere visserijproducten dan 206107 (FQ3)';
+  assert.ok(FILL.typeOvereenkomst('Visserijproducten (wild gevangen)', hints) > FILL.typeOvereenkomst('Visserijproducten (aquacultuur)', hints));
+  const aqua = 'Farmed, frozen Visproducten aquacult. en 2-kleppige weekdieren MC';
+  assert.ok(FILL.typeOvereenkomst('Visserijproducten (aquacultuur)', aqua) > FILL.typeOvereenkomst('Visserijproducten (wild gevangen)', aqua));
 });
 
 test('grenscontrolepost wordt op de Portbase-lijst gezet; inspectiecentrum niet door AI', () => {

@@ -95,38 +95,33 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    datum, land, **en uploadt het bijbehorende bestand**) en goederenitems (omschrijving, gewichten, colli, verpakking,
    batch, erkenningsnummer). Ontbrekende documentregels/goederenitems worden
    aangemaakt met *Add document* / *Add goods item*.
-6. Velden die in Portbase via een zoekdialoog gaan (**exporteur, importeur,
-   grenscontrolepost, plaats van bestemming, inrichting van oorsprong,
-   GN-code, activity/approval number**) worden niet automatisch gekozen. Ze
-   staan als *handmatig* in het verslag met een knop **Zoek in Portbase**.
-   In de organisatiedialoog (exporteur, importeur, plaats van bestemming,
-   inrichting van oorsprong, erkenningsnummer) doet die knop:
-   zoektype kiezen (*Organisation name* of *Approval number*), **land**
-   invullen (exporteur/inrichting: land van oorsprong, importeur: NL),
-   zoekterm invullen, **Search** klikken en – als er precies één exacte
-   treffer is (naam op B.V./Pvt Ltd na, of erkenningsnummer) – die rij aanvinken. Gedeeltelijke of meerdere treffers worden
-   gemarkeerd en dan kies je zelf. **Save** in de dialoog klik je altijd zelf.
-   In de lijstdialoog **Border control post** wordt het land (NL) ingevuld
-   als het leeg is en de regel met de juiste code aangevinkt (bijv.
-   *Rotterdam – NLRTM1*).
+6. **Zoekvensters worden automatisch afgehandeld** (uit te zetten met het
+   vinkje onder *Invullen in Portbase*): exporteur, importeur, plaats van
+   bestemming, inrichting van oorsprong (documenten en goederenitems),
+   grenscontrolepost, GN-code en de bijbehorende **Animo-code**. Per venster:
+   land invullen, zoeken, de juiste regel kiezen en **Save in het venster**.
+   - *Organisaties*: dezelfde naam komt vaak meerdere keren voor (bijv. 5×
+     "Quang Phu Seafood…" met een andere activiteit en een ander adres). De
+     extensie scoort elke regel op naam (exact, op B.V./Ltd na) of
+     erkenningsnummer, en daarnaast op rol (*EX – exporter*, *import*,
+     *PP/ES* voor de inrichting), adres, plaats en sector (vis →
+     *fishing*). De inrichting van oorsprong wordt gezocht op het
+     erkenningsnummer uit HC vak I.11 (*Place of dispatch*, bijv. DL 1022).
+   - *GN-code*: zoeken op 8, 6 of 4 cijfers; kiezen op GN-code en soort, en
+     bij meerdere producttypes op de aard van het product en de omschrijving
+     van de Animo-code (bijv. *wild gevangen* vs *aquacultuur*).
+   - *Animo-code*: de AI kiest die uit de Portbase-lijst; in het venster wordt
+     de code opgezocht en gekozen.
+   - Alleen een **duidelijke winnaar** wordt gekozen en opgeslagen. Anders
+     klikt de extensie *Cancel* en staat het veld als *handmatig* in het
+     verslag, met **Zoek in Portbase** (opent het venster met de zoekterm en
+     markeert de kandidaten).
+   - *Destination* wordt *Import* als de documenten niets anders zeggen.
 
-   In de dialoog **GN code** wordt gezocht op de GN-code (eerst 8 cijfers,
-   dan 6 en 4, omdat Portbase vaak 6-cijferige codes toont) en worden de
-   regels gerangschikt op GN-code en **wetenschappelijke naam** (die de AI
-   uit vak I.28 van het HC haalt). Eén beste regel wordt aangevinkt. Heeft
-   Portbase voor dezelfde code en soort meerdere **producttypes** (bijv.
-   aquacultuur / wild gevangen, houdbaar / niet houdbaar), dan worden die
-   gemarkeerd en staat in het verslag de *aard van het product* volgens het
-   HC erbij; die keuze (en daarmee de Animo-code) maak je zelf. Een door de
-   browser automatisch ingevuld veld *Scientific name* wordt eerst gewist.
-
-   De grenscontrolepost kiest de AI uit de vaste Portbase-lijst
-   (`BCP_NL` in `js/ggb-ai.js`; bijwerken als Portbase de lijst wijzigt).
-   Het **inspectiecentrum** vult de declarant zelf in; de extensie stelt het
-   niet voor en raakt het veld niet aan.
-
-Er wordt **nooit** op Opslaan of Verzenden geklikt: de declarant controleert
-en verstuurt zelf.
+De declaratie zelf wordt **nooit** opgeslagen of verzonden (*Save*/*Send*
+onderaan het formulier): de declarant controleert en verstuurt zelf. Alleen
+in de zoekvensters klikt de extensie op *Save* om de gekozen regel over te
+nemen.
 
 ### Instellen: AI-aanbieder kiezen
 
@@ -186,8 +181,11 @@ niets. Controleer of dit past binnen de afspraken van je organisatie.
   gevonden* zijn.
 - Portbase accepteert alleen **PDF** als bijlage; foto's worden wel
   uitgelezen maar niet geüpload.
-- De **Animo-code** volgt uit de gekozen regel in de GN-codedialoog
-  (producttype); bij meerdere producttypes kiest de declarant.
+- De **Animo-code** kiest de AI uit de Portbase-lijst (`ANIMO_CODES` in
+  `js/ggb-ai.js`); controleer die in het voorstel. Of de Animo-dialoog in
+  Portbase vanzelf opent na de GN-code of via een knop, is niet bekend; de
+  extensie probeert beide.
+- Het **inspectiecentrum** vult de declarant zelf in.
 - AI kan zich vergissen: controleer altijd de velden met zekerheid
   *middel*/*laag* en de aandachtspunten.
 

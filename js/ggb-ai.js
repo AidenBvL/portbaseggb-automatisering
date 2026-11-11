@@ -38,6 +38,63 @@
     return null;
   }
 
+  /* Animo-codes zoals in de Portbase-dialoog "ANIMO code" (stand nov. 2026). */
+  var ANIMO_CODES = [
+    ['101101', "Vers Vlees, slachtafvallen en vleesproducten / Vlees van als landbouwhuisdier gehouden hoefdieren"],
+    ['101105', "Vers Vlees, slachtafvallen en vleesproducten / Gehakt vlees, vleesbereidingen en separatorvlees"],
+    ['102108', "Andere visserijproducten dan 206107 (FQ3)"],
+    ['102148', "Levende schaaldieren of verse vis manueel ontdaan van kop en ingewanden uit Canada"],
+    ['103110', "Hele eieren / Eggs and egg products"],
+    ['104112', "Reuzel en gesmolten vet / MC"],
+    ['1041122', "Reuzel en gesmolten vet / Diervoeder"],
+    ['1041123', "Reuzel en gesmolten vet / Technisch Farmaceutisch"],
+    ['105113', "Darmen (natuurlijke) / Behandelde magen, blazen en darmen: uitsluitend ingewanden"],
+    ['106110', "Broedeieren / Eggs and egg products"],
+    ['107110', "Eiproducten / Eggs and egg products MC gekoeld/bevroren"],
+    ['119000', "Insecten voor MC"],
+    ['120116', "Zeer verfijnde producten"],
+    ['121000', "Samengestelde producten hoog risico"],
+    ['121001', "Samengestelde producten laag risico"],
+    ['201100', "Vlees van pluimvee en producten daarvan / Pluimveevleesproducten voor MC"],
+    ['201102', "Vlees van pluimvee en producten daarvan / Vlees van pluimvee en lagomorfen"],
+    ['201105', "Vlees van pluimvee en producten daarvan / Gehakt vlees, vleesbereidingen en separatorvlees"],
+    ['202102', "Konijnenvlees, vlees van wild en producten daarvan / Vlees van pluimvee en lagomorfen"],
+    ['202103', "Konijnenvlees, vlees van wild en producten daarvan / Vlees van gekweekt wild"],
+    ['202104', "Konijnenvlees, vlees van wild en producten daarvan / Vlees van vrij wild"],
+    ['202105', "Konijnenvlees, vlees van wild en producten daarvan / Gehakt vlees, vleesbereidingen en separatorvlees"],
+    ['2031092', "Melk en melkproducten (MC) / Rauwe melk en zuivelproducten obv colostrum gekoeld/bevroren"],
+    ['2031093', "Melk en melkproducten (MC) / Overige zuivelproducten ambient"],
+    ['204110', "Eiproducten / Eggs and egg products MC, ambient"],
+    ['205000', "Verwerkte dierlijke eiwitten voor menselijke consumptie"],
+    ['206107', "Visproducten aquacult. en 2-kleppige weekdieren MC, tenzij hermetisch verpakt én ambient"],
+    ['207000', "Honing"],
+    ['301201', "Sperma"],
+    ['302202', "Embryo's"],
+    ['303000', "Mest"],
+    ['304002', "Melk en melkproducten / Technisch Farmaceutisch"],
+    ['304302', "Melk en melkproducten / Diervoeder"],
+    ['305114', "Gelatine en collageen Humaan en technisch of farmaceutisch gebruik"],
+    ['305115', "Collageen technisch of farmaceutisch gebruik"],
+    ['305145', "Gelatine en collageen diervoeder"],
+    ['305416', "Gelatine voor de fotografische industrie"],
+    ['306111', "Kikkerbilletjes en Slakken"],
+    ['307001', "Beenderen en producten / Meel van beenderen/ Vleesbeendermeel / Gedroogde kanen (Techn./Farmaceut.)"],
+    ['307304', "Beenderen en producten / Meel van beenderen/ Vleesbeendermeel / Gedroogde kanen (Diervoeder)"],
+    ['308000', "Huiden"],
+    ['309304', "Haar van varkens, wol, haar en veren / Meel van veren"],
+    ['310304', "Hoornen, hoeven en producten uit hoornen en hoeven / Meel van hoornen / Meel van hoeven"],
+    ['311000', "Producten van de bijenteelt"],
+    ['312000', "Jachttrofeeën"],
+    ['313304', "Verwerkt voeder voor gezelschapsdieren / alle incl. op basis van verwerkte huiden"],
+    ['314000', "Grondstoffen voor vervaardiging petfood"],
+    ['315000', "Farmac. Grondstoffen o.a. bloedproducten, klieren en organen"],
+    ['316304', "Bloedproducten voor technisch gebruik / Meel van bloed"],
+    ['317000', "Pathogenen"],
+    ['318000', "Hooi en stro"],
+    ['319000', "Tussenproducten"],
+    ['400304', "Overig / Mengsels van onder 307000 t/m 316000 genoemde meelsoorten"]
+  ].map(function (x) { return { code: x[0], omschrijving: x[1] }; });
+
   var DOC_CODES = ['HC', 'LAB', 'CATCH', 'OFFCERT', 'PRIVATT', 'CITES', 'COI', 'PHYTO', 'COMM', 'OTHER'];
   var ZEKERHEID = ['hoog', 'middel', 'laag'];
 
@@ -61,27 +118,30 @@
   }
   function str(d, e) { var s = { type: 'string', description: d }; if (e) s.enum = e; return s; }
 
+  function organisatie(beschrijving) {
+    var o = obj({
+      naam: str('Naam precies zoals op het document'),
+      adres: str('Straat/adres zoals op het document, op één regel (zonder plaats en land)'),
+      plaats: str('Plaats/stad (bijv. "Binh An", "Rotterdam")'),
+      land: str('ISO 3166-1 alpha-2 landcode'),
+      erkenningsnummer: str('Erkennings-/approval-/registratienummer indien vermeld (bijv. "DL 1022"), anders leeg'),
+      bron: str('Bron, bijv. "HC vak I.1"'),
+      zekerheid: str('Zekerheid', ZEKERHEID)
+    });
+    o.description = beschrijving;
+    return o;
+  }
+
   var SCHEMA = obj({
     declaratieType: veld('"PRD" voor producten van dierlijke oorsprong (CHED-P), "LNV" voor levensmiddelen/diervoeders van niet-dierlijke oorsprong (CHED-D).', { enum: ['PRD', 'LNV', ''] }),
     bol: veld('Bill of lading number (I.13), zoals op B/L of HC. Leeg als niet in de documenten.'),
     bestemming: veld('Destination (I.20-25): bijv. "Import", "Transit", "Transhipment", "Warehouse". Bij twijfel "Import".'),
-    exporteur: obj({
-      naam: str('Naam exporteur/afzender (HC vak I.1)'),
-      adres: str('Volledig adres op één regel'),
-      land: str('ISO 3166-1 alpha-2 landcode'),
-      bron: str('Bron'),
-      zekerheid: str('Zekerheid', ZEKERHEID)
-    }),
-    importeur: obj({
-      naam: str('Naam importeur/ontvanger (HC vak I.5/I.6)'),
-      adres: str('Volledig adres op één regel'),
-      land: str('ISO 3166-1 alpha-2 landcode'),
-      bron: str('Bron'),
-      zekerheid: str('Zekerheid', ZEKERHEID)
-    }),
+    exporteur: organisatie('Exporteur/afzender (HC vak I.1 "Consignor/Exporter")'),
+    importeur: organisatie('Importeur/ontvanger (HC vak I.5 "Consignee/Importer" of I.6 "Operator responsible")'),
     grenscontrolepost: veld('Border control post (I.4) uit de Portbase-lijst. Afleiden uit HC vak I.4 / haven van binnenkomst (zeevracht via Rotterdam: "Rotterdam (NLRTM1)", luchtvracht Schiphol: "Amsterdam Airport Schiphol (NLAMS4)").',
       { enum: BCP_NL.map(function (e) { return e.label; }).concat(['']) }),
-    plaatsBestemming: veld('Place of destination (I.7): naam + adres van de plaats van bestemming.'),
+    plaatsBestemming: organisatie('Place of destination (I.7, HC vak I.7 of I.12): bedrijf/koelhuis van bestemming'),
+    plaatsVerzending: organisatie('Place of dispatch / inrichting van oorsprong (HC vak I.11 "Place of dispatch"), met erkenningsnummer ("Approval number")'),
     landOorsprong: veld('Country of origin (I.11), ISO alpha-2.'),
     landLading: veld('Country of loading (I.14), ISO alpha-2 (land van de laadhaven).'),
     gecertificeerdVoor: veld('Goods certified as or for (I.18).', { enum: ['Human consumption', 'Feedingstuff', 'Pharmaceutical use', 'Technical use', 'Further process', 'Other', ''] }),
@@ -123,6 +183,7 @@
         batchnummer: str('Batchnummer / lotnummer (I.34)'),
         aanvullendeEenheden: str('Additional units (I.33), indien vermeld'),
         erkenningsnummer: str('Activity / approval number (I.15): erkenningsnummer van de inrichting van oorsprong, bijv. "1234" of "IN-1234"'),
+        animoCode: str('Animo-code (Portbase/NVWA) die bij dit product hoort, uit de lijst: ' + ANIMO_CODES.map(function (a) { return a.code + ' = ' + a.omschrijving; }).join('; ') + '. Vis uit aquacultuur en tweekleppige weekdieren: 206107; wild gevangen vis: 102108. Leeg als je het niet zeker weet.', ANIMO_CODES.map(function (a) { return a.code; }).concat([''])),
         wetenschappelijkeNaam: str('Soort, wetenschappelijke naam zoals op het HC (vak I.28 "Species"), bijv. "Penaeus vannamei" of "Gallus gallus". Leeg als niet vermeld.'),
         aardProduct: str('Aard/behandeling van het product zoals op het HC (vak I.28 "Nature of commodity", "Treatment type", "Type of product"), bijv. "Farmed, frozen", "Wild caught", "Meat preparation, frozen", "Shelf-stable composite product". Letterlijk overnemen.'),
         containernummer: str('Container waarin dit item zit, indien bekend'),
@@ -154,6 +215,10 @@
     '  ook factuur, paklijst en B/L (als COMM). Welke documenten in de GGB komen, bepaalt de declarant aan de hand van de',
     '  NVWA-regels (meestal alleen het HC, soms een labrapport). Vermeld bij een labrapport naar welk HC-nummer het verwijst.',
     '- Maak één goederenitem per GN-code/partij zoals op het HC. Tel gewichten niet zelf op tenzij nodig, en meld het dan.',
+    '- Neem bij exporteur (I.1), importeur (I.5/I.6), plaats van bestemming (I.7/I.12) en plaats van verzending (I.11,',
+    '  inrichting van oorsprong) naam, adres, plaats, land en erkenningsnummer letterlijk over: daarmee wordt in Portbase',
+    '  het juiste bedrijf gekozen (dezelfde naam komt vaak meerdere keren voor met een ander adres of andere activiteit).',
+    '- Kies per goederenitem de Animo-code uit de lijst in het schema (bijv. vis uit aquacultuur 206107, wild gevangen 102108).',
     '- Neem per goederenitem de wetenschappelijke naam en de aard/behandeling van het product (vak I.28) letterlijk over;',
     '  Portbase heeft per GN-code en soort meerdere producttypes en de declarant kiest daarmee het juiste.',
     '- Meld onder "waarschuwingen" elke tegenstrijdigheid (bijv. ander gewicht of containernummer op HC dan op B/L),',
@@ -243,7 +308,7 @@
     raw = raw || {};
     var w = (raw.waarschuwingen || []).map(s).filter(Boolean);
     var r = {};
-    ['declaratieType', 'bol', 'bestemming', 'grenscontrolepost', 'plaatsBestemming', 'landOorsprong', 'landLading',
+    ['declaratieType', 'bol', 'bestemming', 'grenscontrolepost', 'landOorsprong', 'landLading',
      'gecertificeerdVoor', 'transportconditie', 'vervoermiddel', 'vervoermiddelNaam', 'vervoermiddelNationaliteit',
      'aankomstDatum', 'aankomstTijd'].forEach(function (k) { r[k] = normVeld(raw[k]); });
 
@@ -268,11 +333,14 @@
     r.bol.waarde = r.bol.waarde.replace(/\s+/g, '');
     if (r.declaratieType.waarde !== 'PRD' && r.declaratieType.waarde !== 'LNV') r.declaratieType.waarde = '';
 
-    ['exporteur', 'importeur'].forEach(function (k) {
+    ['exporteur', 'importeur', 'plaatsBestemming', 'plaatsVerzending'].forEach(function (k) {
       var p = raw[k] || {};
-      if (typeof p !== 'object') p = { naam: p, zekerheid: 'middel' };
-      r[k] = { naam: s(p.naam), adres: s(p.adres), land: normLand(p.land), bron: s(p.bron), zekerheid: ZEKERHEID.indexOf(p.zekerheid) >= 0 ? p.zekerheid : 'laag' };
+      if (typeof p !== 'object') p = { naam: p, zekerheid: s(p) ? 'middel' : 'laag' };
+      if (p.waarde != null && p.naam == null) p = { naam: p.waarde, bron: p.bron, zekerheid: p.zekerheid }; // oud formaat {waarde}
+      r[k] = { naam: s(p.naam), adres: s(p.adres), plaats: s(p.plaats), land: normLand(p.land), erkenningsnummer: s(p.erkenningsnummer),
+        bron: s(p.bron), zekerheid: ZEKERHEID.indexOf(p.zekerheid) >= 0 ? p.zekerheid : 'laag' };
     });
+    if (!r.bestemming.waarde) r.bestemming = { waarde: 'Import', bron: 'Standaard (niet in de documenten)', zekerheid: 'middel' };
 
     r.containers = (raw.containers || []).map(function (c) {
       var nr = s(c.containernummer).toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -308,6 +376,7 @@
         batchnummer: s(g.batchnummer),
         aanvullendeEenheden: s(g.aanvullendeEenheden),
         erkenningsnummer: s(g.erkenningsnummer),
+        animoCode: ANIMO_CODES.some(function (a) { return a.code === s(g.animoCode); }) ? s(g.animoCode) : '',
         wetenschappelijkeNaam: s(g.wetenschappelijkeNaam),
         aardProduct: s(g.aardProduct),
         containernummer: s(g.containernummer).toUpperCase().replace(/[^A-Z0-9]/g, ''),
@@ -354,7 +423,7 @@
         return { naam: doc.type, type: doc.type, identificatie: doc.identificatie, datum: doc.datumAfgifte, verwijstNaar: doc.verwijstNaar, bestand: doc.bestand, landAfgifte: doc.landAfgifte };
       }),
       goederen: r.goederen.map(function (g) {
-        return { gn: g.gnCode, animo: '', omschrijving: g.omschrijving, brutoGewicht: g.brutoGewicht, nettoGewicht: g.nettoGewicht };
+        return { gn: g.gnCode, animo: g.animoCode || '', omschrijving: g.omschrijving, brutoGewicht: g.brutoGewicht, nettoGewicht: g.nettoGewicht };
       })
     };
   }
@@ -483,7 +552,7 @@
   }
 
   var exported = {
-    PORTBASE_DOCTYPE: PORTBASE_DOCTYPE, PORTBASE_DOCTYPES: PORTBASE_DOCTYPES, bepaalGgbDocumenten: bepaalGgbDocumenten,
+    ANIMO_CODES: ANIMO_CODES, PORTBASE_DOCTYPE: PORTBASE_DOCTYPE, PORTBASE_DOCTYPES: PORTBASE_DOCTYPES, bepaalGgbDocumenten: bepaalGgbDocumenten,
     PROVIDERS: PROVIDERS, EFFORTS: EFFORTS, instellingen: instellingen, aanbiederProbleem: aanbiederProbleem,
     handmatigePrompt: handmatigePrompt, leesJsonAntwoord: leesJsonAntwoord,
     SCHEMA: SCHEMA, SYSTEM: SYSTEM, DOC_CODES: DOC_CODES,
