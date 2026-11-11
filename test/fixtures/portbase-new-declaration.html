@@ -16,6 +16,8 @@
   behouden. De scripts onderaan bootsen mat-select, mat-autocomplete,
   "Add ..."-knoppen en de zoekdialogen na.
 -->
+<!-- Zoals Portbase: het formulier staat in een zijbalk die sluit op Escape (inbox(sidebar:create-declaration)) -->
+<mat-drawer class="sidebar" data-test="sidebar">
 <app-declaration-form>
 <mat-card class="mat-mdc-card mdc-card"><form novalidate="" id="form">
 <mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">General</mat-card-title>
@@ -136,6 +138,7 @@
 </div></mat-card-actions>
 </form></mat-card>
 </app-declaration-form>
+</mat-drawer>
 <div class="cdk-overlay-container"></div>
 <script>
   // ---- nabootsing van het gedrag van Angular Material / Portbase ----
@@ -224,6 +227,11 @@
   // Zoals de echte Portbase: het paneel staat als <div popover="manual" class="cdk-overlay-popover"> naast het veld
   // (niet in .cdk-overlay-container) en het veld wijst ernaar met aria-controls.
   var paneelNr = 0;
+  // Zijbalk: Escape (keydown die tot hier opborrelt) sluit het hele formulier, net als in Portbase.
+  window.__zijbalkDicht = 0;
+  document.querySelector('mat-drawer.sidebar').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' || e.keyCode === 27) { window.__zijbalkDicht++; e.currentTarget.remove(); }
+  });
   // Zoals Angular bij een nieuwe zoekopdracht: rijen weg, direct de lege staat "No results" (nieuw element), resultaten volgen later.
   function leegTabel(tab, kolommen) {
     tab.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
@@ -271,12 +279,20 @@
     });
     (veld.tagName === 'MAT-SELECT' ? veld : veld.parentElement).appendChild(pop);
     if (pop.showPopover) pop.showPopover(); // zoals Angular CDK: popover zichtbaar maken
+    pop.querySelector('.cdk-overlay-backdrop').addEventListener('click', function () { window.__backdrop = (window.__backdrop || 0) + 1; sluitPanelen(); });
+    if (!veld.__toetsen) { veld.__toetsen = true; veld.addEventListener('keydown', toetsVeld); }
     veld.setAttribute('aria-controls', id);
     veld.setAttribute('aria-expanded', 'true');
   }
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { sluitPanelen(); return; }
-    var veld = e.target, lb = veld.getAttribute && veld.getAttribute('aria-controls') && document.getElementById(veld.getAttribute('aria-controls'));
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') sluitPanelen(); });
+  // Klik naast een suggestielijst (autocomplete) sluit die, zoals Angular.
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target : e.target.parentElement;
+    if (t.closest('.cdk-overlay-popover.mock')) return;
+    document.querySelectorAll('input[aria-controls^="mock-panel"]').forEach(function (i) { if (i !== t) sluitPanelen(); });
+  }, true);
+  function toetsVeld(e) {
+    var veld = e.currentTarget, lb = veld.getAttribute && veld.getAttribute('aria-controls') && document.getElementById(veld.getAttribute('aria-controls'));
     if (!lb) return;
     var os = Array.prototype.slice.call(lb.querySelectorAll('mat-option')), i = os.findIndex(function (o) { return o.id === veld.getAttribute('aria-activedescendant'); });
     if (e.keyCode === 40 || e.keyCode === 38) i = Math.max(0, Math.min(os.length - 1, i + (e.keyCode === 40 ? 1 : -1)));
@@ -285,7 +301,7 @@
     os.forEach(function (o) { o.classList.remove('mat-mdc-option-active'); });
     os[i].classList.add('mat-mdc-option-active');
     veld.setAttribute('aria-activedescendant', os[i].id);
-  });
+  }
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target : e.target.parentElement;
     var knop = t.closest('button');

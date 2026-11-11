@@ -80,8 +80,17 @@
     el.click();
   }
 
+  /**
+   * Toets naar één veld (pijltjes/Enter voor de keuzelijst). Het veld zelf
+   * verwerkt de toets; daarboven wordt hij tegengehouden, zodat de zijbalk
+   * met het formulier (sluit op toetsen als Escape) er niets van merkt.
+   */
   function toets(el, key, keyCode) {
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: key, code: key, keyCode: keyCode, which: keyCode, bubbles: true, cancelable: true }));
+    var ev = new KeyboardEvent('keydown', { key: key, code: key, keyCode: keyCode, which: keyCode, bubbles: true, cancelable: true });
+    var ouder = el.parentElement;
+    var stop = function (e) { if (e === ev) e.stopPropagation(); };
+    if (ouder) ouder.addEventListener('keydown', stop);
+    try { el.dispatchEvent(ev); } finally { if (ouder) ouder.removeEventListener('keydown', stop); }
   }
 
   /** Eerste element voor de selectors; zichtbare elementen gaan voor (verborgen secties hergebruiken data-test-namen). */
@@ -199,13 +208,25 @@
     return (termen || []).some(function (t) { return termScore(tekst, t) >= 3; });
   }
 
-  /** Sluit een open keuzelijst. Met el: alleen het paneel van dat veld (veilig binnen een dialoog). */
-  function sluitOverlay(el) {
-    if (el) { el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true })); return; }
-    if (q('mat-dialog-container')) return; // nooit een Portbase-dialoog wegklikken
-    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    var bd = q('.cdk-overlay-backdrop');
-    if (bd) bd.click();
+  /**
+   * Sluit de open keuzelijst/suggestielijst van één veld. NOOIT met Escape:
+   * Escape sluit de Portbase-zijbalk met het hele formulier (en een dialoog).
+   * Een keuzelijst sluit via zijn eigen doorzichtige backdrop; een
+   * suggestielijst via een klik op een neutrale plek in hetzelfde formulier
+   * of venster (de titel), zoals een gebruiker naast de lijst klikt.
+   */
+  async function sluitOverlay(el) {
+    if (!el || !(paneelOpen(el) || opties(el).length)) return;
+    var p = eigenPaneel(el), pane = p && p.closest('.cdk-overlay-pane');
+    var bd = pane && pane.previousElementSibling;
+    // Alleen de doorzichtige backdrop van dit paneel (die van een dialoog is donker en sluit de dialoog).
+    if (bd && bd.classList.contains('cdk-overlay-backdrop') && bd.classList.contains('cdk-overlay-transparent-backdrop')) bd.click();
+    else {
+      var dlg = el.closest('mat-dialog-container, [role="dialog"]'), kaart = el.closest('mat-card-content');
+      var neutraal = (dlg && q('[mat-dialog-title], h2', dlg)) || (kaart && q('mat-card-title', kaart)) || el.closest('.row') || el.closest('form');
+      if (neutraal) klik(neutraal);
+    }
+    await wachtOp(function () { return !paneelOpen(el) && !opties(el).length; }, 1000);
   }
 
   /** Tekst van de gekozen waarde in een mat-select ('' als leeg). */
@@ -247,9 +268,9 @@
       // Wachten tot het paneel klaar is (opties aanwezig en niet meer veranderend).
       var lijst = await wachtStabiel(function () { var o = opties(el); return o.length ? o : null; }, 250, 4000,
         function (l) { return l.length + ':' + (l[0].id || txt(l[0])); });
-      if (!lijst) { sluitOverlay(el); continue; }
+      if (!lijst) { await sluitOverlay(el); continue; }
       var o = besteOptie(lijst, termen);
-      if (!o) { sluitOverlay(el); return { ok: false, melding: 'geen passende optie voor "' + termen[0] + '" (opties: ' + lijst.slice(0, 8).map(txt).join(', ') + ')' }; }
+      if (!o) { await sluitOverlay(el); return { ok: false, melding: 'geen passende optie voor "' + termen[0] + '" (opties: ' + lijst.slice(0, 8).map(txt).join(', ') + ')' }; }
       var tekst = txt(o);
       var klaar = function () { return optieGekozen(o) || (selectTekst(el) && termScore(selectTekst(el), tekst) === 4); };
       try { o.scrollIntoView({ block: 'nearest' }); } catch (e) { /* geen scroll */ }
@@ -259,11 +280,11 @@
       if (ok) {
         // Angular sluit het paneel en zet de waarde na change detection.
         await wachtOp(function () { return termScore(selectTekst(el), tekst) === 4; }, 1500);
-        if (paneelOpen(el)) sluitOverlay(el);
+        await sluitOverlay(el);
         await wacht(TEMPO);
         return { ok: true, gekozen: selectTekst(el) || tekst };
       }
-      sluitOverlay(el);
+      await sluitOverlay(el);
       await wacht(TEMPO);
     }
     if (!opties(el).length && !selectTekst(el)) return { ok: false, melding: 'keuzelijst ging niet open of Portbase nam de keuze niet over; kies zelf' };
@@ -282,7 +303,7 @@
     var o = await wachtStabiel(function () { var l = opties(el); return l.length ? besteOptie(l, termen) : null; }, 300, timeout || 8000);
     if (!o) {
       var l = opties(el);
-      sluitOverlay(el); blur(el);
+      await sluitOverlay(el); blur(el);
       return { ok: false, melding: l.length ? 'geen passende suggestie voor "' + zoekterm + '" (opties: ' + l.slice(0, 6).map(txt).join(', ') + ')' : 'geen suggesties verschenen voor "' + zoekterm + '"; kies zelf uit de lijst' };
     }
     var tekst = txt(o);
@@ -294,7 +315,7 @@
     var ok = await wachtOp(klaar, 1500);
     if (!ok) ok = await kiesMetToetsen(el, tekst, klaar);
     await wacht(TEMPO);
-    if (!ok) { sluitOverlay(el); return { ok: false, melding: 'suggestie "' + tekst + '" aangeklikt, maar Portbase nam die niet over; kies zelf' }; }
+    if (!ok) { await sluitOverlay(el); return { ok: false, melding: 'suggestie "' + tekst + '" aangeklikt, maar Portbase nam die niet over; kies zelf' }; }
     return { ok: true, gekozen: String(el.value || '').trim() || tekst };
   }
 
@@ -336,7 +357,7 @@
       if (def.soort === 'tekst') {
         zetWaarde(el, waarde);
         blur(el);
-        sluitOverlay(el);
+        await sluitOverlay(el);
       } else if (isSelect(el)) {
         var s = await kiesInSelect(el, termen);
         if (!s.ok) { r.status = 'handmatig'; r.melding = s.melding; } else r.melding = s.gekozen !== waarde ? 'gekozen: ' + s.gekozen : '';

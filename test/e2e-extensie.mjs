@@ -43,7 +43,7 @@ const AI_JSON = {
   ],
   goederen: [
     { gnCode: '03061792', gnCodeHc: '030617', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '206107', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
-    { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Carton', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '102108', wetenschappelijkeNaam: 'Penaeus monodon', aardProduct: 'Wild caught, frozen', bron: 'HC', zekerheid: 'hoog' }
+    { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Drum', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', animoCode: '102108', wetenschappelijkeNaam: 'Penaeus monodon', aardProduct: 'Wild caught, frozen', bron: 'HC', zekerheid: 'hoog' }
   ],
   waarschuwingen: ['Aankomstdatum niet in de documenten; overgenomen uit extra info.']
 };
@@ -114,6 +114,11 @@ try {
   await page.locator('#ai-verslag h3').waitFor({ timeout: 300000 });
   console.log('Invullen duurde ' + Math.round((Date.now() - t0) / 1000) + ' s');
   const verslag = await page.locator('#ai-verslag').innerText();
+  // Escape sluit in Portbase de zijbalk met het formulier: de extensie mag die nooit sturen
+  assert.strictEqual(await page.evaluate(() => window.__zijbalkDicht), 0, 'zijbalk met het formulier bleef open');
+  assert.ok(await page.evaluate(() => window.__backdrop) >= 1, 'keuzelijst zonder passende optie gesloten via de backdrop');
+  assert.ok(/Package type \(I\.32\): Drum.*handmatig.*geen passende optie/s.test(verslag) || /Package type \(I\.32\)[^\n]*Drum[\s\S]{0,80}geen passende optie/.test(verslag), verslag);
+  assert.strictEqual(await page.locator('[data-test="packaging-package-type"]').nth(1).locator('.cdk-overlay-popover').count(), 0, 'lijst weer dicht');
 
   const waarde = (sel, n = 0) => page.locator(sel).nth(n).inputValue();
   const tekst = (sel, n = 0) => page.locator(sel).nth(n).innerText();
@@ -330,6 +335,7 @@ try {
   const t4 = Date.now();
   await p4.locator('#ai-fill').click();
   await p4.locator('#ai-verslag h3').waitFor({ timeout: 400000 });
+  assert.strictEqual(await p4.evaluate(() => window.__zijbalkDicht), 0, 'zijbalk bleef open (Quang Phu)');
   console.log('Quang Phu invullen duurde ' + Math.round((Date.now() - t4) / 1000) + ' s');
   const k4 = (sel, n = 0) => p4.locator(sel).nth(n).innerText();
   const w4 = (sel, n = 0) => p4.locator(sel).nth(n).inputValue();
