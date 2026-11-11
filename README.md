@@ -72,7 +72,9 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    landcodes, GN-codes en gewichten, controleert containernummers
    (ISO 6346-controlecijfer) en meldt tegenstrijdigheden tussen documenten
    onder *Aandachtspunten*.
-3. **Welke documenten in de GGB komen** bepaalt de extensie met dezelfde
+3. **Welke documenten in de GGB komen** bepaalt de extensie (alleen wat
+   *verplicht* is; *ter beoordeling*, zoals een vangstcertificaat, vink je
+   zelf aan als de NVWA het wil zien) met dezelfde
    regels als de documentcheck (TARIC + NVWA) op basis van GN-code en land
    van oorsprong: meestal alleen het **gezondheidscertificaat**, soms ook
    een labrapport of officieel certificaat. Factuur, paklijst en B/L worden
@@ -91,8 +93,10 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    declaration" of een bewerkbare declaratie). De extensie vult:
    declaratietype, B/L, bestemming, land van oorsprong/lading, I.18, I.16,
    vervoermiddel + naam + nationaliteit, ETA, containers + zegels,
+   (keuzelijsten met de echte Portbase-opties, bijv. *Sea transport*,
+   *Human consumption*, *Frozen*),
    documentregels voor de documenten die in de GGB horen (type, nummer,
-   datum, land, **en uploadt het bijbehorende bestand**) en goederenitems (omschrijving, gewichten, colli, verpakking,
+   datum, land, **en uploadt het bijbehorende bestand**) en goederenitems (gewichten, colli, verpakking,
    batch, erkenningsnummer). Ontbrekende documentregels/goederenitems worden
    aangemaakt met *Add document* / *Add goods item*.
 6. **Zoekvensters worden automatisch afgehandeld** (uit te zetten met het
@@ -107,7 +111,10 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
      *PP/ES* voor de inrichting), adres, plaats en sector (vis →
      *fishing*). De inrichting van oorsprong wordt gezocht op het
      erkenningsnummer uit HC vak I.11 (*Place of dispatch*, bijv. DL 1022).
-   - *GN-code*: zoeken op 8, 6 of 4 cijfers; kiezen op GN-code en soort, en
+   - *Goederenomschrijving* vult de extensie niet in: Portbase doet dat zelf
+     na het kiezen van de GN-code.
+   - *GN-code*: zoeken op GN-code **plus Latijnse naam** (zoals de
+     declarant), met 8, 6 of 4 cijfers en zo nodig zonder naam; kiezen op GN-code en soort, en
      bij meerdere producttypes op de aard van het product en de omschrijving
      van de Animo-code (bijv. *wild gevangen* vs *aquacultuur*).
    - *Animo-code*: de AI kiest die uit de Portbase-lijst; in het venster wordt
@@ -165,6 +172,17 @@ Daarna werkt alles hetzelfde: documentcheck, voorstel aanpassen,
 **Privacy:** bij *Uitlezen* gaan de geselecteerde documenten naar de API
 van de gekozen aanbieder. In de handmatige modus verstuurt de extensie
 niets. Controleer of dit past binnen de afspraken van je organisatie.
+
+### Van HC naar Portbase
+
+De AI gebruikt een vaste vertaling van de vakken van het HC (TRACES-model)
+naar de GGB: I.1 → exporteur, I.5 → importeur (niet I.6 *operator
+responsible*), I.11 → inrichting van oorsprong (met approval number),
+I.12 → plaats van bestemming (met approval number, kan in een ander
+EU-land liggen), I.15 → vervoermiddel (naam + vlag), I.16 → grenscontrolepost,
+I.18 → transportconditie, I.19 → containers, I.20 → *certified as or for*,
+I.22 → *Import*, I.27 → goederenitems (één per GN-code + soort; regels
+worden opgeteld, brutogewichten uit paklijst/B/L).
 
 ### Beperkingen
 

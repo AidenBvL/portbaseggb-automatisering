@@ -287,6 +287,13 @@ test('GGB-documenten: sesamzaad India -> varianten Ver. 2019/1793', () => {
   assert.ok(/Ver\. 2019\/1793/.test(r.documenten[1].reden));
 });
 
+test('GGB-documenten: "ter beoordeling" (vangstcertificaat) standaard niet opnemen', () => {
+  const r = ggbDocs({ declaratieType: veld('PRD'), landOorsprong: veld('VN'), goederen: [{ gnCode: '03074399', omschrijving: 'Cuttlefish' }],
+    documenten: [doc('HC', 'IMPORT.EU.VN.2026.0000001'), doc('CATCH', ''), doc('OTHER', 'LAB-TEST-01')] });
+  assert.deepStrictEqual(r.documenten.map((d) => d.opnemen), [true, false, false]);
+  assert.ok(/zelf aanvinken/.test(r.documenten[1].reden));
+});
+
 test('GGB-documenten: garnalen Noorwegen -> alleen HC; meegestuurd labrapport niet opnemen', () => {
   const r = ggbDocs({ declaratieType: veld('PRD'), landOorsprong: veld('NO'), goederen: [{ gnCode: '03061792', omschrijving: 'Shrimps' }],
     documenten: [doc('HC', 'HC1'), doc('LAB', 'LAB1')] });

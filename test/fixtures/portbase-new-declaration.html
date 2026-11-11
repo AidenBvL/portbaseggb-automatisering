@@ -46,9 +46,9 @@
 <mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Goods</mat-card-title>
 <app-form-goods><form novalidate="" class="responsive-form">
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label for="goodsIntendedUseCode">Goods certified as or for <span>(I.18)</span></mat-label></label>
-    <mat-select role="combobox" formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code" class="mat-mdc-select" aria-disabled="false" data-opties="Human consumption|Feedingstuff|Pharmaceutical use|Technical use|Further process|Other"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+    <mat-select role="combobox" formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code" class="mat-mdc-select" aria-disabled="false" data-opties="Other|Feedstuff|Pharmaceutical use|Trade sample|Human consumption|Technical use|Further processing"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label for="transportConditionsCode">Transport conditions <span>(I.16)</span></mat-label></label>
-    <mat-select role="combobox" formcontrolname="transportConditionsCode" data-test="transport-conditions-code" class="mat-mdc-select" aria-disabled="false" data-opties="Ambient|Chilled|Frozen"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+    <mat-select role="combobox" formcontrolname="transportConditionsCode" data-test="transport-conditions-code" class="mat-mdc-select" aria-disabled="false" data-opties="Chilled|Frozen|Ambient"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
 </form></app-form-goods></mat-card-content>
 
 <!-- Verborgen secties; hergebruiken data-test="country-of-loading-un-code" en id="billOfLadingNumber" -->
@@ -63,7 +63,7 @@
 <mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Means of transport before border</mat-card-title>
 <app-form-means-of-transport-before-border><form novalidate="" class="responsive-form">
   <div formgroupname="arrival" class="row"><div formgroupname="meansOfTransport" class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Means of transport <span>(I.13)</span></mat-label></label>
-      <mat-select role="combobox" formcontrolname="mode" data-test="arrival-means-of-transport-mode" class="mat-mdc-select" aria-disabled="false" data-opties="Sea|Air|Rail|Road"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
+      <mat-select role="combobox" formcontrolname="mode" data-test="arrival-means-of-transport-mode" class="mat-mdc-select" aria-disabled="false" data-opties="Sea transport|Rail transport|Road transport|Air transport"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
     <div formgroupname="meansOfTransport" class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Name / identification <span>(I.13)</span></mat-label></label>
       <input matinput="" type="text" id="identification" formcontrolname="identification" data-test="arrival-means-of-transport-identification" required=""></mat-form-field></div></div>
   <div formgroupname="arrival" class="row"><div formgroupname="meansOfTransport" class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Nationality <span>(I.13)</span></mat-label></label>
@@ -135,7 +135,7 @@
 <script>
   // ---- nabootsing van het gedrag van Angular Material / Portbase ----
   window.__klikken = [];
-  var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam', ID: 'Indonesia' };
+  var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam', ID: 'Indonesia', DE: 'Germany', SG: 'Singapore' };
   var overlay = document.querySelector('.cdk-overlay-container');
   // GN-codedialoog: ingekorte kopie van <app-gn-code-dialog> (data-test en kolommen zoals in Portbase)
   var GN_CODES = [
@@ -145,7 +145,11 @@
     ['160232', 'Andere bereidingen en conserven, van vlees, van slachtafvallen of van bloed', 'Gallus gallus', 'Vleesproducten'],
     ['030617', 'Garnalen, bevroren', 'Penaeus vannamei', 'Visserijproducten (aquacultuur)'],
     ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (aquacultuur)'],
-    ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (wild gevangen)']
+    ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (wild gevangen)'],
+    ['030743', 'Inktvissen (Sepia officinalis, Rossia macrosoma, Sepiola spp.) en pijlinktvissen, bevroren', 'Sepia lycidas', 'Visserijproducten (wild gevangen)'],
+    ['030743', 'Inktvissen (Sepia officinalis, Rossia macrosoma, Sepiola spp.) en pijlinktvissen, bevroren', 'Sepia officinalis', 'Visserijproducten (wild gevangen)'],
+    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus membranaceus', 'Visserijproducten (wild gevangen)'],
+    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus vulgaris', 'Visserijproducten (wild gevangen)']
   ];
   var GN_DIALOOG = '<app-gn-code-dialog class="mat-mdc-dialog-component-host"><h2 mat-dialog-title="">GN code</h2><mat-dialog-content><p class="mb-1">Search on description or GN code.</p><form novalidate="" class="responsive-form"><div class="row search">' +
     '<div><mat-form-field><label><mat-label>Description or GN code</mat-label></label><input matinput="" formcontrolname="name" type="text" id="name" minlength="4" data-test="name" placeholder="At least 4 character(s)" required=""></mat-form-field></div>' +
@@ -181,7 +185,9 @@
     { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE. CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'AE - animal_exporter', sec: 'EXP', hfd: 'veterinary' },
     { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'ES - establishment', sec: 'FOOD-OTH', hfd: 'food' },
     { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'EX - exporter', sec: 'FOOD-OTH', hfd: 'food' },
-    { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'LAND PLOT N 1358 / MAP SHEET 3 / GROUP 2 / AN PHUOC HAMLET', plaats: 'Binh An', erk: '', land: 'VN', act: 'EX - exporter', sec: 'CFFP', hfd: 'fishing' }
+    { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'LAND PLOT N 1358 / MAP SHEET 3 / GROUP 2 / AN PHUOC HAMLET', plaats: 'Binh An', erk: '', land: 'VN', act: 'EX - exporter', sec: 'CFFP', hfd: 'fishing' },
+    { naam: 'Testbestemming GmbH', adres: 'Teststraße 1', plaats: 'Teststadt', erk: '99999ES', land: 'DE', act: 'ES - establishment', sec: 'FOOD-OTH', hfd: 'food' },
+    { naam: 'Testbestemming GmbH', adres: 'Teststraße 2', plaats: 'Andere Stadt', erk: '', land: 'DE', act: 'IM - importer', sec: 'FOOD-OTH', hfd: 'food' }
   ];
   // ANIMO-codedialoog: ingekorte kopie van <app-animo-code-dialog> (opent hier na Save in de GN-codedialoog)
   var ANIMO = [['101101', 'Vers Vlees, slachtafvallen en vleesproducten / Vlees van als landbouwhuisdier gehouden hoefdieren'], ['101105', 'Vers Vlees, slachtafvallen en vleesproducten / Gehakt vlees, vleesbereidingen en separatorvlees'],
@@ -210,26 +216,44 @@
     '<mat-table data-test="organisations-list" class="mat-mdc-table search-results" role="table"><mat-header-row role="row" class="mat-mdc-header-row"><mat-header-cell class="mat-column-selection"></mat-header-cell><mat-header-cell class="mat-column-name"> Name </mat-header-cell><mat-header-cell class="mat-column-address"> Address </mat-header-cell><mat-header-cell class="mat-column-city"> City </mat-header-cell><mat-header-cell class="mat-column-approvalNumber"> Approval number </mat-header-cell></mat-header-row>' +
     '<tr class="mat-row cdk-no-data-row cdk-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="11"><ic-no-results><p>Start with search</p></ic-no-results></td></tr></mat-table></mat-dialog-content>' +
     '<mat-dialog-actions align="end"><button mat-dialog-close="" data-test="cancel" type="button"><span>Cancel</span></button><button data-test="save"><span>Save</span></button></mat-dialog-actions></app-organisation-dialog>';
-  function toon(opties, kies) {
-    overlay.innerHTML = '';
-    opties.forEach(function (t) {
-      var o = document.createElement('mat-option'); o.setAttribute('role', 'option'); o.textContent = t;
-      o.addEventListener('click', function () { kies(t, o); overlay.innerHTML = ''; });
-      overlay.appendChild(o);
-    });
+  // Zoals de echte Portbase: het paneel staat als <div popover="manual" class="cdk-overlay-popover"> naast het veld
+  // (niet in .cdk-overlay-container) en het veld wijst ernaar met aria-controls.
+  var paneelNr = 0;
+  function sluitPanelen() {
+    document.querySelectorAll('.cdk-overlay-popover.mock').forEach(function (p) { p.remove(); });
+    document.querySelectorAll('[aria-controls^="mock-panel"]').forEach(function (x) { x.removeAttribute('aria-controls'); x.setAttribute('aria-expanded', 'false'); });
   }
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') overlay.innerHTML = ''; });
+  function toon(opties, kies, veld) {
+    sluitPanelen();
+    var id = 'mock-panel-' + (++paneelNr);
+    var pop = document.createElement('div');
+    pop.setAttribute('popover', 'manual');
+    pop.className = 'cdk-overlay-popover cdk-overlay-connected-position-bounding-box mock';
+    pop.innerHTML = '<div class="cdk-overlay-backdrop cdk-overlay-transparent-backdrop"></div><div class="cdk-overlay-pane"><div role="listbox" class="mat-mdc-select-panel mdc-menu-surface" id="' + id + '"></div></div>';
+    var lb = pop.querySelector('[role="listbox"]');
+    opties.forEach(function (t) {
+      var o = document.createElement('mat-option'); o.setAttribute('role', 'option'); o.className = 'mat-mdc-option mdc-list-item';
+      o.innerHTML = '<span class="mdc-list-item__primary-text"> ' + t + ' </span>';
+      o.addEventListener('click', function () { kies(t, o); sluitPanelen(); });
+      lb.appendChild(o);
+    });
+    (veld.tagName === 'MAT-SELECT' ? veld : veld.parentElement).appendChild(pop);
+    if (pop.showPopover) pop.showPopover(); // zoals Angular CDK: popover zichtbaar maken
+    veld.setAttribute('aria-controls', id);
+    veld.setAttribute('aria-expanded', 'true');
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') sluitPanelen(); });
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target : e.target.parentElement;
     var knop = t.closest('button');
     if (knop && knop.dataset.test) window.__klikken.push(knop.dataset.test);
     if (knop && /save|send/.test(knop.dataset.test || '')) e.preventDefault();
     // mat-select: opent opties na korte animatie
-    var sel = t.closest('mat-select');
+    var sel = t.closest('.cdk-overlay-popover') ? null : t.closest('mat-select');
     if (sel) setTimeout(function () {
       toon(sel.getAttribute('data-opties').split('|'), function (w) {
         sel.querySelector('.mat-mdc-select-value').innerHTML = '<span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">' + w + '</span></span>';
-      });
+      }, sel);
     }, 120);
     // "Add ..."-knop: nieuwe lege kaart
     if (knop && knop.classList.contains('add-new-row-button')) setTimeout(function () {
@@ -318,6 +342,8 @@
       if (gnKeuze) {
         dl.__bron.querySelector('span span:last-child').textContent = gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim();
         var kaart = dl.__bron.closest('mat-card');
+        var oms = kaart.querySelector('[data-test="goods-description"]');
+        if (oms) oms.value = gnKeuze.querySelector('.mat-column-description').textContent.trim();
         dl.remove();
         // Na de GN-code opent de ANIMO-dialoog
         setTimeout(function () {
@@ -350,7 +376,7 @@
     if (i.getAttribute && i.getAttribute('aria-autocomplete') === 'list') {
       var term = i.value.toUpperCase();
       var lijst = Object.keys(LANDEN).filter(function (k) { return k.indexOf(term) === 0 || LANDEN[k].toUpperCase().indexOf(term) === 0; }).map(function (k) { return k + ' - ' + LANDEN[k]; });
-      setTimeout(function () { toon(lijst, function (t) { i.value = t; i.dispatchEvent(new Event('mock-gekozen')); }); }, 100);
+      setTimeout(function () { toon(lijst, function (t) { i.value = t; i.dispatchEvent(new Event('mock-gekozen')); }, i); }, 100);
     }
   });
   document.addEventListener('change', function (e) {

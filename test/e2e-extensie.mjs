@@ -123,7 +123,7 @@ try {
   assert.strictEqual(await waarde('app-form-general #countryOfLoadingUnCode'), 'IN - India');
   assert.strictEqual(await keuze('[data-test="goods-intended-use-code"]'), 'Human consumption');
   assert.strictEqual(await keuze('[data-test="transport-conditions-code"]'), 'Frozen');
-  assert.strictEqual(await keuze('[data-test="arrival-means-of-transport-mode"]'), 'Sea', 'Vessel -> Sea');
+  assert.strictEqual(await keuze('[data-test="arrival-means-of-transport-mode"]'), 'Sea transport', 'Vessel -> Sea transport');
   assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-identification"]'), 'MSC ANNA / IMO 9000000');
   assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-nationality-un-code"]'), 'PA - Panama');
   assert.strictEqual(await waarde('app-form-means-of-transport-before-border [data-test="arrival-date-time-estimated"]'), '26-09-2026');
@@ -145,7 +145,9 @@ try {
   assert.strictEqual(await tekst('app-form-documents .file-name', 0), 'hc.pdf', 'HC geüpload in documentregel');
   // Goederen: twee items
   assert.strictEqual(await page.locator('app-form-goods-items form > mat-card').count(), 2);
-  assert.strictEqual(await waarde('[data-test="goods-description"]', 1), 'Frozen shrimps (Penaeus monodon)');
+  // Omschrijving niet door de extensie: Portbase vult die na het kiezen van de GN-code
+  assert.strictEqual(await waarde('[data-test="goods-description"]', 1), 'Garnalen, bevroren');
+  assert.ok(!/Goods description/.test(verslag), 'omschrijving wordt niet ingevuld');
   assert.strictEqual(await waarde('[data-test="gross-weight"]', 0), '21516');
   assert.strictEqual(await waarde('[data-test="nett-weight"]', 0), '13447.5');
   assert.strictEqual(await waarde('[data-test="packaging-number-of-packages"]', 0), '1600');
@@ -273,14 +275,31 @@ try {
   await p3.locator('.wrap').screenshot({ path: path.join(os.tmpdir(), 'ggb-paneel-handmatig.png') }).catch(() => {});
 
   /* ================= Echte Portbase-resultaten: Quang Phu (VN) ================= */
+  // Opbouw van een echte zending (HC, factuur, paklijst, B/L); nummers, adressen en afnemer zijn verzonnen
+  const ADRES_QP = 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE';
   const QUANG = {
-    declaratieType: v('PRD'), bestemming: v(''), landOorsprong: v('VN'), landLading: v('VN'), grenscontrolepost: v('Rotterdam (NLRTM1)'),
-    exporteur: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE', plaats: 'Binh An', land: 'VN', erkenningsnummer: '', bron: 'HC I.1', zekerheid: 'hoog' },
+    declaratieType: v('PRD'), bol: v('TESTBL000000001', 'hoog', 'HC I.17'), bestemming: v('Import', 'hoog', 'HC I.22'),
+    landOorsprong: v('VN'), landLading: v('VN'), grenscontrolepost: v('Rotterdam (NLRTM1)', 'hoog', 'HC I.16'),
+    gecertificeerdVoor: v('Human consumption', 'hoog', 'HC I.20'), transportconditie: v('Frozen', 'hoog', 'HC I.18'),
+    vervoermiddel: v('Vessel'), vervoermiddelNaam: v('TEST VESSEL 001W'), vervoermiddelNationaliteit: v('SG'),
+    aankomstDatum: v(''), aankomstTijd: v(''),
+    exporteur: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: ADRES_QP, plaats: 'Binh An', land: 'VN', erkenningsnummer: '', bron: 'HC I.1', zekerheid: 'hoog' },
     importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'Rotterdam', land: 'NL', erkenningsnummer: '', bron: 'HC I.5', zekerheid: 'hoog' },
-    plaatsVerzending: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: 'LAND PLOT NUMBER 1358, MAP SHEET 3, GROUP 2, AN PHUOC HAMLET, BINH AN COMMUNE, AN GIANG PROVINCE', plaats: 'Binh An', land: 'VN', erkenningsnummer: 'DL 1022', bron: 'HC I.11', zekerheid: 'hoog' },
-    documenten: [{ type: 'HC', identificatie: 'VN-2026-0001', datumAfgifte: '01-10-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: '', zekerheid: 'hoog' }],
-    goederen: [{ gnCode: '03061792', omschrijving: 'Frozen shrimps', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', animoCode: '206107', erkenningsnummer: '' }],
-    waarschuwingen: []
+    plaatsBestemming: { naam: 'Testbestemming GmbH', adres: 'Teststraße 1', plaats: 'Teststadt', land: 'DE', erkenningsnummer: '99999ES', bron: 'HC I.12', zekerheid: 'hoog' },
+    plaatsVerzending: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: ADRES_QP, plaats: 'Binh An', land: 'VN', erkenningsnummer: 'DL 1022', bron: 'HC I.11', zekerheid: 'hoog' },
+    containers: [{ containernummer: 'CSQU3054383', zegelnummer: 'SEAL0001', bron: 'HC I.19' }],
+    documenten: [
+      { type: 'HC', identificatie: 'IMPORT.EU.VN.2026.0000001', datumAfgifte: '10-11-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'quang.pdf', zekerheid: 'hoog' },
+      { type: 'COMM', identificatie: 'INV-TEST-001', datumAfgifte: '06-11-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'quang.pdf', zekerheid: 'hoog' },
+      { type: 'COMM', identificatie: 'TESTBL000000001', datumAfgifte: '10-11-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'quang.pdf', zekerheid: 'hoog' },
+      { type: 'OTHER', identificatie: 'LAB-TEST-01', datumAfgifte: '05-09-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'quang.pdf', zekerheid: 'hoog' },
+      { type: 'CATCH', identificatie: '', datumAfgifte: '11-11-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'quang.pdf', zekerheid: 'middel' }
+    ],
+    goederen: [
+      { gnCode: '03074399', omschrijving: 'Frozen raw whole cleaned baby cuttlefish', brutoGewicht: '15680', nettoGewicht: '10500', aantalColli: '1400', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: 'CSQU3054383', animoCode: '102108', wetenschappelijkeNaam: 'Sepia lycidas', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27', zekerheid: 'hoog' },
+      { gnCode: '03075200', omschrijving: 'Frozen raw whole cleaned baby octopus', brutoGewicht: '6600', nettoGewicht: '4500', aantalColli: '600', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: 'CSQU3054383', animoCode: '102108', wetenschappelijkeNaam: 'Octopus membranaceus', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27', zekerheid: 'hoog' }
+    ],
+    waarschuwingen: ['HC I.27 regels met dezelfde GN-code en soort samengevoegd.']
   };
   const p4 = await context.newPage();
   p4.on('pageerror', (e) => fouten.push('p4: ' + e.message));
@@ -292,12 +311,39 @@ try {
   await p4.locator('#json-verwerk').click();
   await p4.locator('#ai-fill').click();
   await p4.locator('#ai-verslag h3').waitFor({ timeout: 90000 });
-  // Van de 5 regels "Quang Phu…" wordt de exporteur in Binh An met activiteit EX gekozen (zoals de declarant deed)
-  assert.strictEqual(await p4.locator('[data-test="organisation-dialog-exporter"]').innerText(), 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED | Binh An | EX - exporter');
-  // Inrichting van oorsprong via erkenningsnummer DL 1022 (I.11 Place of dispatch)
-  assert.strictEqual(await p4.locator('app-form-documents [data-test="organisation-dialog"]').first().innerText(), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
-  assert.strictEqual(await p4.locator('app-form-goods-items [data-test="organisation-dialog"]').first().innerText(), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
-  assert.strictEqual(await p4.locator('[data-test="purpose-code"] .mat-mdc-select-value').innerText(), 'Import', 'Destination standaard Import');
+  const k4 = (sel, n = 0) => p4.locator(sel).nth(n).innerText();
+  const w4 = (sel, n = 0) => p4.locator(sel).nth(n).inputValue();
+  // Keuzelijsten (popover-panelen zoals in de echte Portbase) met de echte optieteksten
+  assert.strictEqual(await k4('[data-test="purpose-code"] .mat-mdc-select-value'), 'Import');
+  assert.strictEqual(await k4('[data-test="goods-intended-use-code"] .mat-mdc-select-value'), 'Human consumption');
+  assert.strictEqual(await k4('[data-test="transport-conditions-code"] .mat-mdc-select-value'), 'Frozen');
+  assert.strictEqual(await k4('[data-test="arrival-means-of-transport-mode"] .mat-mdc-select-value'), 'Sea transport');
+  assert.strictEqual(await w4('[data-test="arrival-means-of-transport-identification"]'), 'TEST VESSEL 001W');
+  assert.strictEqual(await w4('[data-test="arrival-means-of-transport-nationality-un-code"]'), 'SG - Singapore');
+  assert.strictEqual(await w4('#countryOfOriginUnCode'), 'VN - Viet Nam');
+  // Zoekvensters: van de 5 regels "Quang Phu…" de exporteur in Binh An met EX (zoals de declarant deed)
+  assert.strictEqual(await k4('[data-test="organisation-dialog-exporter"]'), 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED | Binh An | EX - exporter');
+  assert.strictEqual(await k4('[data-test="organisation-dialog-importer"]'), 'EUROFOODLINK B.V. | ROTTERDAM | NL 1001 EG | IM - importer');
+  assert.strictEqual(await k4('[data-test="place-of-destination-dialog"]'), 'Testbestemming GmbH | Teststadt | 99999ES | ES - establishment', 'HC I.12 via approval number, land DE');
+  assert.strictEqual(await k4('[data-test="border-control-post-dialog"]'), 'Rotterdam');
+  // Alleen het HC in de GGB (vangstcertificaat "ter beoordeling", labrapport niet gevraagd)
+  assert.strictEqual(await p4.locator('app-form-documents form > mat-card').count(), 1);
+  assert.strictEqual(await k4('[data-test="document-type"] .mat-mdc-select-value'), 'Health certificate (636)');
+  assert.strictEqual(await w4('[data-test="document-number"]'), 'IMPORT.EU.VN.2026.0000001');
+  assert.strictEqual(await k4('app-form-documents [data-test="organisation-dialog"]'), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
+  // Goederen: GN-code + Latijnse naam, Animo, erkenningsnummer; omschrijving door Portbase
+  assert.strictEqual(await k4('[data-test="gn-code-dialog"]', 0), '030743 Visserijproducten (wild gevangen)');
+  assert.strictEqual(await k4('[data-test="gn-code-dialog"]', 1), '030752 Visserijproducten (wild gevangen)');
+  assert.ok(/^Inktvissen/.test(await w4('[data-test="goods-description"]', 0)), 'omschrijving door Portbase na GN-keuze');
+  assert.strictEqual(await k4('app-form-goods-items form > mat-card .animo-gekozen', 0), '102108');
+  assert.strictEqual(await k4('app-form-goods-items form > mat-card .animo-gekozen', 1), '102108');
+  assert.strictEqual(await k4('app-form-goods-items [data-test="organisation-dialog"]', 1), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
+  assert.strictEqual(await w4('[data-test="packaging-number-of-packages"]', 0), '1400');
+  assert.strictEqual(await w4('[data-test="gross-weight"]', 1), '6600');
+  assert.strictEqual(await w4('input[formcontrolname="equipmentNumber"]'), 'CSQU3054383');
+  const verslag4 = await p4.locator('#ai-verslag').innerText();
+  assert.ok(!/HANDMATIG|NIET GEVONDEN|FOUT/i.test(verslag4.split('\n').slice(0, 2).join(' ')), verslag4.slice(0, 300));
+  console.log('Quang Phu: ' + (verslag4.split('\n').filter((l) => /ingevuld/.test(l))[0] || ''));
   await p4.screenshot({ path: path.join(os.tmpdir(), 'ggb-quang.png') });
   assert.deepStrictEqual(fouten, []);
 

@@ -137,16 +137,16 @@
     bol: veld('Bill of lading number (I.13), zoals op B/L of HC. Leeg als niet in de documenten.'),
     bestemming: veld('Destination (I.20-25): bijv. "Import", "Transit", "Transhipment", "Warehouse". Bij twijfel "Import".'),
     exporteur: organisatie('Exporteur/afzender (HC vak I.1 "Consignor/Exporter")'),
-    importeur: organisatie('Importeur/ontvanger (HC vak I.5 "Consignee/Importer" of I.6 "Operator responsible")'),
+    importeur: organisatie('Importeur = HC vak I.5 "Consignee/Importer" (NIET I.6 "Operator responsible")'),
     grenscontrolepost: veld('Border control post (I.4) uit de Portbase-lijst. Afleiden uit HC vak I.4 / haven van binnenkomst (zeevracht via Rotterdam: "Rotterdam (NLRTM1)", luchtvracht Schiphol: "Amsterdam Airport Schiphol (NLAMS4)").',
       { enum: BCP_NL.map(function (e) { return e.label; }).concat(['']) }),
-    plaatsBestemming: organisatie('Place of destination (I.7, HC vak I.7 of I.12): bedrijf/koelhuis van bestemming'),
+    plaatsBestemming: organisatie('Place of destination = HC vak I.12 "Place of destination", met approval number en land (kan buiten NL liggen, bijv. DE)'),
     plaatsVerzending: organisatie('Place of dispatch / inrichting van oorsprong (HC vak I.11 "Place of dispatch"), met erkenningsnummer ("Approval number")'),
     landOorsprong: veld('Country of origin (I.11), ISO alpha-2.'),
     landLading: veld('Country of loading (I.14), ISO alpha-2 (land van de laadhaven).'),
-    gecertificeerdVoor: veld('Goods certified as or for (I.18).', { enum: ['Human consumption', 'Feedingstuff', 'Pharmaceutical use', 'Technical use', 'Further process', 'Other', ''] }),
+    gecertificeerdVoor: veld('Goods certified as or for = HC vak I.20 "Certified as or for" (Products for human consumption -> Human consumption).', { enum: ['Human consumption', 'Feedstuff', 'Pharmaceutical use', 'Technical use', 'Further processing', 'Trade sample', 'Other', ''] }),
     transportconditie: veld('Transport conditions (I.16).', { enum: ['Ambient', 'Chilled', 'Frozen', ''] }),
-    vervoermiddel: veld('Means of transport (I.13).', { enum: ['Vessel', 'Airplane', 'Railway', 'Road vehicle', ''] }),
+    vervoermiddel: veld('Means of transport = HC vak I.15 "Mode".', { enum: ['Vessel', 'Airplane', 'Railway', 'Road vehicle', ''] }),
     vervoermiddelNaam: veld('Name / identification (I.13): naam schip/vlucht + eventueel IMO/reisnummer.'),
     vervoermiddelNationaliteit: veld('Nationality (I.13): vlaggenstaat, ISO alpha-2.'),
     aankomstDatum: veld('Expected date of arrival (I.10), formaat dd-mm-jjjj. Leeg als niet in de documenten.'),
@@ -207,7 +207,18 @@
     '- Neem waarden letterlijk over uit de documenten. Verzin niets: als een gegeven niet in de documenten staat, laat het',
     '  veld leeg ("") en zet zekerheid op "laag". Afleidingen (bijv. CHED-type uit de GN-code, landcode uit een adres,',
     '  grenscontrolepost uit de haven van binnenkomst) zijn toegestaan, maar vermeld dat in "bron" en gebruik "middel".',
-    '- Het HC is leidend voor de GGB-velden (deel I van het certificaat komt overeen met de vakken I.x in Portbase).',
+    '- Het HC is leidend. Vakken van het HC (TRACES-model) -> GGB in Portbase:',
+    '    I.1 Consignor/Exporter -> exporteur; I.5 Consignee/Importer -> importeur (NIET I.6 Operator responsible);',
+    '    I.7 Country of origin -> landOorsprong; I.11 Place of dispatch -> plaatsVerzending (met Approval number);',
+    '    I.12 Place of destination -> plaatsBestemming (met Approval number en land); I.13 Place of loading -> landLading;',
+    '    I.15 Means of transport: Mode -> vervoermiddel, Identification "SHIP NAME 123W | Singapore" -> naam "SHIP NAME 123W"',
+    '    en nationaliteit SG; I.16 Entry Border Control Post -> grenscontrolepost; I.17 Accompanying documents -> B/L-nummer;',
+    '    I.18 Transport conditions -> transportconditie; I.19 Container/Seal -> containers; I.20 Certified as or for -> gecertificeerdVoor;',
+    '    I.22 For internal market -> bestemming "Import" (I.21 For transit -> "Transit"); I.2 Certificate reference -> nummer van het HC;',
+    '    I.27 Description of consignment -> goederen (CN code, Species, Nature of commodity, Batch number, Package count, Net weight,',
+    '    Manufacturing plant). Brutogewichten per product uit paklijst of B/L als het HC alleen een totaal geeft.',
+    '- Maak één goederenitem per combinatie van GN-code en soort: tel de regels van I.27 met dezelfde GN-code en soort op',
+    '  (colli, nettogewicht) en meld in de waarschuwingen dat ze zijn samengevoegd.',
     '  Gebruik factuur, paklijst en B/L voor B/L-nummer, containers, zegels, colli en gewichten als die niet op het HC staan.',
     '- Datums altijd als dd-mm-jjjj, tijden als uu:mm, landen als ISO alpha-2, GN-codes als 8 cijfers zonder scheidingstekens,',
     '  gewichten in kg met een punt als decimaalteken.',
@@ -332,6 +343,8 @@
     r.aankomstTijd.waarde = normTijd(r.aankomstTijd.waarde);
     r.bol.waarde = r.bol.waarde.replace(/\s+/g, '');
     if (r.declaratieType.waarde !== 'PRD' && r.declaratieType.waarde !== 'LNV') r.declaratieType.waarde = '';
+    var OUD_GEBRUIK = { feedingstuff: 'Feedstuff', 'further process': 'Further processing', 'products for human consumption': 'Human consumption' };
+    if (OUD_GEBRUIK[r.gecertificeerdVoor.waarde.toLowerCase()]) r.gecertificeerdVoor.waarde = OUD_GEBRUIK[r.gecertificeerdVoor.waarde.toLowerCase()];
 
     ['exporteur', 'importeur', 'plaatsBestemming', 'plaatsVerzending'].forEach(function (k) {
       var p = raw[k] || {};
@@ -481,7 +494,9 @@
       doc.gevraagd = !!g;
       doc.reden = g ? (g.niveau === 'verplicht' ? 'Vereist' : 'Ter beoordeling') + (ver ? ' (Ver. ' + ver.naam + ')' : '') + ' volgens de regels'
         : 'Niet gevraagd door de regels; alleen bron voor gegevens';
-      if (typeof doc.opnemen !== 'boolean') doc.opnemen = !!g;
+      if (g && g.niveau !== 'verplicht') doc.reden += ' – zelf aanvinken als de NVWA het wil zien';
+      // Standaard alleen verplichte documenten (meestal alleen het HC); "ter beoordeling" zet de declarant zelf aan.
+      if (typeof doc.opnemen !== 'boolean') doc.opnemen = !!g && g.niveau === 'verplicht';
     });
     return r;
   }
