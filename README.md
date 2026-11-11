@@ -85,10 +85,16 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
 5. Velden die in Portbase via een zoekdialoog gaan (**exporteur, importeur,
    grenscontrolepost, plaats van bestemming, inrichting van oorsprong,
    GN-code, activity/approval number**) worden niet automatisch gekozen. Ze
-   staan als *handmatig* in het verslag met een knop **Zoek in Portbase**:
-   die opent de dialoog, zet de zoekterm (naam, BCP-code zoals `NLRTM1`,
-   GN-code, erkenningsnummer) in het zoekveld en kopieert hem; jij kiest het
-   juiste resultaat.
+   staan als *handmatig* in het verslag met een knop **Zoek in Portbase**.
+   In de organisatiedialoog (exporteur, importeur, plaats van bestemming,
+   inrichting van oorsprong, erkenningsnummer) doet die knop:
+   zoektype kiezen (*Organisation name* of *Approval number*), **land**
+   invullen (exporteur/inrichting: land van oorsprong, importeur: NL),
+   zoekterm invullen, **Search** klikken en – als er precies één goede
+   treffer is – die rij aanvinken. Bij meerdere even goede treffers worden ze
+   gemarkeerd en kies je zelf. **Save** in de dialoog klik je altijd zelf.
+   Bij andere dialogen (grenscontrolepost, GN-code) wordt alleen de
+   zoekterm ingevuld (bijv. `NLRTM1` of de GN-code).
 
 Er wordt **nooit** op Opslaan of Verzenden geklikt: de declarant controleert
 en verstuurt zelf.

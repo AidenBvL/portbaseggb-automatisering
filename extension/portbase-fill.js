@@ -118,7 +118,10 @@
     return best;
   }
 
-  function sluitOverlay() {
+  /** Sluit een open keuzelijst. Met el: alleen het paneel van dat veld (veilig binnen een dialoog). */
+  function sluitOverlay(el) {
+    if (el) { el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true })); return; }
+    if (q('mat-dialog-container')) return; // nooit een Portbase-dialoog wegklikken
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     var bd = q('.cdk-overlay-backdrop');
     if (bd) bd.click();
@@ -141,7 +144,7 @@
     var lijst = await wachtOp(function () { var o = opties(); return o.length ? o : null; }, 4000);
     if (!lijst) { blur(el); return { ok: false, melding: 'geen suggesties verschenen; kies zelf uit de lijst' }; }
     var o = besteOptie(lijst, termen);
-    if (!o) { sluitOverlay(); return { ok: false, melding: 'geen passende suggestie voor "' + zoekterm + '"' }; }
+    if (!o) { sluitOverlay(el); return { ok: false, melding: 'geen passende suggestie voor "' + zoekterm + '"' }; }
     o.click();
     await wacht(150);
     return { ok: true, gekozen: txt(o) };
@@ -174,7 +177,7 @@
       if (def.soort === 'tekst') {
         zetWaarde(el, waarde);
         blur(el);
-        sluitOverlay();
+        sluitOverlay(el);
       } else if (isSelect(el)) {
         var s = await kiesInSelect(el, termen);
         if (!s.ok) { r.status = 'handmatig'; r.melding = s.melding; } else r.melding = s.gekozen !== waarde ? 'gekozen: ' + s.gekozen : '';
@@ -211,10 +214,13 @@
   var ALGEMEEN = [
     { naam: 'Bill of lading number (I.13)', key: 'bol', sel: ['app-form-general input[data-test="bill-of-lading-number"]', 'input[data-test="bill-of-lading-number"]'], label: /^bill of lading number/i },
     { naam: 'Destination (I.20-25)', key: 'bestemming', sel: ['mat-select[data-test="purpose-code"]', 'mat-select[formcontrolname="purposeCode"]'], label: /^destination/i },
-    { naam: 'Exporter (I.1)', key: 'exporteur', sel: ['button[data-test="organisation-dialog-exporter"]'], label: /^exporter/i, soort: 'dialoog', zoekterm: zonderLand },
-    { naam: 'Importer (I.6)', key: 'importeur', sel: ['button[data-test="organisation-dialog-importer"]'], label: /^importer/i, soort: 'dialoog', zoekterm: zonderLand },
+    { naam: 'Exporter (I.1)', key: 'exporteur', sel: ['button[data-test="organisation-dialog-exporter"]'], label: /^exporter/i, soort: 'dialoog', zoekterm: zonderLand,
+      dialoogZoek: function (r) { return { term: r.exporteur.naam, land: r.exporteur.land || r.landOorsprong.waarde, type: 'NAME' }; } },
+    { naam: 'Importer (I.6)', key: 'importeur', sel: ['button[data-test="organisation-dialog-importer"]'], label: /^importer/i, soort: 'dialoog', zoekterm: zonderLand,
+      dialoogZoek: function (r) { return { term: r.importeur.naam, land: r.importeur.land || 'NL', type: 'NAME' }; } },
     { naam: 'Border control post (I.4)', key: 'grenscontrolepost', sel: ['button[data-test="border-control-post-dialog"]'], label: /^border control post/i, soort: 'dialoog', zoekterm: codeTussenHaakjes },
-    { naam: 'Place of destination (I.7)', key: 'plaatsBestemming', sel: ['button[data-test="place-of-destination-dialog"]'], label: /^place of destination/i, soort: 'dialoog' },
+    { naam: 'Place of destination (I.7)', key: 'plaatsBestemming', sel: ['button[data-test="place-of-destination-dialog"]'], label: /^place of destination/i, soort: 'dialoog',
+      dialoogZoek: function (r) { return { term: zonderLand(r.plaatsBestemming.waarde).split(',')[0], land: r.importeur.land || 'NL', type: 'NAME' }; } },
     { naam: 'Country of origin (I.11)', key: 'landOorsprong', sel: ['app-form-general input[formcontrolname="countryOfOriginUnCode"]', 'input[data-test="country-of-origin-un-code"]'], label: /^country of origin/i, termen: landTermen },
     { naam: 'Country of loading (I.14)', key: 'landLading', sel: ['app-form-general input[formcontrolname="countryOfLoadingUnCode"]', 'input[formcontrolname="countryOfLoadingUnCode"]'], label: /^country of loading/i, termen: landTermen },
     { naam: 'Goods certified as or for (I.18)', key: 'gecertificeerdVoor', sel: ['mat-select[data-test="goods-intended-use-code"]', 'mat-select[formcontrolname="goodsIntendedUseCode"]'], label: /^goods certified/i },
@@ -237,7 +243,12 @@
       termen: function (code) { var d = DOC_TYPES[code]; return [d && d.portbase, code === 'LAB' ? 'Lab report' : '', code === 'COMM' ? 'Commercial' : ''].filter(Boolean); } },
     { naam: 'Identification', key: 'identificatie', sel: ['input[data-test="document-number"]', 'input[formcontrolname="documentNumber"]'], label: /^identification$/i },
     { naam: 'Date of issue', key: 'datumAfgifte', sel: ['input[data-test="document-date-of-issue"]', 'input[formcontrolname="dateOfIssue"]'], label: /^date of issue/i, soort: 'tekst' },
-    { naam: 'Establishment of origin', key: 'inrichtingOorsprong', sel: ['button[data-test="organisation-dialog"]'], label: /^establishment of origin/i, soort: 'dialoog' },
+    { naam: 'Establishment of origin', key: 'inrichtingOorsprong', sel: ['button[data-test="organisation-dialog"]'], label: /^establishment of origin/i, soort: 'dialoog',
+      dialoogZoek: function (r, doc) {
+        var erk = (r.goederen || []).map(function (g) { return g.erkenningsnummer; }).filter(Boolean)[0];
+        var land = doc.landAfgifte || r.landOorsprong.waarde;
+        return erk ? { term: erk, land: land, type: 'APPROVAL_NUMBER' } : { term: doc.inrichtingOorsprong, land: land, type: 'NAME' };
+      } },
     { naam: 'Country of issue', key: 'landAfgifte', sel: ['input[data-test="document-country-un-code-of-issue"]', 'input[formcontrolname="countryUnCodeOfIssue"]'], label: /^country of issue/i, termen: landTermen }
   ];
 
@@ -251,7 +262,8 @@
       termen: function (v) { return [v, String(v).replace(/s$/i, ''), /carton/i.test(v) ? 'Box' : '']; } },
     { naam: 'Batch number (I.34)', key: 'batchnummer', sel: ['input[formcontrolname="batchNumber"]'], label: /^batch number/i },
     { naam: 'Additional units (I.33)', key: 'aanvullendeEenheden', sel: ['input[formcontrolname="additionalUnits"]'], label: /^additional units/i },
-    { naam: 'Activity / approval number (I.15)', key: 'erkenningsnummer', sel: ['button[data-test="organisation-dialog"]'], label: /^activity \/ approval number/i, soort: 'dialoog' }
+    { naam: 'Activity / approval number (I.15)', key: 'erkenningsnummer', sel: ['button[data-test="organisation-dialog"]'], label: /^activity \/ approval number/i, soort: 'dialoog',
+      dialoogZoek: function (r, g) { return { term: g.erkenningsnummer, land: r.landOorsprong.waarde || r.exporteur.land, type: 'APPROVAL_NUMBER' }; } }
   ];
 
   /** Waarde van een algemeen veld uit het AI-resultaat. */
@@ -330,6 +342,10 @@
     var form = q('app-declaration-form') || document;
 
     function push(sectie, res) { res.sectie = sectie; verslag.push(res); }
+    function metZoek(def, res, item) {
+      if (res.knop) res.zoek = def.dialoogZoek ? def.dialoogZoek(r, item) : { term: res.zoekterm };
+      return res;
+    }
 
     // Declaratietype (radio)
     var type = r.declaratieType && r.declaratieType.waarde;
@@ -346,7 +362,7 @@
     for (var i = 0; i < ALGEMEEN.length; i++) {
       var def = ALGEMEEN[i];
       push(def.key === 'gecertificeerdVoor' || def.key === 'transportconditie' ? 'Goods' : (i >= 10 ? 'Means of transport' : 'General'),
-        await vulVeld(def, algemeneWaarde(r, def.key), form, opts));
+        metZoek(def, await vulVeld(def, algemeneWaarde(r, def.key), form, opts)));
     }
 
     var gebruikt = [];
@@ -371,7 +387,7 @@
         continue;
       }
       gebruikt.push(dk);
-      for (var df = 0; df < DOCUMENT.length; df++) push('Document ' + (d + 1), await vulVeld(DOCUMENT[df], doc[DOCUMENT[df].key], dk, opts));
+      for (var df = 0; df < DOCUMENT.length; df++) push('Document ' + (d + 1), metZoek(DOCUMENT[df], await vulVeld(DOCUMENT[df], doc[DOCUMENT[df].key], dk, opts), doc));
       var bestand = opts.bestanden && doc.bestand ? opts.bestanden[doc.bestand] : null;
       if (bestand && bestand.type !== 'application/pdf') {
         push('Document ' + (d + 1), { naam: 'Upload document', waarde: bestand.name, status: 'handmatig', melding: 'Portbase accepteert alleen PDF; zet de afbeelding eerst om naar PDF' });
@@ -390,33 +406,105 @@
         continue;
       }
       gebruikt.push(gk);
-      for (var gf = 0; gf < GOED.length; gf++) push('Goods item ' + (g + 1), await vulVeld(GOED[gf], r.goederen[g][GOED[gf].key], gk, opts));
+      for (var gf = 0; gf < GOED.length; gf++) push('Goods item ' + (g + 1), metZoek(GOED[gf], await vulVeld(GOED[gf], r.goederen[g][GOED[gf].key], gk, opts), r.goederen[g]));
     }
 
     meld('');
     return verslag;
   }
 
+  /* ---------------- zoekdialogen ---------------- */
+
+  function dialoogRijen(dialoog) {
+    return qa('[data-test="organisations-list"] mat-row, [data-test="organisations-list"] tr.mat-mdc-row, [data-test="organisations-list"] [role="row"]', dialoog).filter(function (rij) {
+      return !rij.classList.contains('mat-mdc-no-data-row') && !rij.classList.contains('cdk-no-data-row') && !rij.matches('mat-header-row, [role="row"].mat-mdc-header-row');
+    });
+  }
+  function cel(rij, kolom) { return txt(q('.mat-column-' + kolom, rij)); }
+
+  /** Score van een zoekresultaat t.o.v. de zoekopdracht (4 = exact). */
+  function rijScore(rij, zoek) {
+    var term = norm(zoek.term);
+    if (!term) return 0;
+    if (zoek.type === 'APPROVAL_NUMBER') {
+      var erk = norm(cel(rij, 'approvalNumber'));
+      return erk === term ? 4 : (erk.indexOf(term) >= 0 ? 2 : 0);
+    }
+    var naam = norm(cel(rij, 'name') || txt(rij));
+    var kaal = function (s) { return s.replace(/\b(b ?v|n ?v|ltd|limited|pvt|private|llc|inc|co|company|gmbh|s ?a|sarl|spa|bv)\b/g, '').replace(/\s+/g, ' ').trim(); };
+    if (naam === term || kaal(naam) === kaal(term)) return 4;
+    if (naam.indexOf(term) === 0 || kaal(naam).indexOf(kaal(term)) === 0) return 2;
+    return naam.indexOf(term) >= 0 ? 1 : 0;
+  }
+
+  function selecteerRij(rij) {
+    // Native input eerst: in Angular Material reageert alleen die (of het label) op een klik.
+    var keuze = eerste(['.mat-column-selection input[type="radio"]', '.mat-column-selection input[type="checkbox"]', '.mat-column-selection label', '.mat-column-selection button'], rij);
+    (keuze || rij).click();
+    rij.style.outline = '3px solid #0b5fa5';
+    rij.scrollIntoView({ block: 'center' });
+  }
+
   /**
-   * Opent een Portbase-zoekdialoog (exporteur, grenscontrolepost, GN-code …) en
-   * zet de zoekterm in het eerste zoekveld. De gebruiker kiest zelf het juiste
-   * resultaat; er wordt niets automatisch geselecteerd.
+   * Organisatiedialoog (exporteur, importeur, inrichting van oorsprong,
+   * erkenningsnummer, ...): zoektype + land + zoekterm invullen, zoeken en de
+   * best passende rij aanvinken. Op "Save" klikt de gebruiker zelf.
    */
-  async function zoekInDialoog(knop, term) {
+  async function zoekOrganisatie(dialoog, zoek) {
+    var termEl = q('input[data-test="search-term"]', dialoog);
+    if (zoek.type) {
+      var radio = q('[data-test="search-type"] input[value="' + zoek.type + '"]', dialoog);
+      if (radio && !radio.checked) { radio.click(); await wacht(100); }
+    }
+    var landEl = q('input[data-test="search-country"]', dialoog);
+    if (landEl && zoek.land && !String(landEl.value || '').trim()) {
+      var l = await kiesInAutocomplete(landEl, zoek.land, landTermen(zoek.land));
+      if (!l.ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ') en klik Search' };
+    }
+    var term = String(zoek.term || '').trim();
+    zetWaarde(termEl, term);
+    blur(termEl);
+    if (term.length < 3) return { ok: true, melding: 'zoekterm korter dan 3 tekens; vul zelf aan' };
+    var knop = q('button[data-test="select-search"]', dialoog);
+    if (!knop) return { ok: true, melding: 'klik zelf op Search' };
+    knop.click();
+    var rijen = await wachtOp(function () { var r = dialoogRijen(dialoog); return r.length ? r : null; }, 8000);
+    if (!rijen) return { ok: true, melding: 'geen resultaten voor "' + term + '"; pas de zoekterm aan of voeg handmatig toe' };
+    var scores = rijen.map(function (r) { return rijScore(r, zoek); });
+    var max = Math.max.apply(null, scores);
+    var besten = rijen.filter(function (r, i) { return scores[i] === max; });
+    if (max >= 2 && besten.length === 1) {
+      selecteerRij(besten[0]);
+      return { ok: true, gekozen: true, melding: 'aangevinkt: ' + (cel(besten[0], 'name') || txt(besten[0])) + (cel(besten[0], 'city') ? ', ' + cel(besten[0], 'city') : '') + ' – controleer en klik Save' };
+    }
+    besten.forEach(function (r) { if (max > 0) r.style.outline = '2px dashed #b26a00'; });
+    return { ok: true, melding: rijen.length + ' resultaten' + (max > 0 ? ', ' + besten.length + ' even goed (gemarkeerd)' : '') + '; kies zelf en klik Save' };
+  }
+
+  /**
+   * Opent een Portbase-zoekdialoog en vult de zoekopdracht in.
+   * zoek: {term, land?, type?: 'NAME'|'APPROVAL_NUMBER'|'CITY'|'POSTAL_CODE'} of een string.
+   * Er wordt nooit op Save geklikt.
+   */
+  async function zoekInDialoog(knop, zoek) {
+    if (typeof zoek === 'string' || !zoek) zoek = { term: zoek || '' };
     if (!knop || !knop.isConnected) return { ok: false, melding: 'knop niet meer op de pagina' };
     knop.scrollIntoView({ block: 'center' });
     knop.click();
-    var dialoog = await wachtOp(function () { return q('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]'); }, 3000);
+    var dialoog = await wachtOp(function () { var d = qa('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]'); return d[d.length - 1]; }, 3000);
     if (!dialoog) return { ok: false, melding: 'dialoog ging niet open' };
+    var termEl = await wachtOp(function () { return q('input[data-test="search-term"]', dialoog); }, 1000);
+    if (termEl) return zoekOrganisatie(dialoog, zoek);
+    // Onbekende dialoog (bijv. grenscontrolepost, GN-code): eerste zoekveld invullen.
     var veld = await wachtOp(function () {
       return qa('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([disabled])', dialoog).filter(function (i) { return i.offsetParent !== null || i.getClientRects().length; })[0];
     }, 2000);
     if (!veld) return { ok: true, melding: 'dialoog geopend; geen zoekveld gevonden' };
-    if (term) {
-      zetWaarde(veld, term);
+    if (zoek.term) {
+      zetWaarde(veld, zoek.term);
       veld.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
     }
-    return { ok: true };
+    return { ok: true, melding: 'zoekterm ingevuld; kies het resultaat' };
   }
 
   /** Is er een bewerkbaar declaratieformulier op de pagina? */
@@ -427,7 +515,7 @@
     return qa('input:not([disabled]):not([type="hidden"])', f).length > 0;
   }
 
-  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
+  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, rijScore: rijScore, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_FILL = exported;
 })(typeof window !== 'undefined' ? window : this);

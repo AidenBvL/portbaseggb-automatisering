@@ -30,10 +30,10 @@
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label> Destination <span>(I.20-25)</span></mat-label></label>
       <mat-select role="combobox" formcontrolname="purposeCode" data-test="purpose-code" class="mat-mdc-select" aria-disabled="false" data-opties="Import|Transit|Transhipment|Storage|Re-entry"><div cdk-overlay-origin="" class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
     <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Own reference </mat-label></label><input matinput="" type="text" id="customerReference" formcontrolname="customerReference" data-test="customer-reference"></mat-form-field></div></div>
-  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Exporter <span>(I.1)</span></mat-label><button type="button" data-test="organisation-dialog-exporter" data-dialoog="Select exporter"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select exporter</span></span></button></div></div>
-    <div class="col"><div class="error-placeholder"><mat-label class="label">Importer <span>(I.6)</span></mat-label><button type="button" data-test="organisation-dialog-importer" data-dialoog="Select importer"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select importer</span></span></button></div></div></div>
+  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Exporter <span>(I.1)</span></mat-label><button type="button" data-test="organisation-dialog-exporter" data-dialoog="Select exporter" data-org="1"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select exporter</span></span></button></div></div>
+    <div class="col"><div class="error-placeholder"><mat-label class="label">Importer <span>(I.6)</span></mat-label><button type="button" data-test="organisation-dialog-importer" data-dialoog="Select importer" data-org="1"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select importer</span></span></button></div></div></div>
   <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Border control post <span>(I.4)</span></mat-label><button type="button" data-test="border-control-post-dialog" data-dialoog="Select border control post"><span class="mdc-button__label"><span>Select border control post</span></span></button></div></div>
-    <div class="col"><div class="error-placeholder"><mat-label class="label">Place of destination <span>(I.7)</span></mat-label><button type="button" data-test="place-of-destination-dialog" data-dialoog="Select place of destination"><span class="mdc-button__label"><span>Select place of destination</span></span></button></div></div></div>
+    <div class="col"><div class="error-placeholder"><mat-label class="label">Place of destination <span>(I.7)</span></mat-label><button type="button" data-test="place-of-destination-dialog" data-dialoog="Select place of destination" data-org="1"><span class="mdc-button__label"><span>Select place of destination</span></span></button></div></div></div>
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of origin <span>(I.11)</span></mat-label></label>
       <input matinput="" type="text" id="countryOfOriginUnCode" formcontrolname="countryOfOriginUnCode" data-test="country-of-origin-un-code" class="mat-mdc-input-element mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div>
     <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of loading <span>(I.14)</span></mat-label></label>
@@ -99,7 +99,7 @@
       <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Identification</mat-label></label><input matinput="" type="text" id="documentNumber" formcontrolname="documentNumber" data-test="document-number" required=""></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Date of issue</mat-label></label>
         <input name="dateOfIssue" id="dateOfIssue" formcontrolname="dateOfIssue" matinput="" data-test="document-date-of-issue" class="mat-datepicker-input input" placeholder="e.g. 25-03-2023" required=""><mat-datepicker></mat-datepicker></mat-form-field></div>
-      <div class="col"><div><mat-label class="label">Establishment of origin</mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div>
+      <div class="col"><div><mat-label class="label">Establishment of origin</mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin" data-org="1"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div>
         <input matinput="" type="text" id="establishmentOfOriginName" formcontrolname="establishmentOfOriginName" hidden=""></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of issue</mat-label></label>
         <input matinput="" type="text" id="countryUnCodeOfIssue" formcontrolname="countryUnCodeOfIssue" data-test="document-country-un-code-of-issue" class="mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div></div>
@@ -120,7 +120,7 @@
         <mat-select role="combobox" formcontrolname="packageType" data-test="packaging-package-type" class="mat-mdc-select" aria-disabled="false" data-opties="Bag|Box|Carton|Case|Pallet"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Batch number <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="batchNumber" formcontrolname="batchNumber"></mat-form-field></div>
       <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Additional units <span>(I.33)</span></mat-label></label><input matinput="" type="text" min="0" id="additionalUnits" formcontrolname="additionalUnits"></mat-form-field></div></div>
-    <div class="row"><div class="col"><div><mat-label class="label"> Activity / approval number <span>(I.15)</span></mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div></div><div class="col error-placeholder"></div></div>
+    <div class="row"><div class="col"><div><mat-label class="label"> Activity / approval number <span>(I.15)</span></mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin" data-org="1"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div></div><div class="col error-placeholder"></div></div>
   </mat-card-content></mat-card>
   <div class="align-right"><button type="button" data-test="add-goods-item" class="add-new-row-button"><span class="mdc-button__label"><i class="fal fa-plus"></i><span>Add goods item</span></span></button></div>
 </form></app-form-goods-items></mat-card-content>
@@ -137,6 +137,26 @@
   window.__klikken = [];
   var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam', ID: 'Indonesia' };
   var overlay = document.querySelector('.cdk-overlay-container');
+  var ORGANISATIES = [
+    { naam: 'GHAN MARINE PRODUCTS', adres: 'Plot 12, Port Road', plaats: 'KAKINADA', erk: '1234', land: 'IN' },
+    { naam: 'GHAN MARINE EXPORTS PVT LTD', adres: 'Beach Road 4', plaats: 'VISAKHAPATNAM', erk: '5678', land: 'IN' },
+    { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'ROTTERDAM', erk: 'NL 1001 EG', land: 'NL' },
+    { naam: 'EUROFOODLINK LOGISTICS B.V.', adres: 'Maasvlakte 2', plaats: 'ROTTERDAM', erk: '', land: 'NL' }
+  ];
+  // Ingekorte kopie van <app-organisation-dialog> (data-test, radio-waarden en tabelkolommen zoals in Portbase)
+  var ORG_DIALOOG = '<app-organisation-dialog><h2 mat-dialog-title="">{titel}</h2><mat-dialog-content>' +
+    '<p class="mb-1">Search on organisation name, approval number, postal code or city</p><form novalidate="" class="responsive-form"><div class="row search">' +
+    '<div><mat-form-field><label><mat-label>Search term</mat-label></label><input matinput="" type="text" id="searchTerm" formcontrolname="searchTerm" data-test="search-term" placeholder="At least 3 character(s)" minlength="3" required=""></mat-form-field></div>' +
+    '<div><mat-form-field><label><mat-label> Country </mat-label></label><input matinput="" type="text" id="searchCountryCode" formcontrolname="searchCountryCode" data-test="search-country" class="mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list"></mat-form-field></div>' +
+    '<div><mat-radio-group role="radiogroup" id="searchType" formcontrolname="searchType" data-test="search-type">' +
+    '<mat-radio-button><input type="radio" class="mdc-radio__native-control" name="mat-radio-group-1" value="NAME" checked><label>Organisation name </label></mat-radio-button>' +
+    '<mat-radio-button><input type="radio" class="mdc-radio__native-control" name="mat-radio-group-1" value="APPROVAL_NUMBER"><label>Approval number </label></mat-radio-button>' +
+    '<mat-radio-button><input type="radio" class="mdc-radio__native-control" name="mat-radio-group-1" value="CITY"><label>City </label></mat-radio-button>' +
+    '<mat-radio-button><input type="radio" class="mdc-radio__native-control" name="mat-radio-group-1" value="POSTAL_CODE"><label>Postal code </label></mat-radio-button>' +
+    '</mat-radio-group></div></div><div class="row"><div class="col"><button type="submit" data-test="select-search"><span class="mdc-button__label"><span>Search</span></span></button><button type="button"><span class="mdc-button__label"><span>Add {titel} manually</span></span></button></div></div></form>' +
+    '<mat-table data-test="organisations-list" class="mat-mdc-table search-results" role="table"><mat-header-row role="row" class="mat-mdc-header-row"><mat-header-cell class="mat-column-selection"></mat-header-cell><mat-header-cell class="mat-column-name"> Name </mat-header-cell><mat-header-cell class="mat-column-address"> Address </mat-header-cell><mat-header-cell class="mat-column-city"> City </mat-header-cell><mat-header-cell class="mat-column-approvalNumber"> Approval number </mat-header-cell></mat-header-row>' +
+    '<tr class="mat-row cdk-no-data-row cdk-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="11"><ic-no-results><p>Start with search</p></ic-no-results></td></tr></mat-table></mat-dialog-content>' +
+    '<mat-dialog-actions align="end"><button mat-dialog-close="" data-test="cancel" type="button"><span>Cancel</span></button><button data-test="save"><span>Save</span></button></mat-dialog-actions></app-organisation-dialog>';
   function toon(opties, kies) {
     overlay.innerHTML = '';
     opties.forEach(function (t) {
@@ -171,13 +191,40 @@
       if (up) { up.id = 'upload_' + kaarten.length; nieuw.querySelector('label[for]').setAttribute('for', up.id); }
       form.insertBefore(nieuw, knop.closest('.align-right'));
     }, 150);
-    // zoekdialoog
+    // zoekdialoog: organisatiedialoog volgens de echte Portbase-DOM, anders een eenvoudige dialoog
     if (knop && knop.dataset.dialoog) setTimeout(function () {
       var d = document.createElement('mat-dialog-container');
-      d.className = 'mat-mdc-dialog-container'; d.setAttribute('role', 'dialog');
-      d.innerHTML = '<h2>' + knop.dataset.dialoog + '</h2><input type="text" placeholder="Search" data-test="dialog-search"><div class="results"></div>';
-      document.body.appendChild(d);
+      d.className = 'mat-mdc-dialog-container mdc-dialog cdk-dialog-container'; d.setAttribute('role', 'dialog');
+      d.__bron = knop;
+      d.innerHTML = knop.dataset.org ? ORG_DIALOOG.replace('{titel}', knop.dataset.dialoog.replace('Select ', '')) :
+        '<h2>' + knop.dataset.dialoog + '</h2><input type="text" placeholder="Search" data-test="dialog-search"><div class="results"></div>';
+      overlay.parentNode.appendChild(d);
     }, 100);
+    // Search in de organisatiedialoog: resultaten met vertraging (API)
+    if (knop && knop.dataset.test === 'select-search') {
+      e.preventDefault();
+      var dlg = knop.closest('mat-dialog-container');
+      var land = (dlg.querySelector('[data-test="search-country"]').value || '').slice(0, 2);
+      var term = dlg.querySelector('[data-test="search-term"]').value.toUpperCase();
+      var type = dlg.querySelector('[data-test="search-type"] input:checked').value;
+      setTimeout(function () {
+        var hits = ORGANISATIES.filter(function (o) {
+          return o.land === land && (type === 'APPROVAL_NUMBER' ? o.erk.indexOf(term) >= 0 : o.naam.indexOf(term) >= 0);
+        });
+        var tabel = dlg.querySelector('[data-test="organisations-list"]');
+        tabel.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
+        if (!hits.length) tabel.insertAdjacentHTML('beforeend', '<tr class="mat-row cdk-no-data-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="11">No results</td></tr>');
+        hits.forEach(function (o) {
+          tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection"><mat-radio-button><input type="radio" name="org-keuze" value="' + o.naam + '"></mat-radio-button></mat-cell><mat-cell class="mat-mdc-cell mat-column-name">' + o.naam + '</mat-cell><mat-cell class="mat-mdc-cell mat-column-address">' + o.adres + '</mat-cell><mat-cell class="mat-mdc-cell mat-column-city">' + o.plaats + '</mat-cell><mat-cell class="mat-mdc-cell mat-column-approvalNumber">' + o.erk + '</mat-cell></mat-row>');
+        });
+      }, 300);
+    }
+    if (knop && knop.dataset.test === 'save' && knop.closest('mat-dialog-container')) {
+      var dl = knop.closest('mat-dialog-container'), gekozen = dl.querySelector('input[name="org-keuze"]:checked');
+      if (gekozen) dl.__bron.querySelector('.mdc-button__label span:last-child').textContent = gekozen.value;
+      dl.remove();
+    }
+    if (knop && knop.dataset.test === 'cancel') knop.closest('mat-dialog-container').remove();
   });
   // mat-autocomplete: bij typen opties "IN - India"
   document.addEventListener('input', function (e) {

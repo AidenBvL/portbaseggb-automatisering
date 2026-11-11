@@ -149,4 +149,14 @@ test('invuller kiest de best passende optie (eigen waarde gaat voor synoniem)', 
   assert.strictEqual(FILL.besteOptie(opt('Ambient', 'Chilled'), ['Frozen']), null);
 });
 
+test('zoekresultaat in organisatiedialoog: naam (zonder B.V./Pvt Ltd) en erkenningsnummer', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const rij = (naam, erk) => ({ querySelector: (sel) => ({ textContent: /approvalNumber/.test(sel) ? erk : /name/.test(sel) ? naam : '' }) });
+  assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 4);
+  assert.strictEqual(FILL.rijScore(rij('GHAN MARINE PRODUCTS PVT LTD', ''), { term: 'Ghan Marine Products', type: 'NAME' }), 4);
+  assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK LOGISTICS B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 0);
+  assert.strictEqual(FILL.rijScore(rij('X', '1234'), { term: '1234', type: 'APPROVAL_NUMBER' }), 4);
+  assert.strictEqual(FILL.rijScore(rij('X', 'IN-1234-A'), { term: '1234', type: 'APPROVAL_NUMBER' }), 2);
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

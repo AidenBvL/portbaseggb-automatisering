@@ -191,9 +191,17 @@
       var dlg = t.getAttribute && t.getAttribute('data-dialoog');
       if (dlg != null) {
         var rij = laatsteVerslag[+dlg];
-        if (navigator.clipboard) navigator.clipboard.writeText(rij.zoekterm || rij.waarde).catch(function () {});
-        FILL.zoekInDialoog(rij.knop, rij.zoekterm).then(function (res) {
-          t.textContent = res.ok ? 'Geopend – kies het resultaat' : res.melding;
+        var zoek = rij.zoek || { term: rij.zoekterm };
+        if (navigator.clipboard) navigator.clipboard.writeText(zoek.term || rij.waarde).catch(function () {});
+        t.disabled = true;
+        t.textContent = 'Zoeken…';
+        FILL.zoekInDialoog(rij.knop, zoek).then(function (res) {
+          t.disabled = false;
+          t.textContent = 'Opnieuw zoeken';
+          var m = t.parentElement.querySelector('.dlg-melding') || t.parentElement.appendChild(document.createElement('div'));
+          m.className = 'dlg-melding small ' + (res.gekozen ? '' : 'muted');
+          m.style.color = res.gekozen ? '#157347' : '';
+          m.textContent = res.melding || '';
         });
       }
       var kopie = t.getAttribute && t.getAttribute('data-kopie');

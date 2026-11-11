@@ -29,7 +29,7 @@ const AI_JSON = {
   declaratieType: v('PRD'), bol: v('HLCUMA3260712342', 'hoog', 'B/L'), bestemming: v('Import', 'middel'),
   exporteur: { naam: 'GHAN MARINE PRODUCTS', adres: 'Kakinada', land: 'IN', bron: 'HC I.1', zekerheid: 'hoog' },
   importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Rotterdam', land: 'NL', bron: 'HC I.5', zekerheid: 'hoog' },
-  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), plaatsBestemming: v('EUROFOODLINK B.V.'),
+  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), plaatsBestemming: v('KOELHUIS ONBEKEND, Rotterdam'),
   landOorsprong: v('IN'), landLading: v('IN'), gecertificeerdVoor: v('Human consumption'), transportconditie: v('Frozen'),
   vervoermiddel: v('Vessel'), vervoermiddelNaam: v('MSC ANNA'), vervoermiddelNationaliteit: v('PA'),
   aankomstDatum: v('26-09-2026', 'laag', 'Extra info'), aankomstTijd: v('07:00', 'laag'),
@@ -147,16 +147,54 @@ try {
   assert.strictEqual(await page.locator('mat-dialog-container').count(), 0, 'geen dialoog vanzelf geopend');
   const zoekKnoppen = page.locator('#ai-verslag button[data-dialoog]');
   assert.ok(await zoekKnoppen.count() >= 6, 'zoekknoppen voor exporteur, importeur, BCP, plaats, GN-codes, erkenningsnummer');
-  await page.locator('#ai-verslag li', { hasText: 'Exporter (I.1)' }).locator('button[data-dialoog]').click();
-  await page.locator('mat-dialog-container input').waitFor();
-  assert.strictEqual(await page.locator('mat-dialog-container input').inputValue(), 'GHAN MARINE PRODUCTS');
+  const dlg = page.locator('mat-dialog-container');
+  async function zoek(rijTekst, n = 0) {
+    const li = page.locator('#ai-verslag li', { hasText: rijTekst }).nth(n);
+    await li.locator('button[data-dialoog]').click();
+    await li.locator('.dlg-melding').waitFor({ timeout: 20000 });
+    return li.locator('.dlg-melding').innerText();
+  }
+  async function sluitDialoog() { await dlg.locator('[data-test="cancel"]').click(); await dlg.waitFor({ state: 'detached' }); }
+
+  // Exporteur: land IN gekozen, op naam gezocht, unieke treffer aangevinkt (niet "GHAN MARINE EXPORTS")
+  let melding = await zoek('Exporter (I.1)');
+  assert.ok(/aangevinkt: GHAN MARINE PRODUCTS, KAKINADA/.test(melding), melding);
+  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'IN - India');
+  assert.strictEqual(await dlg.locator('[data-test="search-term"]').inputValue(), 'GHAN MARINE PRODUCTS');
+  assert.ok(await dlg.locator('[data-test="search-type"] input[value="NAME"]').isChecked());
+  assert.ok(await dlg.locator('input[name="org-keuze"][value="GHAN MARINE PRODUCTS"]').isChecked());
+  await sluitDialoog();
+
+  // Importeur: exacte naam wint van "EUROFOODLINK LOGISTICS B.V."; land NL
+  melding = await zoek('Importer (I.6)');
+  assert.ok(/aangevinkt: EUROFOODLINK B\.V\./.test(melding), melding);
+  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'NL - Netherlands');
+  assert.ok(await dlg.locator('input[name="org-keuze"][value="EUROFOODLINK B.V."]').isChecked());
+  // Gebruiker klikt zelf Save -> keuze komt in het formulier
+  await dlg.locator('[data-test="save"]').click();
+  assert.strictEqual(await page.locator('[data-test="organisation-dialog-importer"]').innerText(), 'EUROFOODLINK B.V.');
+
+  // Erkenningsnummer van goederenitem 1: zoektype Approval number
+  melding = await zoek('Activity / approval number (I.15)');
+  assert.ok(/aangevinkt: GHAN MARINE PRODUCTS/.test(melding), melding);
+  assert.ok(await dlg.locator('[data-test="search-type"] input[value="APPROVAL_NUMBER"]').isChecked());
+  assert.strictEqual(await dlg.locator('[data-test="search-term"]').inputValue(), '1234');
+  await sluitDialoog();
+
+  // Geen treffer -> duidelijke melding, niets aangevinkt
+  melding = await zoek('Place of destination');
+  assert.ok(/geen resultaten/.test(melding), melding);
+  await sluitDialoog();
+
+  // Onbekende dialoog (grenscontrolepost): zoekterm in het zoekveld
+  melding = await zoek('Border control post');
+  assert.strictEqual(await dlg.locator('input').first().inputValue(), 'NLRTM1');
   await page.evaluate(() => document.querySelector('mat-dialog-container').remove());
-  await page.locator('#ai-verslag li', { hasText: 'Border control post' }).locator('button[data-dialoog]').click();
-  await page.locator('mat-dialog-container input').waitFor();
-  assert.strictEqual(await page.locator('mat-dialog-container input').inputValue(), 'NLRTM1');
+
   // Nooit opslaan of verzenden
   const klikken = await page.evaluate(() => window.__klikken);
-  assert.ok(!klikken.some((k) => /save|send/.test(k)), 'Save/Send niet aangeklikt: ' + klikken.join(','));
+  assert.ok(!klikken.some((k) => /^(save|send)-declaration$/.test(k)), 'Save/Send van de declaratie niet aangeklikt: ' + klikken.join(','));
+  assert.strictEqual(klikken.filter((k) => k === 'save').length, 1, 'dialoog-Save alleen door de gebruiker (1x in deze test)');
   assert.deepStrictEqual(fouten, []);
 
   await page.screenshot({ path: path.join(os.tmpdir(), 'ggb-e2e.png'), fullPage: false });
