@@ -111,7 +111,7 @@
 <mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Goods item(s)</mat-card-title>
 <app-form-goods-items><form novalidate="" class="responsive-form">
   <mat-card class="mat-mdc-card mdc-card first"><mat-card-content>
-    <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">GN-code <span>(I.31)</span></mat-label><button type="button" data-test="gn-code-dialog" data-dialoog="Select item"><span class="mdc-button__label"><i class="fal fa-fish-cooked"></i><span>Select item</span></span></button></div></div><div class="col"></div></div>
+    <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">GN-code <span>(I.31)</span></mat-label><button type="button" data-test="gn-code-dialog" data-dialoog="Select item" data-gn="1"><span class="mdc-button__label"><i class="fal fa-fish-cooked"></i><span>Select item</span></span></button></div></div><div class="col"></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Goods description <span>(I.31)</span></mat-label></label><input matinput="" type="text" id="goodsDescription" formcontrolname="goodsDescription" data-test="goods-description" required=""></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Gross weight <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="grossWeight" formcontrolname="grossWeight" data-test="gross-weight" required=""></mat-form-field></div>
       <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Nett weight <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="nettWeight" formcontrolname="nettWeight" data-test="nett-weight" required=""></mat-form-field></div></div>
@@ -137,6 +137,23 @@
   window.__klikken = [];
   var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam', ID: 'Indonesia' };
   var overlay = document.querySelector('.cdk-overlay-container');
+  // GN-codedialoog: ingekorte kopie van <app-gn-code-dialog> (data-test en kolommen zoals in Portbase)
+  var GN_CODES = [
+    ['160232', 'Andere bereidingen en conserven, van vlees, van slachtafvallen of van bloed', 'Gallus gallus', 'Houdbare samengestelde producten (met vlees)'],
+    ['160232', 'Andere bereidingen en conserven, van vlees, van slachtafvallen of van bloed', 'Gallus gallus', 'Niet houdbare samengestelde producten'],
+    ['160232', 'Andere bereidingen en conserven, van vlees, van slachtafvallen of van bloed', 'Gallus gallus', 'Vleesbereiding'],
+    ['160232', 'Andere bereidingen en conserven, van vlees, van slachtafvallen of van bloed', 'Gallus gallus', 'Vleesproducten'],
+    ['030617', 'Garnalen, bevroren', 'Penaeus vannamei', 'Visserijproducten (aquacultuur)'],
+    ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (aquacultuur)'],
+    ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (wild gevangen)']
+  ];
+  var GN_DIALOOG = '<app-gn-code-dialog class="mat-mdc-dialog-component-host"><h2 mat-dialog-title="">GN code</h2><mat-dialog-content><p class="mb-1">Search on description or GN code.</p><form novalidate="" class="responsive-form"><div class="row search">' +
+    '<div><mat-form-field><label><mat-label>Description or GN code</mat-label></label><input matinput="" formcontrolname="name" type="text" id="name" minlength="4" data-test="name" placeholder="At least 4 character(s)" required=""></mat-form-field></div>' +
+    '<div><mat-form-field><label><mat-label>Scientific name</mat-label></label><input matinput="" formcontrolname="scientificName" type="text" id="scientificName" data-test="scientific-name"></mat-form-field></div></div>' +
+    '<div class="row"><div class="col"><button type="submit" data-test="select-search"><span class="mdc-button__label"><span>Search</span></span></button></div></div></form>' +
+    '<mat-table data-test="gn-codes-list" class="mat-mdc-table search-results" role="table"><mat-header-row role="row" class="mat-mdc-header-row"><mat-header-cell role="columnheader" class="mat-column-selection"></mat-header-cell><mat-header-cell role="columnheader" class="mat-column-gnCode"> GN code </mat-header-cell><mat-header-cell role="columnheader" class="mat-column-description"> Description </mat-header-cell><mat-header-cell role="columnheader" class="mat-column-scientificName"> Scientific name </mat-header-cell><mat-header-cell role="columnheader" class="mat-column-productType"> Product type </mat-header-cell></mat-header-row></mat-table>' +
+    '</mat-dialog-content><mat-dialog-actions align="end"><button mat-dialog-close="" data-test="cancel" type="button"><span>Cancel</span></button><button data-test="save"><span>Save</span></button></mat-dialog-actions></app-gn-code-dialog>';
+
   // Lijstdialogen (Border control post / Inspection centre): tekst zoals in Portbase (Search on country, Name, Code)
   var LIJSTEN = {
     bcp: [['Amsterdam', 'NLAMS1'], ['Amsterdam Airport Schiphol', 'NLAMS4'], ['Eemshaven', 'NLEEM1'], ['Harlingen', 'NLHAR1'], ['Maastricht', 'NLMST4'], ['Rotterdam', 'NLRTM1'], ['Vlissingen', 'NLVLI1']],
@@ -214,9 +231,11 @@
       d.className = 'mat-mdc-dialog-container mdc-dialog cdk-dialog-container'; d.setAttribute('role', 'dialog');
       d.__bron = knop;
       d.innerHTML = knop.dataset.org ? ORG_DIALOOG.replace('{titel}', knop.dataset.dialoog.replace('Select ', '')) :
+        knop.dataset.gn ? GN_DIALOOG :
         knop.dataset.lijst ? LIJST_DIALOOG.replace('{titel}', knop.dataset.lijst === 'bcp' ? 'Border control post' : 'Inspection centre') :
         '<h2>' + knop.dataset.dialoog + '</h2><input type="text" placeholder="Search" data-test="dialog-search"><div class="results"></div>';
       overlay.parentNode.appendChild(d);
+      if (knop.dataset.gn) d.querySelector('[data-test="scientific-name"]').value = 'Gallus gallus'; // browser-autofill nabootsen
       if (knop.dataset.lijst === 'bcp') { d.querySelector('[data-test="search-country"]').value = 'NL'; toonLijst(d, 'bcp'); }
       if (knop.dataset.lijst === 'ic') d.querySelector('[data-test="search-country"]').addEventListener('mock-gekozen', function () { toonLijst(d, 'ic'); });
     }, 100);
@@ -226,8 +245,24 @@
       lijstRij.parentElement.querySelectorAll('mat-row').forEach(function (r) { r.classList.remove('mat-mdc-row-selected'); });
       lijstRij.classList.add('mat-mdc-row-selected');
     }
+    // Search in de GN-codedialoog: Portbase kent 6-cijferige codes; zoekterm moet het begin van de code zijn
+    if (knop && knop.dataset.test === 'select-search' && knop.closest('app-gn-code-dialog')) {
+      e.preventDefault();
+      var gdl = knop.closest('mat-dialog-container');
+      var zt = gdl.querySelector('[data-test="name"]').value, wn = gdl.querySelector('[data-test="scientific-name"]').value.toLowerCase();
+      setTimeout(function () {
+        var tab = gdl.querySelector('[data-test="gn-codes-list"]');
+        tab.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
+        var hits = GN_CODES.filter(function (x) { return x[0].indexOf(zt) === 0 && (!wn || x[2].toLowerCase().indexOf(wn) >= 0); });
+        if (!hits.length) tab.insertAdjacentHTML('beforeend', '<tr class="mat-row cdk-no-data-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="5">No results</td></tr>');
+        hits.forEach(function (x) {
+          tab.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="gn-codes-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell cell field selection mat-column-selection" role="cell"><mat-radio-button class="mat-mdc-radio-button"><div class="mdc-radio"><input type="radio" class="mdc-radio__native-control"></div><label class="mdc-label"></label></mat-radio-button></mat-cell>' +
+            '<mat-cell class="mat-mdc-cell mat-column-gnCode" role="cell"> ' + x[0] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-description" role="cell"> ' + x[1] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-scientificName" role="cell"> ' + x[2] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-productType" role="cell"> ' + x[3] + ' </mat-cell></mat-row>');
+        });
+      }, 300);
+    }
     // Search in de organisatiedialoog: resultaten met vertraging (API)
-    if (knop && knop.dataset.test === 'select-search') {
+    if (knop && knop.dataset.test === 'select-search' && !knop.closest('app-gn-code-dialog')) {
       e.preventDefault();
       var dlg = knop.closest('mat-dialog-container');
       var land = (dlg.querySelector('[data-test="search-country"]').value || '').slice(0, 2);
@@ -247,6 +282,8 @@
     }
     if (knop && knop.dataset.test === 'save' && knop.closest('mat-dialog-container')) {
       var dl = knop.closest('mat-dialog-container'), gekozen = dl.querySelector('input[name="org-keuze"]:checked');
+      var gnKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="gn-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
+      if (gnKeuze) { dl.__bron.querySelector('span span:last-child').textContent = gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim(); dl.remove(); return; }
       var rijKeuze = dl.querySelector('mat-row.mat-mdc-row-selected .mat-column-name');
       if (gekozen || rijKeuze) dl.__bron.querySelector('span span:last-child, span').textContent = gekozen ? gekozen.value : rijKeuze.textContent;
       dl.remove();

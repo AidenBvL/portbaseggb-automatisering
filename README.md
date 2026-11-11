@@ -95,8 +95,17 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    gemarkeerd en dan kies je zelf. **Save** in de dialoog klik je altijd zelf.
    In de lijstdialoog **Border control post** wordt het land (NL) ingevuld
    als het leeg is en de regel met de juiste code aangevinkt (bijv.
-   *Rotterdam – NLRTM1*). Bij de GN-code-dialoog wordt alleen de zoekterm
-   ingevuld.
+   *Rotterdam – NLRTM1*).
+
+   In de dialoog **GN code** wordt gezocht op de GN-code (eerst 8 cijfers,
+   dan 6 en 4, omdat Portbase vaak 6-cijferige codes toont) en worden de
+   regels gerangschikt op GN-code en **wetenschappelijke naam** (die de AI
+   uit vak I.28 van het HC haalt). Eén beste regel wordt aangevinkt. Heeft
+   Portbase voor dezelfde code en soort meerdere **producttypes** (bijv.
+   aquacultuur / wild gevangen, houdbaar / niet houdbaar), dan worden die
+   gemarkeerd en staat in het verslag de *aard van het product* volgens het
+   HC erbij; die keuze (en daarmee de Animo-code) maak je zelf. Een door de
+   browser automatisch ingevuld veld *Scientific name* wordt eerst gewist.
 
    De grenscontrolepost kiest de AI uit de vaste Portbase-lijst
    (`BCP_NL` in `js/ggb-ai.js`; bijwerken als Portbase de lijst wijzigt).
@@ -132,7 +141,8 @@ past binnen de afspraken van je organisatie.
   gevonden* zijn.
 - Portbase accepteert alleen **PDF** als bijlage; foto's worden wel
   uitgelezen maar niet geüpload.
-- De **Animo-code** staat niet op het HC en wordt niet ingevuld.
+- De **Animo-code** volgt uit de gekozen regel in de GN-codedialoog
+  (producttype); bij meerdere producttypes kiest de declarant.
 - AI kan zich vergissen: controleer altijd de velden met zekerheid
   *middel*/*laag* en de aandachtspunten.
 

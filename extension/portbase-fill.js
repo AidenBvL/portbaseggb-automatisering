@@ -255,7 +255,8 @@
   ];
 
   var GOED = [
-    { naam: 'GN-code (I.31)', key: 'gnCode', sel: ['button[data-test="gn-code-dialog"]'], label: /^gn-code/i, soort: 'dialoog' },
+    { naam: 'GN-code (I.31)', key: 'gnCode', sel: ['button[data-test="gn-code-dialog"]'], label: /^gn-code/i, soort: 'dialoog',
+      dialoogZoek: function (r, g) { return { gn: g.gnCode, term: g.gnCode, wetenschappelijk: g.wetenschappelijkeNaam, aard: g.aardProduct }; } },
     { naam: 'Goods description (I.31)', key: 'omschrijving', sel: ['input[data-test="goods-description"]', 'input[formcontrolname="goodsDescription"]'], label: /^goods description/i },
     { naam: 'Gross weight (I.34)', key: 'brutoGewicht', sel: ['input[data-test="gross-weight"]', 'input[formcontrolname="grossWeight"]'], label: /^gross weight/i },
     { naam: 'Nett weight (I.34)', key: 'nettoGewicht', sel: ['input[data-test="nett-weight"]', 'input[formcontrolname="nettWeight"]'], label: /^nett? weight/i },
@@ -526,6 +527,65 @@
     return { ok: true, melding: max > 0 ? besten.length + ' mogelijke regels gemarkeerd; kies zelf en klik Save' : '"' + (zoek.term || zoek.code) + '" niet in de lijst; kies zelf' };
   }
 
+  /* ---------------- GN-codedialoog ---------------- */
+
+  function gnRijen(dialoog) {
+    return qa('[data-test="gn-codes-list-row"], [data-test="gn-codes-list"] mat-row', dialoog);
+  }
+
+  /** Score van een GN-regel: GN (Portbase toont 4-8 cijfers) en soort. */
+  function gnScore(rij, gn, soort) {
+    var cel = txt(q('.mat-column-gnCode', rij)).replace(/\D/g, '');
+    var g = 0;
+    if (cel && cel === gn) g = 3;
+    else if (cel && (gn.indexOf(cel) === 0 || cel.indexOf(gn) === 0)) g = 2;
+    if (!g) return 0;
+    var s = 0, wn = norm(txt(q('.mat-column-scientificName', rij))), zs = norm(soort);
+    if (zs && wn === zs) s = 2;
+    else if (zs && wn && wn.split(' ')[0] === zs.split(' ')[0]) s = 1;
+    return g * 10 + s;
+  }
+
+  /**
+   * GN-codedialoog: zoeken op GN-code (8 cijfers, dan 6, dan 4), regels
+   * rangschikken op GN-code en wetenschappelijke naam en alleen aanvinken als
+   * er precies één beste regel is. Bij meerdere producttypes kiest de
+   * gebruiker; de aard van het product volgens het HC staat in de melding.
+   */
+  async function zoekGn(dialoog, zoek) {
+    var gn = String(zoek.gn || zoek.term || '').replace(/\D/g, '');
+    var termEl = eerste(['input[data-test="name"]', 'input[formcontrolname="name"]'], dialoog);
+    var knop = q('button[data-test="select-search"]', dialoog);
+    if (!termEl || !knop) return { ok: true, melding: 'zoekveld niet gevonden; zoek zelf op ' + gn };
+    var pogingen = [gn, gn.slice(0, 6), gn.slice(0, 4)].filter(function (p, i, a) { return p.length >= 4 && a.indexOf(p) === i; });
+    if (!pogingen.length) return { ok: true, melding: 'GN-code "' + gn + '" te kort om te zoeken' };
+    // "Scientific name" kan door de browser automatisch gevuld zijn en filtert dan ongemerkt mee.
+    var wnEl = q('input[data-test="scientific-name"]', dialoog);
+    if (wnEl && String(wnEl.value || '').trim()) { zetWaarde(wnEl, ''); blur(wnEl); }
+    var rijen = null, gebruikt = '';
+    for (var i = 0; i < pogingen.length && !rijen; i++) {
+      var oud = gnRijen(dialoog)[0];
+      zetWaarde(termEl, pogingen[i]);
+      blur(termEl);
+      knop.click();
+      gebruikt = pogingen[i];
+      rijen = await wachtOp(function () { var r = gnRijen(dialoog); return r.length && r[0] !== oud ? r : null; }, 5000);
+    }
+    if (!rijen) return { ok: true, melding: 'geen GN-codes gevonden voor ' + gn + '; zoek zelf (bijv. op omschrijving)' };
+    var scores = rijen.map(function (r) { return gnScore(r, gn, zoek.wetenschappelijk); });
+    var max = Math.max.apply(null, scores);
+    if (max <= 0) return { ok: true, melding: rijen.length + ' resultaten voor "' + gebruikt + '", maar geen passende GN-code; kies zelf' };
+    var besten = rijen.filter(function (r, j) { return scores[j] === max; });
+    var info = function (r) { return txt(q('.mat-column-gnCode', r)) + ' · ' + txt(q('.mat-column-scientificName', r)) + ' · ' + txt(q('.mat-column-productType', r)); };
+    if (besten.length === 1) {
+      selecteerRij(besten[0]);
+      return { ok: true, gekozen: true, melding: 'aangevinkt: ' + info(besten[0]) + ' – controleer en klik Save' };
+    }
+    besten.forEach(function (r) { r.style.outline = '2px dashed #b26a00'; });
+    var types = besten.map(function (r) { return txt(q('.mat-column-productType', r)); }).filter(function (x, j, a) { return x && a.indexOf(x) === j; });
+    return { ok: true, melding: besten.length + ' regels gemarkeerd; kies het producttype: ' + types.join(' · ') + (zoek.aard ? ' (HC: ' + zoek.aard + ')' : '') + ', dan Save' };
+  }
+
   /**
    * Opent een Portbase-zoekdialoog en vult de zoekopdracht in.
    * zoek: {term, land?, type?: 'NAME'|'APPROVAL_NUMBER'|'CITY'|'POSTAL_CODE'} of een string.
@@ -540,8 +600,10 @@
     knop.click();
     var dialoog = await wachtOp(function () { var d = qa('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]'); return d.length > voor ? d[d.length - 1] : null; }, 3000);
     if (!dialoog) return { ok: false, melding: 'dialoog ging niet open' };
-    var termEl = await wachtOp(function () { return q('input[data-test="search-term"]', dialoog); }, 1000);
-    if (termEl) return zoekOrganisatie(dialoog, zoek);
+    // Wachten tot de inhoud van de dialoog er staat, dan het type bepalen.
+    await wachtOp(function () { return q('input, mat-table, table', dialoog); }, 2000);
+    if (q('input[data-test="search-term"]', dialoog)) return zoekOrganisatie(dialoog, zoek);
+    if (q('app-gn-code-dialog, [data-test="gn-codes-list"]', dialoog)) return zoekGn(dialoog, zoek);
     if (zoek.code || q('mat-table, table, [role="table"], input[aria-autocomplete="list"]', dialoog)) return kiesUitLijst(dialoog, zoek);
     // Onbekende dialoog (bijv. grenscontrolepost, GN-code): eerste zoekveld invullen.
     var veld = await wachtOp(function () {
@@ -563,7 +625,7 @@
     return qa('input:not([disabled]):not([type="hidden"])', f).length > 0;
   }
 
-  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, rijScore: rijScore, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
+  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, rijScore: rijScore, gnScore: gnScore, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_FILL = exported;
 })(typeof window !== 'undefined' ? window : this);

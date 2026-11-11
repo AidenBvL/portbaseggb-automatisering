@@ -175,4 +175,20 @@ test('grenscontrolepost wordt op de Portbase-lijst gezet; inspectiecentrum niet 
   assert.ok(bcpEnum.includes('Rotterdam (NLRTM1)') && bcpEnum.includes(''));
 });
 
+test('GN-regel: GN-code (6 of 8 cijfers) en soort bepalen de score', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const rij = (gn, wn) => ({ querySelector: (sel) => ({ textContent: /gnCode/.test(sel) ? ' ' + gn + ' ' : /scientificName/.test(sel) ? wn : '' }) });
+  assert.strictEqual(FILL.gnScore(rij('030617', 'Penaeus vannamei'), '03061792', 'Penaeus vannamei'), 22);
+  assert.strictEqual(FILL.gnScore(rij('03061792', 'Penaeus vannamei'), '03061792', 'Penaeus vannamei'), 32);
+  assert.strictEqual(FILL.gnScore(rij('030617', 'Penaeus monodon'), '03061792', 'Penaeus vannamei'), 21, 'zelfde geslacht');
+  assert.strictEqual(FILL.gnScore(rij('160232', 'Gallus gallus'), '03061792', 'Gallus gallus'), 0, 'andere GN-code');
+});
+
+test('AI-voorstel bevat soort en aard per goederenitem', () => {
+  const r = AI.normaliseer({ goederen: [{ gnCode: '03061792', omschrijving: 'Shrimps', wetenschappelijkeNaam: ' Penaeus  vannamei ', aardProduct: 'Farmed' }] });
+  assert.strictEqual(r.goederen[0].wetenschappelijkeNaam, 'Penaeus vannamei');
+  assert.strictEqual(r.goederen[0].aardProduct, 'Farmed');
+  assert.ok(AI.SCHEMA.properties.goederen.items.required.includes('wetenschappelijkeNaam'));
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

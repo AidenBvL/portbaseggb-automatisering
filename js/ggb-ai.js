@@ -123,6 +123,8 @@
         batchnummer: str('Batchnummer / lotnummer (I.34)'),
         aanvullendeEenheden: str('Additional units (I.33), indien vermeld'),
         erkenningsnummer: str('Activity / approval number (I.15): erkenningsnummer van de inrichting van oorsprong, bijv. "1234" of "IN-1234"'),
+        wetenschappelijkeNaam: str('Soort, wetenschappelijke naam zoals op het HC (vak I.28 "Species"), bijv. "Penaeus vannamei" of "Gallus gallus". Leeg als niet vermeld.'),
+        aardProduct: str('Aard/behandeling van het product zoals op het HC (vak I.28 "Nature of commodity", "Treatment type", "Type of product"), bijv. "Farmed, frozen", "Wild caught", "Meat preparation, frozen", "Shelf-stable composite product". Letterlijk overnemen.'),
         containernummer: str('Container waarin dit item zit, indien bekend'),
         bron: str('Bron'),
         zekerheid: str('Zekerheid', ZEKERHEID)
@@ -151,6 +153,8 @@
     '- Neem elk aangeleverd certificaat of rapport op onder "documenten" (één regel per document) met het nummer precies',
     '  zoals gedrukt. Vermeld bij een labrapport naar welk HC-nummer het verwijst, als dat erin staat.',
     '- Maak één goederenitem per GN-code/partij zoals op het HC. Tel gewichten niet zelf op tenzij nodig, en meld het dan.',
+    '- Neem per goederenitem de wetenschappelijke naam en de aard/behandeling van het product (vak I.28) letterlijk over;',
+    '  Portbase heeft per GN-code en soort meerdere producttypes en de declarant kiest daarmee het juiste.',
     '- Meld onder "waarschuwingen" elke tegenstrijdigheid (bijv. ander gewicht of containernummer op HC dan op B/L),',
     '  onleesbare delen en gegevens die de declarant zelf moet aanvullen.'
   ].join('\n');
@@ -301,6 +305,8 @@
         batchnummer: s(g.batchnummer),
         aanvullendeEenheden: s(g.aanvullendeEenheden),
         erkenningsnummer: s(g.erkenningsnummer),
+        wetenschappelijkeNaam: s(g.wetenschappelijkeNaam),
+        aardProduct: s(g.aardProduct),
         containernummer: s(g.containernummer).toUpperCase().replace(/[^A-Z0-9]/g, ''),
         bron: s(g.bron),
         zekerheid: ZEKERHEID.indexOf(g.zekerheid) >= 0 ? g.zekerheid : 'laag'

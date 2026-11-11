@@ -39,8 +39,8 @@ const AI_JSON = {
     { type: 'LAB', identificatie: 'EIA/VZ/26-27/0003572', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: 'EIA/VSP/2026-27/02937', bestand: 'hc.pdf', zekerheid: 'hoog' }
   ],
   goederen: [
-    { gnCode: '03061792', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', bron: 'HC', zekerheid: 'hoog' },
-    { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Carton', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', bron: 'HC', zekerheid: 'hoog' }
+    { gnCode: '03061792', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
+    { gnCode: '03061791', omschrijving: 'Frozen shrimps (Penaeus monodon)', brutoGewicht: '500', nettoGewicht: '400', aantalColli: '40', verpakkingstype: 'Carton', batchnummer: 'L124', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', wetenschappelijkeNaam: 'Penaeus monodon', aardProduct: 'Wild caught, frozen', bron: 'HC', zekerheid: 'hoog' }
   ],
   waarschuwingen: ['Aankomstdatum niet in de documenten; overgenomen uit extra info.']
 };
@@ -193,6 +193,23 @@ try {
   await dlg.locator('[data-test="save"]').click();
   assert.strictEqual(await page.locator('[data-test="border-control-post-dialog"]').innerText(), 'Rotterdam');
 
+  // GN-code item 1: 8 cijfers geven niets, 6 cijfers wel; unieke soort -> aangevinkt; browser-autofill in Scientific name gewist
+  melding = await zoek('GN-code (I.31)', 0);
+  assert.ok(/aangevinkt: 030617 · Penaeus vannamei · Visserijproducten \(aquacultuur\)/.test(melding), melding);
+  assert.strictEqual(await dlg.locator('[data-test="name"]').inputValue(), '030617');
+  assert.strictEqual(await dlg.locator('[data-test="scientific-name"]').inputValue(), '');
+  const gekozenRij = dlg.locator('[data-test="gn-codes-list-row"]', { has: page.locator('input:checked') });
+  assert.strictEqual(await gekozenRij.count(), 1);
+  assert.ok(/Penaeus vannamei/.test(await gekozenRij.innerText()));
+  await dlg.locator('[data-test="save"]').click();
+  assert.ok(/030617 Visserijproducten \(aquacultuur\)/.test(await page.locator('[data-test="gn-code-dialog"]').first().innerText()));
+
+  // GN-code item 2: twee producttypes voor P. monodon -> niets aangevinkt, keuze + HC-omschrijving in de melding
+  melding = await zoek('GN-code (I.31)', 1);
+  assert.ok(/2 regels gemarkeerd; kies het producttype: Visserijproducten \(aquacultuur\) · Visserijproducten \(wild gevangen\) \(HC: Wild caught, frozen\)/.test(melding), melding);
+  assert.strictEqual(await dlg.locator('[data-test="gn-codes-list-row"] input:checked').count(), 0);
+  await sluitDialoog();
+
   // Inspectiecentrum vult de declarant zelf in: geen regel in het verslag, knop niet aangeraakt
   assert.ok(!/Inspection centre/.test(verslag), 'inspectiecentrum hoort niet in het verslag');
 
@@ -200,7 +217,7 @@ try {
   const klikken = await page.evaluate(() => window.__klikken);
   assert.ok(!klikken.some((k) => /^(save|send)-declaration$/.test(k)), 'Save/Send van de declaratie niet aangeklikt: ' + klikken.join(','));
   assert.ok(!klikken.includes('inspection-centre-dialog'), 'inspectiecentrum niet aangeraakt');
-  assert.strictEqual(klikken.filter((k) => k === 'save').length, 2, 'dialoog-Save alleen door de gebruiker (2x in deze test)');
+  assert.strictEqual(klikken.filter((k) => k === 'save').length, 3, 'dialoog-Save alleen door de gebruiker (3x in deze test)');
   assert.deepStrictEqual(fouten, []);
 
   await page.screenshot({ path: path.join(os.tmpdir(), 'ggb-e2e.png'), fullPage: false });
