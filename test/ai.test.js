@@ -312,4 +312,17 @@ test('GGB-documenten: keuze en type van de gebruiker blijven staan', () => {
   assert.ok(Object.values(AI.PORTBASE_DOCTYPE).every((t) => AI.PORTBASE_DOCTYPES.includes(t)), 'standaardtypes staan in de Portbase-lijst');
 });
 
+test('goederenitems = HC-regels: brutogewicht naar rato verdeeld, som exact gelijk aan HC I.26', () => {
+  const regels = [['03074399', '4000', '500'], ['03074399', '1500', '200'], ['03075200', '9500', '1300']];
+  const r = AI.normaliseer({ totaalBrutoGewicht: veld('22.280'), totaalNettoGewicht: veld('15000'), totaalColli: veld('2000'),
+    goederen: regels.map(([gn, net, col]) => ({ gnCode: gn, nettoGewicht: net, aantalColli: col })) });
+  assert.strictEqual(r.goederen.length, 3, 'niet samengevoegd');
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoGewicht), ['5941.3', '2228', '14110.7']);
+  assert.ok(r.waarschuwingen.some((w) => /naar rato/.test(w)));
+  // Bruto per regel op het HC: niet overschrijven, wel controleren
+  const r2 = AI.normaliseer({ totaalBrutoGewicht: veld('1000'), goederen: [{ gnCode: '03074399', brutoGewicht: '600', nettoGewicht: '500' }, { gnCode: '03074399', brutoGewicht: '300', nettoGewicht: '250' }] });
+  assert.deepStrictEqual(r2.goederen.map((g) => g.brutoGewicht), ['600', '300']);
+  assert.ok(r2.waarschuwingen.some((w) => /wijkt af van het totaal/.test(w)));
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

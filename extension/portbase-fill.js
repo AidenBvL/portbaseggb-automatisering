@@ -181,7 +181,10 @@
       r.knop = el;
       r.zoekterm = def.zoekterm ? def.zoekterm(waarde) : waarde;
       r.zoek = zoekOpdracht || { term: r.zoekterm };
-      if (!opts.overschrijven && !/^select\b/i.test(txt(el)) && txt(el)) { r.status = 'overgeslagen'; r.melding = 'al gekozen (' + txt(el) + ')'; return r; }
+      if (!opts.overschrijven) {
+        var gekozen = huidigeKeuze(el);
+        if (gekozen) { r.status = 'overgeslagen'; r.melding = 'al gekozen (' + gekozen + ')'; return r; }
+      }
       if (!opts.dialogen) { r.status = 'handmatig'; r.melding = 'kies via "' + txt(el) + '"'; return r; }
       var dres = await afhandelen(el, r.zoek, opts);
       r.status = dres.opgeslagen ? 'ingevuld' : 'handmatig';
@@ -214,6 +217,19 @@
       r.status = 'fout'; r.melding = e.message;
     }
     return r;
+  }
+
+  /**
+   * Wat er nu gekozen is bij een dialoogknop. Nieuwe Portbase-opbouw: een
+   * alleen-lezen veld (bijv. gn-code-selector) met een knop "Edit" ernaast;
+   * oude opbouw: alleen een knop "Select …" waarvan de tekst de keuze wordt.
+   */
+  function huidigeKeuze(knop) {
+    var vak = knop.closest('mat-form-field');
+    var veld = vak && q('input[readonly], input[data-test$="-selector"]', vak);
+    if (veld) return String(veld.value || '').trim();
+    var t = txt(knop);
+    return t && !/^(select\b|edit$)/i.test(t) ? t : '';
   }
 
   /* ---------------- velddefinities ---------------- */
@@ -290,11 +306,12 @@
       termen: function (v) { return [v, String(v).replace(/s$/i, ''), /carton/i.test(v) ? 'Box' : '']; } },
     { naam: 'Batch number (I.34)', key: 'batchnummer', sel: ['input[formcontrolname="batchNumber"]'], label: /^batch number/i },
     { naam: 'Additional units (I.33)', key: 'aanvullendeEenheden', sel: ['input[formcontrolname="additionalUnits"]'], label: /^additional units/i },
-    { naam: 'Activity / approval number (I.15)', key: 'erkenningsnummer', sel: ['button[data-test="organisation-dialog"]'], label: /^activity \/ approval number/i, soort: 'dialoog',
+    { naam: 'Activity / approval number (I.15)', key: 'erkenningsnummer', sel: ['button[data-test="establishment-dialog"]', 'button[data-test="organisation-dialog"]'], label: /^activity \/ approval number/i, soort: 'dialoog',
       dialoogZoek: function (r, g) {
         var pv = r.plaatsVerzending || {};
         return orgZoek(Object.assign({}, pv, { erkenningsnummer: g.erkenningsnummer || pv.erkenningsnummer }), 'inrichting', pv.land || r.landOorsprong.waarde || r.exporteur.land, r);
-      } }
+      } },
+    { naam: 'Equipment number', key: 'containernummer', sel: ['mat-select[formcontrolname="equipmentNumber"]'], label: /^equipment number/i }
   ];
 
   /** Zoekopdracht voor de organisatiedialoog. Met erkenningsnummer eerst daarop zoeken, anders op naam. */
@@ -463,6 +480,7 @@
       gebruikt.push(gk);
       var item = Object.assign({}, r.goederen[g]);
       if (!item.erkenningsnummer && r.plaatsVerzending) item.erkenningsnummer = r.plaatsVerzending.erkenningsnummer || '';
+      if (!item.containernummer && (r.containers || []).length === 1) item.containernummer = r.containers[0].containernummer;
       for (var gf = 0; gf < GOED.length; gf++) {
         if (GOED[gf].nietInvullen) continue; // Portbase vult de omschrijving zelf na het kiezen van de GN-code
         var gres = await vulVeld(GOED[gf], item[GOED[gf].key], gk, opts, zoekVoor(GOED[gf], item));
@@ -815,8 +833,15 @@
     if (!item.animoCode) { r.melding = 'geen Animo-code in het voorstel'; return r; }
     if (!opts.dialogen) { r.status = 'handmatig'; return r; }
     if (gnRes && gnRes.status !== 'ingevuld' && gnRes.status !== 'overgeslagen') { r.status = 'handmatig'; r.melding = 'eerst de GN-code kiezen'; return r; }
+    var animoVeld = q('input[data-test="animo-code-selector"], #animoCodeSelector', kaart);
+    var huidig = animoVeld ? String(animoVeld.value || '').trim() : '';
+    if (huidig && !opts.overschrijven) {
+      r.status = huidig.indexOf(item.animoCode) === 0 ? 'ingevuld' : 'handmatig';
+      r.melding = huidig.indexOf(item.animoCode) === 0 ? 'al ingevuld door Portbase (' + huidig + ')' : 'Portbase vulde ' + huidig + ' in; voorstel was ' + item.animoCode + ' – controleer';
+      return r;
+    }
     var zoek = { animo: item.animoCode };
-    var open = await wachtOp(function () { return dialogen().filter(function (d) { return q('app-animo-code-dialog, [data-test="animo-codes-list"]', d); })[0]; }, 1500);
+    var open = await wachtOp(function () { return dialogen().filter(function (d) { return q('app-animo-code-dialog, [data-test="animo-codes-list"]', d); })[0]; }, 1000);
     var res;
     if (open) {
       res = await verwerkDialoog(open, zoek);

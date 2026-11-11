@@ -151,6 +151,9 @@
     vervoermiddelNationaliteit: veld('Nationality (I.13): vlaggenstaat, ISO alpha-2.'),
     aankomstDatum: veld('Expected date of arrival (I.10), formaat dd-mm-jjjj. Leeg als niet in de documenten.'),
     aankomstTijd: veld('Verwachte aankomsttijd, formaat uu:mm. Leeg als onbekend.'),
+    totaalColli: veld('HC vak I.24 Total number of packages (alleen het getal).'),
+    totaalNettoGewicht: veld('HC vak I.26 Total net weight in kg.'),
+    totaalBrutoGewicht: veld('HC vak I.26 Total gross weight in kg (of uit paklijst/B/L).'),
     containers: {
       type: 'array',
       description: 'Transport equipment (I.17): containers met zegelnummer.',
@@ -176,7 +179,7 @@
       items: obj({
         gnCode: str('GN-code (I.31), 8 cijfers zonder punten/spaties, bijv. 03061792'),
         omschrijving: str('Goederenomschrijving (I.31), incl. soort (wetenschappelijke naam) indien vermeld'),
-        brutoGewicht: str('Brutogewicht in kg, alleen cijfers met punt als decimaalteken'),
+        brutoGewicht: str('Brutogewicht van deze HC-regel in kg; leeg als het HC het per regel niet geeft'),
         nettoGewicht: str('Nettogewicht in kg, alleen cijfers met punt als decimaalteken'),
         aantalColli: str('Aantal verpakkingen (I.32), alleen cijfers'),
         verpakkingstype: str('Package type (I.32), bijv. Carton, Bag, Box, Pallet'),
@@ -217,8 +220,11 @@
     '    I.22 For internal market -> bestemming "Import" (I.21 For transit -> "Transit"); I.2 Certificate reference -> nummer van het HC;',
     '    I.27 Description of consignment -> goederen (CN code, Species, Nature of commodity, Batch number, Package count, Net weight,',
     '    Manufacturing plant). Brutogewichten per product uit paklijst of B/L als het HC alleen een totaal geeft.',
-    '- Maak één goederenitem per combinatie van GN-code en soort: tel de regels van I.27 met dezelfde GN-code en soort op',
-    '  (colli, nettogewicht) en meld in de waarschuwingen dat ze zijn samengevoegd.',
+    '- Goederenitems moeten identiek zijn aan het HC: maak precies één goederenitem per regel van vak I.27 (#1, #2, …),',
+    '  in dezelfde volgorde, ook als GN-code en soort gelijk zijn. Niet samenvoegen en niet splitsen. Per regel: Commodity',
+    '  (GN-code), Species, Nature of commodity + Treatment type (aard), Batch number, Package count, Net weight en',
+    '  Manufacturing plant (erkenningsnummer). Brutogewicht per regel alleen als het op het HC staat, anders leeg laten:',
+    '  de extensie verdeelt het totale brutogewicht (I.26) naar rato van het nettogewicht. Neem de totalen I.24/I.26 over.',
     '  Gebruik factuur, paklijst en B/L voor B/L-nummer, containers, zegels, colli en gewichten als die niet op het HC staan.',
     '- Datums altijd als dd-mm-jjjj, tijden als uu:mm, landen als ISO alpha-2, GN-codes als 8 cijfers zonder scheidingstekens,',
     '  gewichten in kg met een punt als decimaalteken.',
@@ -321,7 +327,8 @@
     var r = {};
     ['declaratieType', 'bol', 'bestemming', 'grenscontrolepost', 'landOorsprong', 'landLading',
      'gecertificeerdVoor', 'transportconditie', 'vervoermiddel', 'vervoermiddelNaam', 'vervoermiddelNationaliteit',
-     'aankomstDatum', 'aankomstTijd'].forEach(function (k) { r[k] = normVeld(raw[k]); });
+     'aankomstDatum', 'aankomstTijd', 'totaalColli', 'totaalNettoGewicht', 'totaalBrutoGewicht'].forEach(function (k) { r[k] = normVeld(raw[k]); });
+    ['totaalColli', 'totaalNettoGewicht', 'totaalBrutoGewicht'].forEach(function (k) { r[k].waarde = normGetal(r[k].waarde); });
 
     ['landOorsprong', 'landLading', 'vervoermiddelNationaliteit'].forEach(function (k) {
       var oud = r[k].waarde;
@@ -402,6 +409,7 @@
       return item;
     }).filter(function (g) { return g.gnCode || g.omschrijving; });
 
+    verdeelBruto(r, w);
     if (!r.declaratieType.waarde) {
       var dierlijk = r.goederen.some(function (g) { return /^(0[1-5]|1[56]|2[01]|3[05])/.test(g.gnCode); });
       if (r.goederen.length) {
@@ -413,6 +421,36 @@
     }
     r.waarschuwingen = uniek(w);
     return r;
+  }
+
+  /**
+   * Het HC geeft per regel (I.27) meestal alleen nettogewicht. Ontbreekt het
+   * brutogewicht per regel, dan wordt het totaal (I.26) naar rato van het
+   * nettogewicht verdeeld (1 decimaal; de laatste regel vangt de afronding op).
+   * Anders: controle dat de som klopt met het totaal.
+   */
+  function verdeelBruto(r, w) {
+    var items = r.goederen, totaal = +r.totaalBrutoGewicht.waarde;
+    if (!items.length) return;
+    var netto = items.map(function (g) { return +g.nettoGewicht || 0; });
+    var somNetto = netto.reduce(function (a, b) { return a + b; }, 0);
+    var leeg = items.filter(function (g) { return !g.brutoGewicht; });
+    if (totaal && leeg.length === items.length && somNetto > 0) {
+      var rest = totaal;
+      items.forEach(function (g, i) {
+        var v = i === items.length - 1 ? rest : Math.round(totaal * netto[i] / somNetto * 10) / 10;
+        rest = Math.round((rest - v) * 10) / 10;
+        g.brutoGewicht = String(Math.round(v * 10) / 10);
+      });
+      w.push('Brutogewicht per goederenitem berekend naar rato van het nettogewicht (totaal ' + totaal + ' kg, HC I.26); controleer of dat zo gewenst is.');
+    } else if (totaal && !leeg.length) {
+      var som = items.reduce(function (a, g) { return a + (+g.brutoGewicht || 0); }, 0);
+      if (Math.abs(som - totaal) > 1) w.push('Som van de brutogewichten (' + Math.round(som * 10) / 10 + ' kg) wijkt af van het totaal op het HC (' + totaal + ' kg).');
+    }
+    var tn = +r.totaalNettoGewicht.waarde;
+    if (tn && somNetto && Math.abs(somNetto - tn) > 1) w.push('Som van de nettogewichten (' + Math.round(somNetto * 10) / 10 + ' kg) wijkt af van het totaal op het HC (' + tn + ' kg).');
+    var tc = +r.totaalColli.waarde, somColli = items.reduce(function (a, g) { return a + (+g.aantalColli || 0); }, 0);
+    if (tc && somColli && somColli !== tc) w.push('Som van de colli (' + somColli + ') wijkt af van het totaal op het HC (' + tc + ').');
   }
 
   function uniek(arr) {

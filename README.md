@@ -181,8 +181,15 @@ responsible*), I.11 → inrichting van oorsprong (met approval number),
 I.12 → plaats van bestemming (met approval number, kan in een ander
 EU-land liggen), I.15 → vervoermiddel (naam + vlag), I.16 → grenscontrolepost,
 I.18 → transportconditie, I.19 → containers, I.20 → *certified as or for*,
-I.22 → *Import*, I.27 → goederenitems (één per GN-code + soort; regels
-worden opgeteld, brutogewichten uit paklijst/B/L).
+I.22 → *Import*, I.27 → goederenitems.
+
+**Goederenitems zijn identiek aan het HC**: elke regel van I.27 (#1, #2, …)
+wordt één goederenitem, in dezelfde volgorde, ook als GN-code en soort
+gelijk zijn. Het HC geeft per regel alleen het nettogewicht; het totale
+brutogewicht (I.26) wordt daarom naar rato van het nettogewicht over de
+regels verdeeld (1 decimaal, de som klopt exact). Per goederenitem worden
+ook de container (*Equipment number*) en het erkenningsnummer gekozen; de
+*Consumer package indicator* blijft op de standaardwaarde van Portbase.
 
 ### Beperkingen
 

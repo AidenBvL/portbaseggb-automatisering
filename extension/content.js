@@ -408,7 +408,8 @@
     ['landOorsprong', 'Country of origin (I.11)'], ['landLading', 'Country of loading (I.14)'],
     ['gecertificeerdVoor', 'Goods certified as or for (I.18)'], ['transportconditie', 'Transport conditions (I.16)'],
     ['vervoermiddel', 'Means of transport (I.13)'], ['vervoermiddelNaam', 'Name / identification (I.13)'],
-    ['vervoermiddelNationaliteit', 'Nationality (I.13)'], ['aankomstDatum', 'Expected date of arrival (I.10)'], ['aankomstTijd', 'Expected time of arrival']
+    ['vervoermiddelNationaliteit', 'Nationality (I.13)'], ['aankomstDatum', 'Expected date of arrival (I.10)'], ['aankomstTijd', 'Expected time of arrival'],
+    ['totaalColli', 'Totaal colli (HC I.24)'], ['totaalNettoGewicht', 'Totaal netto kg (HC I.26)'], ['totaalBrutoGewicht', 'Totaal bruto kg (HC I.26)']
   ];
 
   function groep(titel, rijen) {

@@ -151,7 +151,8 @@ try {
   assert.strictEqual(await waarde('[data-test="gross-weight"]', 0), '21516');
   assert.strictEqual(await waarde('[data-test="nett-weight"]', 0), '13447.5');
   assert.strictEqual(await waarde('[data-test="packaging-number-of-packages"]', 0), '1600');
-  assert.strictEqual(await keuze('[data-test="packaging-package-type"]', 0), 'Carton');
+  assert.strictEqual(await keuze('[data-test="packaging-package-type"]', 0), 'Carton (CT)');
+  assert.strictEqual(await keuze('app-form-goods-items mat-select[formcontrolname="equipmentNumber"]', 1), 'HLBU9066045', 'container per goederenitem');
   assert.strictEqual(await waarde('input[formcontrolname="batchNumber"]', 1), 'L124');
   // Zoekvensters automatisch afgehandeld: zoeken, juiste regel kiezen, Save in het venster
   const knopTekst = (sel, n = 0) => tekst(sel, n);
@@ -160,11 +161,13 @@ try {
   assert.strictEqual(await knopTekst('[data-test="border-control-post-dialog"]'), 'Rotterdam', 'BCP NLRTM1');
   assert.ok(/1234/.test(await knopTekst('app-form-documents [data-test="organisation-dialog"]', 0)), 'inrichting van oorsprong document 1 via erkenningsnummer');
   assert.ok(/1234/.test(await knopTekst('app-form-documents [data-test="organisation-dialog"]', 1)), 'inrichting van oorsprong document 2');
-  assert.strictEqual(await knopTekst('[data-test="gn-code-dialog"]', 0), '030617 Visserijproducten (aquacultuur)', 'GN item 1: 8 -> 6 cijfers, soort vannamei');
-  assert.strictEqual(await knopTekst('[data-test="gn-code-dialog"]', 1), '030617 Visserijproducten (wild gevangen)', 'GN item 2: producttype via "Wild caught" + Animo 102108');
-  assert.strictEqual(await tekst('app-form-goods-items form > mat-card .animo-gekozen', 0), '206107', 'Animo item 1 (via zoeken in de lijst)');
-  assert.strictEqual(await tekst('app-form-goods-items form > mat-card .animo-gekozen', 1), '102108', 'Animo item 2');
-  assert.ok(/1234/.test(await knopTekst('app-form-goods-items [data-test="organisation-dialog"]', 0)), 'erkenningsnummer goederenitem 1');
+  // Nieuwe opbouw: keuze staat in het alleen-lezen veld naast de knop "Edit"
+  assert.strictEqual(await waarde('[data-test="gn-code-selector"]', 0), '030617 Visserijproducten (aquacultuur)', 'GN item 1: 8 -> 6 cijfers, soort vannamei');
+  assert.strictEqual(await waarde('[data-test="gn-code-selector"]', 1), '030617 Visserijproducten (wild gevangen)', 'GN item 2: producttype via "Wild caught" + Animo 102108');
+  assert.strictEqual(await waarde('[data-test="animo-code-selector"]', 0), '206107', 'Animo item 1 (via zoeken in de lijst)');
+  assert.strictEqual(await waarde('[data-test="animo-code-selector"]', 1), '102108', 'Animo item 2');
+  assert.ok(/1234/.test(await waarde('app-form-goods-items [data-test="organisation-selector"]', 0)), 'erkenningsnummer goederenitem 1 via establishment-dialog');
+  assert.strictEqual(await knopTekst('[data-test="gn-code-dialog"]', 0), 'Edit');
   assert.strictEqual(await page.locator('mat-dialog-container').count(), 0, 'alle zoekvensters weer dicht');
   assert.ok(/Exporter \(I\.1\): .*gekozen: GHAN MARINE PRODUCTS · KAKINADA · 1234 · EX - exporter/.test(verslag), verslag);
 
@@ -296,10 +299,15 @@ try {
       { type: 'CATCH', identificatie: '', datumAfgifte: '11-11-2026', landAfgifte: 'VN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'quang.pdf', zekerheid: 'middel' }
     ],
     goederen: [
-      { gnCode: '03074399', omschrijving: 'Frozen raw whole cleaned baby cuttlefish', brutoGewicht: '15680', nettoGewicht: '10500', aantalColli: '1400', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: 'CSQU3054383', animoCode: '102108', wetenschappelijkeNaam: 'Sepia lycidas', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27', zekerheid: 'hoog' },
-      { gnCode: '03075200', omschrijving: 'Frozen raw whole cleaned baby octopus', brutoGewicht: '6600', nettoGewicht: '4500', aantalColli: '600', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: 'CSQU3054383', animoCode: '102108', wetenschappelijkeNaam: 'Octopus membranaceus', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27', zekerheid: 'hoog' }
+      { gnCode: '03074399', omschrijving: '', brutoGewicht: '', nettoGewicht: '4000', aantalColli: '500', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: '', animoCode: '102108', wetenschappelijkeNaam: 'Sepia lycidas', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27 #1', zekerheid: 'hoog' },
+      { gnCode: '03074399', omschrijving: '', brutoGewicht: '', nettoGewicht: '1500', aantalColli: '200', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: '', animoCode: '102108', wetenschappelijkeNaam: 'Sepia lycidas', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27 #2', zekerheid: 'hoog' },
+      { gnCode: '03074399', omschrijving: '', brutoGewicht: '', nettoGewicht: '1200', aantalColli: '150', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: '', animoCode: '102108', wetenschappelijkeNaam: 'Sepia lycidas', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27 #3', zekerheid: 'hoog' },
+      { gnCode: '03074399', omschrijving: '', brutoGewicht: '', nettoGewicht: '3800', aantalColli: '550', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: '', animoCode: '102108', wetenschappelijkeNaam: 'Sepia lycidas', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27 #4', zekerheid: 'hoog' },
+      { gnCode: '03075200', omschrijving: '', brutoGewicht: '', nettoGewicht: '2300', aantalColli: '300', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: '', animoCode: '102108', wetenschappelijkeNaam: 'Octopus membranaceus', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27 #5', zekerheid: 'hoog' },
+      { gnCode: '03075200', omschrijving: '', brutoGewicht: '', nettoGewicht: '2200', aantalColli: '300', verpakkingstype: 'Carton', batchnummer: 'LOT-TEST-1', aanvullendeEenheden: '', erkenningsnummer: 'DL 1022', containernummer: '', animoCode: '102108', wetenschappelijkeNaam: 'Octopus membranaceus', aardProduct: 'Fishery products, Wild stock; Frozen', bron: 'HC I.27 #6', zekerheid: 'hoog' }
     ],
-    waarschuwingen: ['HC I.27 regels met dezelfde GN-code en soort samengevoegd.']
+    totaalColli: v('2000'), totaalNettoGewicht: v('15000'), totaalBrutoGewicht: v('22280'),
+    waarschuwingen: []
   };
   const p4 = await context.newPage();
   p4.on('pageerror', (e) => fouten.push('p4: ' + e.message));
@@ -331,15 +339,22 @@ try {
   assert.strictEqual(await k4('[data-test="document-type"] .mat-mdc-select-value'), 'Health certificate (636)');
   assert.strictEqual(await w4('[data-test="document-number"]'), 'IMPORT.EU.VN.2026.0000001');
   assert.strictEqual(await k4('app-form-documents [data-test="organisation-dialog"]'), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
-  // Goederen: GN-code + Latijnse naam, Animo, erkenningsnummer; omschrijving door Portbase
-  assert.strictEqual(await k4('[data-test="gn-code-dialog"]', 0), '030743 Visserijproducten (wild gevangen)');
-  assert.strictEqual(await k4('[data-test="gn-code-dialog"]', 1), '030752 Visserijproducten (wild gevangen)');
+  // Goederen: identiek aan het HC (6 regels I.27 -> 6 goederenitems), GN-code + Latijnse naam, Animo, erkenningsnummer
+  assert.strictEqual(await p4.locator('app-form-goods-items form > mat-card').count(), 6, '6 HC-regels = 6 goederenitems');
+  for (let i = 0; i < 6; i++) {
+    assert.strictEqual(await w4('[data-test="gn-code-selector"]', i), i < 4 ? '030743 Visserijproducten (wild gevangen)' : '030752 Visserijproducten (wild gevangen)', 'GN item ' + (i + 1));
+    assert.strictEqual(await w4('[data-test="animo-code-selector"]', i), '102108', 'Animo item ' + (i + 1));
+    assert.ok(/DL 1022/.test(await w4('app-form-goods-items [data-test="organisation-selector"]', i)), 'erkenningsnummer item ' + (i + 1));
+    assert.strictEqual(await k4('app-form-goods-items mat-select[formcontrolname="equipmentNumber"] .mat-mdc-select-value', i), 'CSQU3054383', 'container item ' + (i + 1));
+  }
   assert.ok(/^Inktvissen/.test(await w4('[data-test="goods-description"]', 0)), 'omschrijving door Portbase na GN-keuze');
-  assert.strictEqual(await k4('app-form-goods-items form > mat-card .animo-gekozen', 0), '102108');
-  assert.strictEqual(await k4('app-form-goods-items form > mat-card .animo-gekozen', 1), '102108');
-  assert.strictEqual(await k4('app-form-goods-items [data-test="organisation-dialog"]', 1), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
-  assert.strictEqual(await w4('[data-test="packaging-number-of-packages"]', 0), '1400');
-  assert.strictEqual(await w4('[data-test="gross-weight"]', 1), '6600');
+  assert.strictEqual(await w4('[data-test="packaging-number-of-packages"]', 3), '550');
+  assert.strictEqual(await w4('[data-test="nett-weight"]', 4), '2300');
+  // Brutogewicht: totaal HC I.26 (22280) naar rato van netto verdeeld, som klopt exact
+  let somBruto = 0;
+  for (let i = 0; i < 6; i++) somBruto += Number(await w4('[data-test="gross-weight"]', i));
+  assert.strictEqual(Math.round(somBruto * 10) / 10, 22280);
+  assert.strictEqual(await w4('[data-test="gross-weight"]', 0), String(Math.round(22280 * 4000 / 15000 * 10) / 10));
   assert.strictEqual(await w4('input[formcontrolname="equipmentNumber"]'), 'CSQU3054383');
   const verslag4 = await p4.locator('#ai-verslag').innerText();
   assert.ok(!/HANDMATIG|NIET GEVONDEN|FOUT/i.test(verslag4.split('\n').slice(0, 2).join(' ')), verslag4.slice(0, 300));

@@ -110,17 +110,21 @@
 
 <mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Goods item(s)</mat-card-title>
 <app-form-goods-items><form novalidate="" class="responsive-form">
+  <!-- Opbouw zoals de echte Portbase (nov. 2026): alleen-lezen velden met een "Edit"-knop voor GN, Animo en erkenningsnummer -->
   <mat-card class="mat-mdc-card mdc-card first"><mat-card-content>
-    <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">GN-code <span>(I.31)</span></mat-label><button type="button" data-test="gn-code-dialog" data-dialoog="Select item" data-gn="1"><span class="mdc-button__label"><i class="fal fa-fish-cooked"></i><span>Select item</span></span></button></div></div><div class="col"></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field inline-button"><label><mat-label>GN-code <span>(I.31)</span></mat-label></label><input matinput="" type="text" id="gnCodeSelector" data-test="gn-code-selector" readonly="true"><div class="mat-mdc-form-field-icon-suffix"><button type="button" data-test="gn-code-dialog" data-dialoog="Select item" data-gn="1" class="selector-suffix-button"><span class="mdc-button__label"><span>Edit</span></span></button></div></mat-form-field></div>
+      <div class="col"><mat-form-field class="mat-mdc-form-field inline-button"><label><mat-label>Animo code <span>(I.31)</span></mat-label></label><input matinput="" type="text" id="animoCodeSelector" data-test="animo-code-selector" readonly="true"><div class="mat-mdc-form-field-icon-suffix"><button type="button" data-test="animo-code-dialog" data-dialoog="ANIMO" data-animo="1" class="selector-suffix-button"><span class="mdc-button__label"><span>Edit</span></span></button></div></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Goods description <span>(I.31)</span></mat-label></label><input matinput="" type="text" id="goodsDescription" formcontrolname="goodsDescription" data-test="goods-description" required=""></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Gross weight <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="grossWeight" formcontrolname="grossWeight" data-test="gross-weight" required=""></mat-form-field></div>
       <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Nett weight <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="nettWeight" formcontrolname="nettWeight" data-test="nett-weight" required=""></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Number of packages <span>(I.32)</span></mat-label></label><input matinput="" type="text" id="numberOfPackages" formcontrolname="numberOfPackages" data-test="packaging-number-of-packages" required=""></mat-form-field></div>
       <div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Package type <span>(I.32)</span></mat-label></label>
-        <mat-select role="combobox" formcontrolname="packageType" data-test="packaging-package-type" class="mat-mdc-select" aria-disabled="false" data-opties="Bag|Box|Carton|Case|Pallet"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+        <mat-select role="combobox" formcontrolname="packageType" data-test="packaging-package-type" class="mat-mdc-select" aria-disabled="false" data-opties="Bag (BG)|Box (BX)|Carton (CT)|Case (CS)|Pallet (PX)"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
     <div class="row"><div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Batch number <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="batchNumber" formcontrolname="batchNumber"></mat-form-field></div>
       <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Additional units <span>(I.33)</span></mat-label></label><input matinput="" type="text" min="0" id="additionalUnits" formcontrolname="additionalUnits"></mat-form-field></div></div>
-    <div class="row"><div class="col"><div><mat-label class="label"> Activity / approval number <span>(I.15)</span></mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin" data-org="1"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div></div><div class="col error-placeholder"></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field inline-button"><label><mat-label>Activity / approval number <span>(I.15)</span></mat-label></label><input matinput="" type="text" id="organisationSelector" data-test="organisation-selector" readonly="true"><div class="mat-mdc-form-field-icon-suffix"><button type="button" data-test="establishment-dialog" data-dialoog="Select establishment of origin" data-org="1" class="selector-suffix-button"><span class="mdc-button__label"><span>Edit</span></span></button></div></mat-form-field></div>
+      <div class="col error-placeholder"><mat-label class="label"> Consumer package indicator <span>(I.31) </span></mat-label><mat-button-toggle-group data-test="consumer-package-indicator" role="radiogroup"><mat-button-toggle class="mat-button-toggle-checked"><button type="button" role="radio" aria-checked="true" class="mat-button-toggle-button">Yes</button></mat-button-toggle><mat-button-toggle><button type="button" role="radio" aria-checked="false" class="mat-button-toggle-button">No</button></mat-button-toggle></mat-button-toggle-group></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Equipment number </mat-label></label><mat-select role="combobox" formcontrolname="equipmentNumber" class="mat-mdc-select" aria-disabled="false" data-opties-dyn="containers"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
   </mat-card-content></mat-card>
   <div class="align-right"><button type="button" data-test="add-goods-item" class="add-new-row-button"><span class="mdc-button__label"><i class="fal fa-plus"></i><span>Add goods item</span></span></button></div>
 </form></app-form-goods-items></mat-card-content>
@@ -251,7 +255,10 @@
     // mat-select: opent opties na korte animatie
     var sel = t.closest('.cdk-overlay-popover') ? null : t.closest('mat-select');
     if (sel) setTimeout(function () {
-      toon(sel.getAttribute('data-opties').split('|'), function (w) {
+      var keuzes = sel.dataset.optiesDyn === 'containers'
+        ? Array.prototype.map.call(document.querySelectorAll('app-form-transport-equipments input[formcontrolname="equipmentNumber"]'), function (i) { return i.value; }).filter(Boolean)
+        : sel.getAttribute('data-opties').split('|');
+      toon(keuzes, function (w) {
         sel.querySelector('.mat-mdc-select-value').innerHTML = '<span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">' + w + '</span></span>';
       }, sel);
     }, 120);
@@ -264,7 +271,7 @@
       nieuw.querySelectorAll('input').forEach(function (i) { i.value = ''; });
       nieuw.querySelectorAll('.mat-mdc-select-value').forEach(function (s) { s.innerHTML = '<span class="mat-mdc-select-placeholder"></span>'; });
       nieuw.querySelectorAll('.file-name').forEach(function (s) { s.textContent = ''; });
-      nieuw.querySelectorAll('button[data-dialoog]').forEach(function (b) { var s = b.querySelector('span span:last-child') || b.querySelector('span'); if (s) s.textContent = b.dataset.dialoog; });
+      nieuw.querySelectorAll('button[data-dialoog]').forEach(function (b) { if (b.closest('mat-form-field')) return; var s = b.querySelector('span span:last-child') || b.querySelector('span'); if (s) s.textContent = b.dataset.dialoog; });
       nieuw.querySelectorAll('.animo-gekozen').forEach(function (s) { s.remove(); });
       var up = nieuw.querySelector('input[type="file"]');
       if (up) { up.id = 'upload_' + kaarten.length; nieuw.querySelector('label[for]').setAttribute('for', up.id); }
@@ -276,6 +283,7 @@
       d.className = 'mat-mdc-dialog-container mdc-dialog cdk-dialog-container'; d.setAttribute('role', 'dialog');
       d.__bron = knop;
       d.innerHTML = knop.dataset.org ? ORG_DIALOOG.replace('{titel}', knop.dataset.dialoog.replace('Select ', '')) :
+        knop.dataset.animo ? ANIMO_DIALOOG :
         knop.dataset.gn ? GN_DIALOOG :
         knop.dataset.lijst ? LIJST_DIALOOG.replace('{titel}', knop.dataset.lijst === 'bcp' ? 'Border control post' : 'Inspection centre') :
         '<h2>' + knop.dataset.dialoog + '</h2><input type="text" placeholder="Search" data-test="dialog-search"><div class="results"></div>';
@@ -337,35 +345,21 @@
       }, 250);
     }
     if (knop && knop.dataset.test === 'save' && knop.closest('mat-dialog-container')) {
-      var dl = knop.closest('mat-dialog-container'), gekozen = dl.querySelector('input[name="org-keuze"]:checked');
+      var dl = knop.closest('mat-dialog-container'), bron = dl.__bron;
+      var vak = bron && bron.closest('mat-form-field'), doelVeld = vak && vak.querySelector('input[readonly]');
+      function schrijf(tekst) { if (doelVeld) doelVeld.value = tekst; else bron.querySelector('span span:last-child, span').textContent = tekst; }
+      var gekozenOrg = dl.querySelector('input[name="org-keuze"]:checked');
       var gnKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="gn-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
-      if (gnKeuze) {
-        dl.__bron.querySelector('span span:last-child').textContent = gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim();
-        var kaart = dl.__bron.closest('mat-card');
-        var oms = kaart.querySelector('[data-test="goods-description"]');
-        if (oms) oms.value = gnKeuze.querySelector('.mat-column-description').textContent.trim();
-        dl.remove();
-        // Na de GN-code opent de ANIMO-dialoog
-        setTimeout(function () {
-          var ad = document.createElement('mat-dialog-container');
-          ad.className = 'mat-mdc-dialog-container mdc-dialog cdk-dialog-container'; ad.setAttribute('role', 'dialog');
-          ad.__kaart = kaart;
-          ad.innerHTML = ANIMO_DIALOOG;
-          overlay.parentNode.appendChild(ad);
-        }, 200);
-        return;
-      }
       var animoKeuze = Array.prototype.filter.call(dl.querySelectorAll('[data-test="animo-codes-list-row"]'), function (r) { return r.querySelector('input').checked; })[0];
-      if (animoKeuze) {
-        var doel = dl.__kaart.querySelector('.animo-gekozen') || dl.__kaart.querySelector('mat-card-content').appendChild(document.createElement('span'));
-        doel.className = 'animo-gekozen';
-        doel.textContent = animoKeuze.querySelector('.mat-column-animoCode').textContent.trim();
-        dl.remove();
-        return;
-      }
       var rijKeuze = dl.querySelector('mat-row.mat-mdc-row-selected .mat-column-name');
-      if (gekozen) { var og = ORGANISATIES[+gekozen.value]; dl.__bron.querySelector('span span:last-child, span').textContent = [og.naam, og.plaats, og.erk, og.act].filter(Boolean).join(' | '); }
-      else if (rijKeuze) dl.__bron.querySelector('span span:last-child, span').textContent = rijKeuze.textContent;
+      if (gnKeuze) {
+        schrijf(gnKeuze.querySelector('.mat-column-gnCode').textContent.trim() + ' ' + gnKeuze.querySelector('.mat-column-productType').textContent.trim());
+        // Portbase vult de goederenomschrijving zelf na het kiezen van de GN-code
+        var oms = bron.closest('mat-card').querySelector('[data-test="goods-description"]');
+        if (oms) oms.value = gnKeuze.querySelector('.mat-column-description').textContent.trim();
+      } else if (animoKeuze) schrijf(animoKeuze.querySelector('.mat-column-animoCode').textContent.trim());
+      else if (gekozenOrg) { var og = ORGANISATIES[+gekozenOrg.value]; schrijf([og.naam, og.plaats, og.erk, og.act].filter(Boolean).join(' | ')); }
+      else if (rijKeuze) schrijf(rijKeuze.textContent);
       dl.remove();
     }
     if (knop && knop.dataset.test === 'cancel') knop.closest('mat-dialog-container').remove();
