@@ -106,36 +106,57 @@ try {
 
   const waarde = (sel, n = 0) => page.locator(sel).nth(n).inputValue();
   const tekst = (sel, n = 0) => page.locator(sel).nth(n).innerText();
+  const keuze = (sel, n = 0) => tekst(sel + ' .mat-mdc-select-value', n);
   assert.ok(await page.locator('input[name="goodsClassificationCode"][value="PRD"]').isChecked(), 'CHED-P gekozen');
-  assert.strictEqual(await waarde('[data-test="bill-of-lading-number"]'), 'HLCUMA3260712342');
-  assert.strictEqual(await tekst('[data-test="purpose-code"] .mat-mdc-select-value-text'), 'Import');
-  assert.strictEqual(await waarde('[data-test="country-of-origin-un-code"]'), 'IN - India');
-  assert.strictEqual(await waarde('[data-test="country-of-loading-un-code"]'), 'IN - India');
-  assert.strictEqual(await tekst('[data-test="goods-intended-use-code"] .mat-mdc-select-value-text'), 'Human consumption');
-  assert.strictEqual(await tekst('[data-test="transport-conditions-code"] .mat-mdc-select-value-text'), 'Frozen');
-  assert.strictEqual(await tekst('app-form-means-of-transport-before-border mat-select .mat-mdc-select-value-text'), 'Ship');
-  assert.strictEqual(await waarde('app-form-means-of-transport-before-border input', 0), 'MSC ANNA / IMO 9000000');
-  assert.strictEqual(await waarde('app-form-means-of-transport-before-border input', 1), 'PA - Panama');
-  assert.strictEqual(await waarde('[data-test="arrival-date-time-estimated"]'), '26-09-2026');
-  assert.strictEqual(await waarde('input[placeholder="e.g. 10:15"]'), '07:00');
-  assert.strictEqual(await waarde('app-form-transport-equipments input', 0), 'HLBU9066045');
-  assert.strictEqual(await waarde('app-form-transport-equipments input', 1), 'EIA123');
+  assert.strictEqual(await waarde('app-form-general [data-test="bill-of-lading-number"]'), 'HLCUMA3260712342');
+  assert.strictEqual(await keuze('[data-test="purpose-code"]'), 'Import');
+  assert.strictEqual(await waarde('#countryOfOriginUnCode'), 'IN - India');
+  assert.strictEqual(await waarde('app-form-general #countryOfLoadingUnCode'), 'IN - India');
+  assert.strictEqual(await keuze('[data-test="goods-intended-use-code"]'), 'Human consumption');
+  assert.strictEqual(await keuze('[data-test="transport-conditions-code"]'), 'Frozen');
+  assert.strictEqual(await keuze('[data-test="arrival-means-of-transport-mode"]'), 'Sea', 'Vessel -> Sea');
+  assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-identification"]'), 'MSC ANNA / IMO 9000000');
+  assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-nationality-un-code"]'), 'PA - Panama');
+  assert.strictEqual(await waarde('app-form-means-of-transport-before-border [data-test="arrival-date-time-estimated"]'), '26-09-2026');
+  assert.strictEqual(await waarde('app-form-means-of-transport-before-border [data-test="start-time"]'), '07:00');
+  // Verborgen secties met dezelfde data-test-namen blijven onaangeroerd
+  assert.strictEqual(await waarde('app-form-means-of-transport-after-border [data-test="start-time"]'), '');
+  for (const sel of ['app-form-transit [data-test="country-of-loading-un-code"]', 'app-form-transhipment [data-test="country-of-loading-un-code"]', 'app-form-transhipment #billOfLadingNumber']) {
+    assert.strictEqual(await waarde(sel), '', sel + ' moet leeg blijven');
+  }
+  assert.strictEqual(await waarde('input[formcontrolname="equipmentNumber"]'), 'HLBU9066045');
+  assert.strictEqual(await waarde('input[formcontrolname="sealNumber"]'), 'EIA123');
   // Documenten: tweede kaart via "Add document"
-  assert.strictEqual(await page.locator('app-form-documents mat-card').count(), 2);
-  assert.strictEqual(await tekst('[data-test="document-type"] .mat-mdc-select-value-text', 0), 'Health certificate (636)');
-  assert.strictEqual(await tekst('[data-test="document-type"] .mat-mdc-select-value-text', 1), 'Certified lab report');
+  assert.strictEqual(await page.locator('app-form-documents form > mat-card').count(), 2);
+  assert.strictEqual(await keuze('[data-test="document-type"]', 0), 'Health certificate (636)');
+  assert.strictEqual(await keuze('[data-test="document-type"]', 1), 'Certified lab report');
   assert.strictEqual(await waarde('[data-test="document-number"]', 1), 'EIA/VZ/26-27/0003572');
   assert.strictEqual(await waarde('[data-test="document-date-of-issue"]', 0), '07-08-2026');
+  assert.strictEqual(await waarde('[data-test="document-country-un-code-of-issue"]', 1), 'IN - India');
   assert.strictEqual(await tekst('app-form-documents .file-name', 0), 'hc.pdf', 'HC geüpload in documentregel');
   // Goederen: twee items
-  assert.strictEqual(await page.locator('app-form-goods-items mat-card').count(), 2);
+  assert.strictEqual(await page.locator('app-form-goods-items form > mat-card').count(), 2);
   assert.strictEqual(await waarde('[data-test="goods-description"]', 1), 'Frozen shrimps (Penaeus monodon)');
   assert.strictEqual(await waarde('[data-test="gross-weight"]', 0), '21516');
   assert.strictEqual(await waarde('[data-test="nett-weight"]', 0), '13447.5');
-  // Read-only selectors blijven leeg en staan als handmatig in het verslag
-  assert.strictEqual(await waarde('#exporterSelector'), '');
-  assert.strictEqual(await waarde('[data-test="gn-code-selector"]'), '');
+  assert.strictEqual(await waarde('[data-test="packaging-number-of-packages"]', 0), '1600');
+  assert.strictEqual(await keuze('[data-test="packaging-package-type"]', 0), 'Carton');
+  assert.strictEqual(await waarde('input[formcontrolname="batchNumber"]', 1), 'L124');
+  // Dialoogvelden: niet automatisch gekozen, wel "Zoek in Portbase" in het verslag
   assert.ok(/handmatig/.test(verslag) && /GHAN MARINE PRODUCTS/.test(verslag) && /03061792/.test(verslag));
+  assert.strictEqual(await page.locator('mat-dialog-container').count(), 0, 'geen dialoog vanzelf geopend');
+  const zoekKnoppen = page.locator('#ai-verslag button[data-dialoog]');
+  assert.ok(await zoekKnoppen.count() >= 6, 'zoekknoppen voor exporteur, importeur, BCP, plaats, GN-codes, erkenningsnummer');
+  await page.locator('#ai-verslag li', { hasText: 'Exporter (I.1)' }).locator('button[data-dialoog]').click();
+  await page.locator('mat-dialog-container input').waitFor();
+  assert.strictEqual(await page.locator('mat-dialog-container input').inputValue(), 'GHAN MARINE PRODUCTS');
+  await page.evaluate(() => document.querySelector('mat-dialog-container').remove());
+  await page.locator('#ai-verslag li', { hasText: 'Border control post' }).locator('button[data-dialoog]').click();
+  await page.locator('mat-dialog-container input').waitFor();
+  assert.strictEqual(await page.locator('mat-dialog-container input').inputValue(), 'NLRTM1');
+  // Nooit opslaan of verzenden
+  const klikken = await page.evaluate(() => window.__klikken);
+  assert.ok(!klikken.some((k) => /save|send/.test(k)), 'Save/Send niet aangeklikt: ' + klikken.join(','));
   assert.deepStrictEqual(fouten, []);
 
   await page.screenshot({ path: path.join(os.tmpdir(), 'ggb-e2e.png'), fullPage: false });

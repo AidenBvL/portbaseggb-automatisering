@@ -82,10 +82,13 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    bestand**) en goederenitems (omschrijving, gewichten, colli, verpakking,
    batch, erkenningsnummer). Ontbrekende documentregels/goederenitems worden
    aangemaakt met *Add document* / *Add goods item*.
-5. Velden die in Portbase via een eigen zoekdialoog gaan (**exporteur,
-   importeur, grenscontrolepost, plaats van bestemming, inrichting van
-   oorsprong, GN-code**) worden niet automatisch gekozen; die staan als
-   *handmatig* in het verslag met een **Kopieer**-knop.
+5. Velden die in Portbase via een zoekdialoog gaan (**exporteur, importeur,
+   grenscontrolepost, plaats van bestemming, inrichting van oorsprong,
+   GN-code, activity/approval number**) worden niet automatisch gekozen. Ze
+   staan als *handmatig* in het verslag met een knop **Zoek in Portbase**:
+   die opent de dialoog, zet de zoekterm (naam, BCP-code zoals `NLRTM1`,
+   GN-code, erkenningsnummer) in het zoekveld en kopieert hem; jij kiest het
+   juiste resultaat.
 
 Er wordt **nooit** op Opslaan of Verzenden geklikt: de declarant controleert
 en verstuurt zelf.
@@ -103,11 +106,19 @@ past binnen de afspraken van je organisatie.
 
 ### Beperkingen
 
-- De velden van het formulier *New declaration* worden gevonden via
-  `data-test`/`formcontrolname` en anders via de labeltekst. De invuller is
-  getest op een nagebootst formulier
-  (`test/fixtures/portbase-new-declaration.html`); als Portbase iets anders
-  in elkaar zit, meldt het verslag welke velden *niet gevonden* zijn.
+- De velden worden gevonden via de `data-test`/`formcontrolname` van de
+  echte Portbase-pagina *New declaration* en anders via de labeltekst.
+  Verborgen secties (Transit, Transhipment, Means of transport after border)
+  hergebruiken sommige `data-test`-namen; de invuller kijkt daarom alleen in
+  de juiste sectie. De test draait op een ingekorte kopie van de echte DOM
+  (`test/fixtures/portbase-new-declaration.html`), waarin keuzelijsten,
+  autocomplete en dialogen worden nagebootst. De teksten van de keuzelijsten
+  (bijv. Means of transport, Package type) en de landen-suggesties zijn niet
+  bekend; de invuller kiest de best passende optie en meldt het als dat niet
+  lukt. Als Portbase verandert, meldt het verslag welke velden *niet
+  gevonden* zijn.
+- Portbase accepteert alleen **PDF** als bijlage; foto's worden wel
+  uitgelezen maar niet geüpload.
 - De **Animo-code** staat niet op het HC en wordt niet ingevuld.
 - AI kan zich vergissen: controleer altijd de velden met zekerheid
   *middel*/*laag* en de aandachtspunten.

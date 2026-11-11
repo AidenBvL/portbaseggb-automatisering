@@ -1,81 +1,141 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Portbase fixture – New declaration</title>
 <style>
-  body { font: 13px sans-serif; } .cdk-overlay-container { position: fixed; top: 0; left: 0; }
-  mat-option { display: block; padding: 2px 6px; cursor: pointer; } .hidden { display: none; }
+  body { font: 13px sans-serif; } .hidden, [hidden] { display: none !important; }
+  .cdk-overlay-container { position: fixed; top: 0; left: 0; z-index: 1000; background: #fff; }
+  mat-option { display: block; padding: 2px 6px; cursor: pointer; }
   mat-card { display: block; border: 1px solid #ccc; margin: 4px; padding: 4px; }
 </style>
 </head>
 <body>
 <!--
-  NAGEBOOTST formulier "New declaration" voor de invultest. Gebaseerd op de
-  structuur van de echte view-declaration (data-test / formcontrolname) en de
-  labels van het nieuwe-declaratieformulier. Velden waarvan de echte selector
-  onbekend is, worden in de invuller via hun label gevonden – zo ook hier.
-  Kleine scripts bootsen mat-select, autocomplete en "Add ..."-knoppen na.
+  Ingekorte kopie van de echte Portbase-pagina "New declaration" (outerHTML van
+  <app-declaration-form>, nov. 2026): Material-wrappers en lege comments zijn
+  weggelaten, maar alle elementen, data-test-attributen, formcontrolnames,
+  labels, knoppen en verborgen secties (met hergebruikte data-test-namen) zijn
+  behouden. De scripts onderaan bootsen mat-select, mat-autocomplete,
+  "Add ..."-knoppen en de zoekdialogen na.
 -->
 <app-declaration-form>
-<form id="form">
-<app-form-general>
-  <mat-radio-group data-test="goods-classification-code">
-    <mat-radio-button><input type="radio" name="goodsClassificationCode" value="PRD"><label>Products of animal origin (CHED-P)</label></mat-radio-button>
-    <mat-radio-button><input type="radio" name="goodsClassificationCode" value="LNV"><label>Food/feed of non-animal origin (CHED-D)</label></mat-radio-button>
-  </mat-radio-group>
-  <mat-form-field><mat-label>Bill of lading number (I.13)</mat-label><input formcontrolname="billOfLadingNumber" data-test="bill-of-lading-number"></mat-form-field>
-  <mat-form-field><mat-label>Destination (I.20-25)</mat-label><mat-select formcontrolname="purposeCode" data-test="purpose-code" data-opties="Import|Transit|Transhipment|Warehouse"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
-  <mat-form-field><mat-label>Own reference</mat-label><input formcontrolname="customerReference" data-test="customer-reference"></mat-form-field>
-  <mat-form-field><mat-label>Exporter (I.1)</mat-label><input id="exporterSelector" readonly data-test="organisation-selector"></mat-form-field>
-  <mat-form-field><mat-label>Importer (I.6)</mat-label><input id="importerSelector" readonly></mat-form-field>
-  <mat-form-field><mat-label>Border control post (I.4)</mat-label><input id="borderControlPostSelector" readonly data-test="border-control-post-selector"></mat-form-field>
-  <mat-form-field><mat-label>Place of destination (I.7)</mat-label><input id="placeOfDestinationSelector" readonly></mat-form-field>
-  <mat-form-field><mat-label>Country of origin (I.11)</mat-label><input formcontrolname="countryOfOriginUnCode" data-test="country-of-origin-un-code" role="combobox" aria-autocomplete="list"></mat-form-field>
-  <mat-form-field><mat-label>Country of loading (I.14)</mat-label><input formcontrolname="countryOfLoadingUnCode" data-test="country-of-loading-un-code" role="combobox" aria-autocomplete="list"></mat-form-field>
-</app-form-general>
-<app-form-goods>
-  <mat-form-field><mat-label>Goods certified as or for (I.18)</mat-label><mat-select formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code" data-opties="Human consumption|Feedingstuff|Technical use|Pharmaceutical use|Other"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
-  <mat-form-field><mat-label>Transport conditions (I.16)</mat-label><mat-select formcontrolname="transportConditionsCode" data-test="transport-conditions-code" data-opties="Ambient|Chilled|Frozen"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
-</app-form-goods>
-<app-form-means-of-transport-before-border>
-  <mat-form-field><mat-label>Means of transport (I.13)</mat-label><mat-select data-opties="Ship|Aircraft|Train|Truck"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
-  <mat-form-field><mat-label>Name / identification (I.13)</mat-label><input></mat-form-field>
-  <mat-form-field><mat-label>Nationality (I.13)</mat-label><input role="combobox" aria-autocomplete="list"></mat-form-field>
-  <mat-form-field><mat-label>Expected date of arrival (I.10)</mat-label><input data-test="arrival-date-time-estimated" placeholder="e.g. 25-03-2023"></mat-form-field>
-  <mat-form-field><input placeholder="e.g. 10:15"></mat-form-field>
-</app-form-means-of-transport-before-border>
-<app-form-transport-equipments>
-  <mat-card><mat-form-field><mat-label>Equipment number</mat-label><input></mat-form-field><mat-form-field><mat-label>Seal number</mat-label><input></mat-form-field></mat-card>
-  <button type="button" class="add">Add equipment</button>
-</app-form-transport-equipments>
-<app-form-documents><form data-test="document-form">
-  <mat-card>
-    <mat-form-field><mat-label>Type</mat-label><mat-select data-test="document-type" formcontrolname="documentType" data-opties="Health certificate (636)|Certified lab report|Catch certificate|Commercial document|Other"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
-    <mat-form-field><mat-label>Identification</mat-label><input data-test="document-number" formcontrolname="documentNumber"></mat-form-field>
-    <mat-form-field><mat-label>Date of issue</mat-label><input data-test="document-date-of-issue" formcontrolname="dateOfIssue" placeholder="e.g. 25-03-2023"></mat-form-field>
-    <mat-form-field><mat-label>Establishment of origin</mat-label><input readonly data-test="organisation-selector"></mat-form-field>
-    <mat-form-field><mat-label>Country of issue</mat-label><input data-test="document-country-un-code-of-issue" role="combobox" aria-autocomplete="list"></mat-form-field>
-    <div class="upload"><mat-label>Upload document</mat-label><input type="file" class="hidden"><span class="file-name"></span></div>
-  </mat-card>
-  <button type="button" data-test="add-document" class="add">Add document</button>
-</form></app-form-documents>
-<app-form-goods-items>
-  <mat-card>
-    <mat-form-field><mat-label>GN-code (I.31)</mat-label><input readonly data-test="gn-code-selector"></mat-form-field>
-    <mat-form-field><mat-label>Goods description (I.31)</mat-label><input data-test="goods-description"></mat-form-field>
-    <mat-form-field><mat-label>Gross weight (I.34)</mat-label><input data-test="gross-weight"></mat-form-field>
-    <mat-form-field><mat-label>Nett weight (I.34)</mat-label><input data-test="nett-weight"></mat-form-field>
-    <mat-form-field><mat-label>Number of packages (I.32)</mat-label><input></mat-form-field>
-    <mat-form-field><mat-label>Package type (I.32)</mat-label><mat-select data-opties="Bag|Box|Carton|Pallet"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
-    <mat-form-field><mat-label>Batch number (I.34)</mat-label><input></mat-form-field>
-    <mat-form-field><mat-label>Additional units (I.33)</mat-label><input></mat-form-field>
-    <mat-form-field><mat-label>Activity / approval number (I.15)</mat-label><input></mat-form-field>
-  </mat-card>
-  <button type="button" data-test="add-goods-item" class="add">Add goods item</button>
-</app-form-goods-items>
-</form>
+<mat-card class="mat-mdc-card mdc-card"><form novalidate="" id="form">
+<mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">General</mat-card-title>
+<app-form-general><form novalidate="" class="responsive-form">
+  <div class="row"><div class="col error-placeholder"><mat-label class="label">Declaration type </mat-label>
+    <mat-radio-group role="radiogroup" id="goodsClassificationCode" formcontrolname="goodsClassificationCode" name="goodsClassificationCode" data-test="goods-classification-code">
+      <mat-radio-button id="mat-radio-0"><input type="radio" class="mdc-radio__native-control" id="mat-radio-0-input" name="goodsClassificationCode" value="PRD"><label for="mat-radio-0-input">Products of animal origin (CHED-P) </label></mat-radio-button>
+      <mat-radio-button id="mat-radio-1"><input type="radio" class="mdc-radio__native-control" id="mat-radio-1-input" name="goodsClassificationCode" value="LNV"><label for="mat-radio-1-input">Food/feed of non-animal origin (CHED-D) </label></mat-radio-button>
+    </mat-radio-group></div>
+    <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Bill of lading number <span>(I.13)</span></mat-label></label>
+      <input matinput="" type="text" id="billOfLadingNumber" formcontrolname="billOfLadingNumber" data-test="bill-of-lading-number" required=""></mat-form-field></div></div>
+  <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label> Destination <span>(I.20-25)</span></mat-label></label>
+      <mat-select role="combobox" formcontrolname="purposeCode" data-test="purpose-code" class="mat-mdc-select" aria-disabled="false" data-opties="Import|Transit|Transhipment|Storage|Re-entry"><div cdk-overlay-origin="" class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
+    <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Own reference </mat-label></label><input matinput="" type="text" id="customerReference" formcontrolname="customerReference" data-test="customer-reference"></mat-form-field></div></div>
+  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Exporter <span>(I.1)</span></mat-label><button type="button" data-test="organisation-dialog-exporter" data-dialoog="Select exporter"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select exporter</span></span></button></div></div>
+    <div class="col"><div class="error-placeholder"><mat-label class="label">Importer <span>(I.6)</span></mat-label><button type="button" data-test="organisation-dialog-importer" data-dialoog="Select importer"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select importer</span></span></button></div></div></div>
+  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Border control post <span>(I.4)</span></mat-label><button type="button" data-test="border-control-post-dialog" data-dialoog="Select border control post"><span class="mdc-button__label"><span>Select border control post</span></span></button></div></div>
+    <div class="col"><div class="error-placeholder"><mat-label class="label">Place of destination <span>(I.7)</span></mat-label><button type="button" data-test="place-of-destination-dialog" data-dialoog="Select place of destination"><span class="mdc-button__label"><span>Select place of destination</span></span></button></div></div></div>
+  <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of origin <span>(I.11)</span></mat-label></label>
+      <input matinput="" type="text" id="countryOfOriginUnCode" formcontrolname="countryOfOriginUnCode" data-test="country-of-origin-un-code" class="mat-mdc-input-element mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div>
+    <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of loading <span>(I.14)</span></mat-label></label>
+      <input matinput="" type="text" id="countryOfLoadingUnCode" formcontrolname="countryOfLoadingUnCode" data-test="country-of-loading-un-code" class="mat-mdc-input-element mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div></div>
+  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label"> Inspection centre <span>(I.4)</span></mat-label><button type="button" data-test="inspection-centre-dialog" data-dialoog="Select inspection centre"><span>Select inspection centre</span></button></div></div>
+    <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label> Cargo handler <i class="fal fa-info-circle"></i></mat-label></label>
+      <input matinput="" type="text" id="cargoHandler" formcontrolname="cargoHandler" data-test="cargo-handler" autocomplete="off" role="combobox" aria-autocomplete="list"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div></div>
+</form></app-form-general></mat-card-content>
+
+<mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Goods</mat-card-title>
+<app-form-goods><form novalidate="" class="responsive-form">
+  <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label for="goodsIntendedUseCode">Goods certified as or for <span>(I.18)</span></mat-label></label>
+    <mat-select role="combobox" formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code" class="mat-mdc-select" aria-disabled="false" data-opties="Human consumption|Feedingstuff|Pharmaceutical use|Technical use|Further process|Other"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+  <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label for="transportConditionsCode">Transport conditions <span>(I.16)</span></mat-label></label>
+    <mat-select role="combobox" formcontrolname="transportConditionsCode" data-test="transport-conditions-code" class="mat-mdc-select" aria-disabled="false" data-opties="Ambient|Chilled|Frozen"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+</form></app-form-goods></mat-card-content>
+
+<!-- Verborgen secties; hergebruiken data-test="country-of-loading-un-code" en id="billOfLadingNumber" -->
+<div class="disabled"><mat-card-content><mat-card-title class="mat-mdc-card-title">Transit</mat-card-title><app-form-transit hidden=""><form data-test="transit-form">
+  <mat-form-field><label><mat-label>Third country of destination <span>(I.22)</span></mat-label></label><input matinput="" type="text" id="countryOfDestinationUnCode" formcontrolname="countryOfDestinationUnCode" data-test="country-of-loading-un-code" role="combobox" aria-autocomplete="list" disabled=""></mat-form-field>
+</form></app-form-transit></mat-card-content></div>
+<div class="disabled"><mat-card-content><mat-card-title class="mat-mdc-card-title">Transhipment</mat-card-title><app-form-transhipment hidden=""><form data-test="transhipment-form">
+  <mat-form-field><label><mat-label>Third country of destination <span>(I.20)</span></mat-label></label><input matinput="" type="text" id="countryOfDestinationUnCode" formcontrolname="countryOfDestinationUnCode" data-test="country-of-loading-un-code" role="combobox" aria-autocomplete="list" disabled=""></mat-form-field>
+  <mat-form-field><label><mat-label>Bill of lading / Airway bill number of departure</mat-label></label><input matinput="" type="text" id="billOfLadingNumber" formcontrolname="billOfLadingNumber" disabled=""></mat-form-field>
+</form></app-form-transhipment></mat-card-content></div>
+
+<mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Means of transport before border</mat-card-title>
+<app-form-means-of-transport-before-border><form novalidate="" class="responsive-form">
+  <div formgroupname="arrival" class="row"><div formgroupname="meansOfTransport" class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Means of transport <span>(I.13)</span></mat-label></label>
+      <mat-select role="combobox" formcontrolname="mode" data-test="arrival-means-of-transport-mode" class="mat-mdc-select" aria-disabled="false" data-opties="Sea|Air|Rail|Road"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
+    <div formgroupname="meansOfTransport" class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Name / identification <span>(I.13)</span></mat-label></label>
+      <input matinput="" type="text" id="identification" formcontrolname="identification" data-test="arrival-means-of-transport-identification" required=""></mat-form-field></div></div>
+  <div formgroupname="arrival" class="row"><div formgroupname="meansOfTransport" class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Nationality <span>(I.13)</span></mat-label></label>
+      <input matinput="" type="text" id="nationalityUnCode" formcontrolname="nationalityUnCode" data-test="arrival-means-of-transport-nationality-un-code" class="mat-mdc-input-element mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div>
+    <div class="col"><div class="date-time-col"><div class="date-col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Expected date of arrival <span>(I.10)</span></mat-label></label>
+        <input name="dateTimeEstimated" id="dateTimeEstimated" formcontrolname="dateTimeEstimated" matinput="" class="mat-mdc-input-element hidden" required="">
+        <input matinput="" data-test="arrival-date-time-estimated" class="mat-mdc-input-element mat-datepicker-input input" placeholder="e.g. 25-03-2023" id="mat-input-18" aria-haspopup="dialog"><mat-datepicker></mat-datepicker></mat-form-field></div>
+      <div class="time-col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>&nbsp;</mat-label></label>
+        <input role="combobox" type="text" aria-haspopup="listbox" matinput="" id="timePicker" name="timePicker" data-test="start-time" class="mat-mdc-input-element mat-timepicker-input input" placeholder="e.g. 10:15" aria-expanded="false"><mat-timepicker interval="15m"></mat-timepicker></mat-form-field></div></div></div></div>
+</form></app-form-means-of-transport-before-border></mat-card-content>
+
+<mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Transport equipment(s) <span>(I.17)</span></mat-card-title>
+<app-form-transport-equipments><form novalidate="" data-test="transport-equipment-form" class="responsive-form">
+  <mat-card class="mat-mdc-card mdc-card first"><mat-card-content><div class="row">
+    <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Equipment number</mat-label></label><input matinput="" type="text" id="equipmentNumber" formcontrolname="equipmentNumber"></mat-form-field></div>
+    <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Seal number</mat-label></label><input matinput="" type="text" id="sealNumber" formcontrolname="sealNumber"></mat-form-field></div>
+  </div></mat-card-content></mat-card>
+  <div class="align-right"><button type="button" data-test="add-transport-equipment" class="add-new-row-button"><span class="mdc-button__label"><i class="fal fa-plus"></i><span>Add equipment</span></span></button></div>
+</form></app-form-transport-equipments></mat-card-content>
+
+<!-- Verborgen: hergebruikt data-test="start-time" en "country-of-loading-un-code" -->
+<div class="disabled"><mat-card-content><mat-card-title class="mat-mdc-card-title">Means of transport after border <span>(I.27)</span></mat-card-title><app-form-means-of-transport-after-border hidden=""><form>
+  <mat-form-field><label><mat-label>Nationality</mat-label></label><input matinput="" type="text" id="nationalityUnCode" formcontrolname="nationalityUnCode" data-test="country-of-loading-un-code" role="combobox" aria-autocomplete="list" disabled=""></mat-form-field>
+  <mat-form-field><label><mat-label>Expected date of departure</mat-label></label><input matinput="" data-test="exit-date" placeholder="e.g. 25-03-2023"></mat-form-field>
+  <mat-form-field><label><mat-label>&nbsp;</mat-label></label><input role="combobox" type="text" matinput="" id="timePicker" name="timePicker" data-test="start-time" class="mat-timepicker-input input" placeholder="e.g. 10:15"></mat-form-field>
+</form></app-form-means-of-transport-after-border></mat-card-content></div>
+
+<mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Document(s) <span>(I.9)</span></mat-card-title>
+<app-form-documents><form novalidate="" data-test="document-form" class="responsive-form">
+  <mat-card class="mat-mdc-card mdc-card first"><mat-card-content>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Type</mat-label></label>
+        <mat-select role="combobox" formcontrolname="documentType" data-test="document-type" class="mat-mdc-select" aria-disabled="false" data-opties="Health certificate (636)|Certified lab report|Catch certificate|Official certificate|Commercial document|Other"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div>
+      <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Identification</mat-label></label><input matinput="" type="text" id="documentNumber" formcontrolname="documentNumber" data-test="document-number" required=""></mat-form-field></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Date of issue</mat-label></label>
+        <input name="dateOfIssue" id="dateOfIssue" formcontrolname="dateOfIssue" matinput="" data-test="document-date-of-issue" class="mat-datepicker-input input" placeholder="e.g. 25-03-2023" required=""><mat-datepicker></mat-datepicker></mat-form-field></div>
+      <div class="col"><div><mat-label class="label">Establishment of origin</mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div>
+        <input matinput="" type="text" id="establishmentOfOriginName" formcontrolname="establishmentOfOriginName" hidden=""></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of issue</mat-label></label>
+        <input matinput="" type="text" id="countryUnCodeOfIssue" formcontrolname="countryUnCodeOfIssue" data-test="document-country-un-code-of-issue" class="mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div></div>
+    <div class="upload"><mat-label>Upload document</mat-label><div class="upload-area"><input type="file" accept=".pdf" data-test="upload-document-input" id="upload_0"><label data-test="upload-document-label" class="upload-button" for="upload_0"><span class="mat-button-wrapper">Select document</span></label><span class="file-name"></span></div></div>
+  </mat-card-content></mat-card>
+  <div class="align-right"><button type="button" data-test="add-document" class="add-new-row-button"><span class="mdc-button__label"><i class="fal fa-plus"></i><span>Add document</span></span></button></div>
+</form></app-form-documents></mat-card-content>
+
+<mat-card-content class="mat-mdc-card-content"><mat-card-title class="mat-mdc-card-title">Goods item(s)</mat-card-title>
+<app-form-goods-items><form novalidate="" class="responsive-form">
+  <mat-card class="mat-mdc-card mdc-card first"><mat-card-content>
+    <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">GN-code <span>(I.31)</span></mat-label><button type="button" data-test="gn-code-dialog" data-dialoog="Select item"><span class="mdc-button__label"><i class="fal fa-fish-cooked"></i><span>Select item</span></span></button></div></div><div class="col"></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Goods description <span>(I.31)</span></mat-label></label><input matinput="" type="text" id="goodsDescription" formcontrolname="goodsDescription" data-test="goods-description" required=""></mat-form-field></div></div>
+    <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Gross weight <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="grossWeight" formcontrolname="grossWeight" data-test="gross-weight" required=""></mat-form-field></div>
+      <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Nett weight <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="nettWeight" formcontrolname="nettWeight" data-test="nett-weight" required=""></mat-form-field></div></div>
+    <div class="row"><div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Number of packages <span>(I.32)</span></mat-label></label><input matinput="" type="text" id="numberOfPackages" formcontrolname="numberOfPackages" data-test="packaging-number-of-packages" required=""></mat-form-field></div>
+      <div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Package type <span>(I.32)</span></mat-label></label>
+        <mat-select role="combobox" formcontrolname="packageType" data-test="packaging-package-type" class="mat-mdc-select" aria-disabled="false" data-opties="Bag|Box|Carton|Case|Pallet"><div class="mat-mdc-select-trigger"><div class="mat-mdc-select-value"><span class="mat-mdc-select-placeholder mat-mdc-select-min-line"></span></div></div></mat-select></mat-form-field></div></div>
+    <div class="row"><div class="col"><mat-form-field formgroupname="packaging" class="mat-mdc-form-field"><label><mat-label>Batch number <span>(I.34)</span></mat-label></label><input matinput="" type="text" id="batchNumber" formcontrolname="batchNumber"></mat-form-field></div>
+      <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Additional units <span>(I.33)</span></mat-label></label><input matinput="" type="text" min="0" id="additionalUnits" formcontrolname="additionalUnits"></mat-form-field></div></div>
+    <div class="row"><div class="col"><div><mat-label class="label"> Activity / approval number <span>(I.15)</span></mat-label><button type="button" data-test="organisation-dialog" data-dialoog="Select establishment of origin"><span class="mdc-button__label"><span>Select establishment of origin</span></span></button></div></div><div class="col error-placeholder"></div></div>
+  </mat-card-content></mat-card>
+  <div class="align-right"><button type="button" data-test="add-goods-item" class="add-new-row-button"><span class="mdc-button__label"><i class="fal fa-plus"></i><span>Add goods item</span></span></button></div>
+</form></app-form-goods-items></mat-card-content>
+
+<mat-card-actions class="mat-mdc-card-actions"><div></div><div>
+  <button data-test="save-declaration" type="button"><span class="mdc-button__label"><span>Save</span></span></button>
+  <button data-test="send-declaration" type="submit"><span class="mdc-button__label"><span>Send</span></span></button>
+</div></mat-card-actions>
+</form></mat-card>
 </app-declaration-form>
 <div class="cdk-overlay-container"></div>
 <script>
-  var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam' };
+  // ---- nabootsing van het gedrag van Angular Material / Portbase ----
+  window.__klikken = [];
+  var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam', ID: 'Indonesia' };
   var overlay = document.querySelector('.cdk-overlay-container');
   function toon(opties, kies) {
     overlay.innerHTML = '';
@@ -85,22 +145,41 @@
       overlay.appendChild(o);
     });
   }
-  // mat-select: klik opent opties met vertraging (zoals de animatie)
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') overlay.innerHTML = ''; });
   document.addEventListener('click', function (e) {
-    var sel = e.target.closest && e.target.closest('mat-select');
+    var t = e.target.closest ? e.target : e.target.parentElement;
+    var knop = t.closest('button');
+    if (knop && knop.dataset.test) window.__klikken.push(knop.dataset.test);
+    if (knop && /save|send/.test(knop.dataset.test || '')) e.preventDefault();
+    // mat-select: opent opties na korte animatie
+    var sel = t.closest('mat-select');
     if (sel) setTimeout(function () {
-      toon(sel.getAttribute('data-opties').split('|'), function (t) { sel.querySelector('.mat-mdc-select-value-text').textContent = t; sel.setAttribute('data-waarde', t); });
+      toon(sel.getAttribute('data-opties').split('|'), function (w) {
+        sel.querySelector('.mat-mdc-select-value').innerHTML = '<span class="mat-mdc-select-value-text"><span class="mat-mdc-select-min-line">' + w + '</span></span>';
+      });
     }, 120);
-    var add = e.target.closest && e.target.closest('button.add');
-    if (add) setTimeout(function () {
-      var kaarten = add.parentElement.querySelectorAll('mat-card');
+    // "Add ..."-knop: nieuwe lege kaart
+    if (knop && knop.classList.contains('add-new-row-button')) setTimeout(function () {
+      var form = knop.closest('form');
+      var kaarten = form.querySelectorAll(':scope > mat-card');
       var nieuw = kaarten[kaarten.length - 1].cloneNode(true);
+      nieuw.classList.remove('first');
       nieuw.querySelectorAll('input').forEach(function (i) { i.value = ''; });
-      nieuw.querySelectorAll('.mat-mdc-select-value-text').forEach(function (s) { s.textContent = ''; });
-      add.parentElement.insertBefore(nieuw, add);
+      nieuw.querySelectorAll('.mat-mdc-select-value').forEach(function (s) { s.innerHTML = '<span class="mat-mdc-select-placeholder"></span>'; });
+      nieuw.querySelectorAll('.file-name').forEach(function (s) { s.textContent = ''; });
+      var up = nieuw.querySelector('input[type="file"]');
+      if (up) { up.id = 'upload_' + kaarten.length; nieuw.querySelector('label[for]').setAttribute('for', up.id); }
+      form.insertBefore(nieuw, knop.closest('.align-right'));
     }, 150);
+    // zoekdialoog
+    if (knop && knop.dataset.dialoog) setTimeout(function () {
+      var d = document.createElement('mat-dialog-container');
+      d.className = 'mat-mdc-dialog-container'; d.setAttribute('role', 'dialog');
+      d.innerHTML = '<h2>' + knop.dataset.dialoog + '</h2><input type="text" placeholder="Search" data-test="dialog-search"><div class="results"></div>';
+      document.body.appendChild(d);
+    }, 100);
   });
-  // autocomplete: bij typen opties tonen "IN - India"
+  // mat-autocomplete: bij typen opties "IN - India"
   document.addEventListener('input', function (e) {
     var i = e.target;
     if (i.getAttribute && i.getAttribute('aria-autocomplete') === 'list') {
@@ -110,7 +189,7 @@
     }
   });
   document.addEventListener('change', function (e) {
-    if (e.target.type === 'file') e.target.parentElement.querySelector('.file-name').textContent = e.target.files[0] ? e.target.files[0].name : '';
+    if (e.target.type === 'file') e.target.closest('.upload-area').querySelector('.file-name').textContent = e.target.files[0] ? e.target.files[0].name : '';
   });
 </script>
 </body></html>

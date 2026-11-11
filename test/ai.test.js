@@ -139,4 +139,14 @@ test('gebruikersprompt noemt bestanden en extra info', () => {
   assert.ok(t.includes('ETA 26-09'));
 });
 
+test('invuller kiest de best passende optie (eigen waarde gaat voor synoniem)', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const opt = (...xs) => xs.map(textContent => ({ textContent }));
+  assert.strictEqual(FILL.besteOptie(opt('Bag', 'Box', 'Carton'), ['Carton', 'Box']).textContent, 'Carton');
+  assert.strictEqual(FILL.besteOptie(opt('Saint Kitts', 'ID - Indonesia', 'IN - India'), ['IN']).textContent, 'IN - India');
+  assert.strictEqual(FILL.besteOptie(opt('Sea', 'Air', 'Rail', 'Road'), ['Vessel', 'Ship', 'Sea']).textContent, 'Sea');
+  assert.strictEqual(FILL.besteOptie(opt('Health certificate (636)', 'Certified lab report'), ['Certified lab report']).textContent, 'Certified lab report');
+  assert.strictEqual(FILL.besteOptie(opt('Ambient', 'Chilled'), ['Frozen']), null);
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

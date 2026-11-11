@@ -22,6 +22,7 @@
   var bestanden = [];       // File-objecten
   var aiResultaat = null;   // genormaliseerd voorstel (bewerkbaar)
   var aiBezig = false;
+  var laatsteVerslag = [];  // verslag van de laatste invulronde (met knoppen voor zoekdialogen)
 
   var CSS = [
     ':host{all:initial}',
@@ -158,7 +159,7 @@
   function aiHtml() {
     return '' +
       '<p class="small muted">Upload het gezondheidscertificaat (HC) en eventueel labrapport, factuur, paklijst en B/L. Claude leest ze uit, bepaalt de GGB-gegevens en welke documenten nodig zijn. Controleer het voorstel altijd voordat je invult en verstuurt.</p>' +
-      '<div class="drop" id="drop">Sleep bestanden hierheen of <label>kies bestanden<input type="file" id="file" multiple accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"></label><div class="small">PDF, JPG, PNG of WEBP</div></div>' +
+      '<div class="drop" id="drop">Sleep bestanden hierheen of <label>kies bestanden<input type="file" id="file" multiple accept=".pdf,application/pdf,image/jpeg,image/png,image/webp"></label><div class="small">PDF, JPG, PNG of WEBP (Portbase accepteert alleen PDF als bijlage)</div></div>' +
       '<ul class="files" id="files"></ul>' +
       '<textarea id="ctx" placeholder="Extra info voor de AI (optioneel), bijv. ETA 26-09-2026 07:00, grenscontrolepost Rotterdam, B/L-nummer…"></textarea>' +
       '<div class="row-actions"><button class="btn primary" id="ai-run" disabled>Uitlezen met AI</button><span id="ai-status" class="small muted"></span></div>' +
@@ -187,6 +188,14 @@
     res.addEventListener('click', function (e) {
       var t = e.target;
       if (t.id === 'ai-fill') aiInvullen();
+      var dlg = t.getAttribute && t.getAttribute('data-dialoog');
+      if (dlg != null) {
+        var rij = laatsteVerslag[+dlg];
+        if (navigator.clipboard) navigator.clipboard.writeText(rij.zoekterm || rij.waarde).catch(function () {});
+        FILL.zoekInDialoog(rij.knop, rij.zoekterm).then(function (res) {
+          t.textContent = res.ok ? 'Geopend – kies het resultaat' : res.melding;
+        });
+      }
       var kopie = t.getAttribute && t.getAttribute('data-kopie');
       if (kopie != null) {
         navigator.clipboard.writeText(kopie).then(function () { t.textContent = 'Gekopieerd'; }, function () { t.textContent = 'Mislukt'; });
@@ -379,13 +388,15 @@
       });
       var tel = {};
       verslag.forEach(function (v) { tel[v.status] = (tel[v.status] || 0) + 1; });
-      var zichtbaar = verslag.filter(function (v) { return v.status !== 'overgeslagen' || v.melding; });
+      laatsteVerslag = verslag;
+      var zichtbaar = verslag.map(function (v, i) { v.index = i; return v; }).filter(function (v) { return v.status !== 'overgeslagen' || v.melding; });
       verslagEl.innerHTML = '<h3>Resultaat</h3><p class="small">' +
         Object.keys(tel).map(function (k) { return tel[k] + ' ' + k; }).join(' · ') + '</p>' +
         '<ul class="verslag">' + zichtbaar.map(function (v) {
           return '<li><span class="badge ' + esc(v.status.replace(' ', '-')) + '">' + esc(v.status) + '</span> <b>' + esc(v.sectie) + '</b> – ' + esc(v.naam) +
             ': ' + esc(v.waarde) + (v.melding ? ' <span class="muted">(' + esc(v.melding) + ')</span>' : '') +
-            (v.status === 'handmatig' || v.status === 'niet gevonden' ? '<button data-kopie="' + esc(v.waarde) + '">Kopieer</button>' : '') + '</li>';
+            (v.knop ? '<button data-dialoog="' + v.index + '" title="Opent de Portbase-dialoog met de zoekterm (ook gekopieerd)">Zoek in Portbase</button>' :
+              (v.status === 'handmatig' || v.status === 'niet gevonden' ? '<button data-kopie="' + esc(v.waarde) + '">Kopieer</button>' : '')) + '</li>';
         }).join('') + '</ul>';
       verslagEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
     } catch (e) {
