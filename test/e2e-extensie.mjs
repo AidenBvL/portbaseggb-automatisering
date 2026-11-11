@@ -193,7 +193,7 @@ try {
   await li.locator('button[data-dialoog]').click();
   await li.locator('.dlg-melding').waitFor({ timeout: 20000 });
   assert.strictEqual(await dlg.locator('[data-test="search-term"]').inputValue(), 'KOELHUIS ONBEKEND');
-  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'NL - Netherlands');
+  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'NL', 'landveld toont na de keuze alleen de code');
   await dlg.locator('[data-test="cancel"]').click();
   await dlg.waitFor({ state: 'detached' });
 
@@ -360,12 +360,12 @@ try {
   // Goederen: identiek aan het HC (6 regels I.27 -> 6 goederenitems), GN-code + Latijnse naam, Animo, erkenningsnummer
   assert.strictEqual(await p4.locator('app-form-goods-items form > mat-card').count(), 6, '6 HC-regels = 6 goederenitems');
   for (let i = 0; i < 6; i++) {
-    assert.strictEqual(await w4('[data-test="gn-code-selector"]', i), i < 4 ? '030743 Visserijproducten (wild gevangen)' : '030752 Visserijproducten (wild gevangen)', 'GN item ' + (i + 1));
+    assert.strictEqual(await w4('[data-test="gn-code-selector"]', i), i < 4 ? '03074399 Wilde dieren' : '030752 Wilde dieren', 'GN item ' + (i + 1) + ': "Wild stock" -> Wilde dieren (8 cijfers; octopus via 6 cijfers)');
     assert.strictEqual(await w4('[data-test="animo-code-selector"]', i), '102108', 'Animo item ' + (i + 1));
     assert.ok(/DL 1022/.test(await w4('app-form-goods-items [data-test="organisation-selector"]', i)), 'erkenningsnummer item ' + (i + 1));
     assert.strictEqual(await k4('app-form-goods-items mat-select[formcontrolname="equipmentNumber"] .mat-mdc-select-value', i), 'CSQU3054383', 'container item ' + (i + 1));
   }
-  assert.ok(/^Inktvissen/.test(await w4('[data-test="goods-description"]', 0)), 'omschrijving door Portbase na GN-keuze');
+  assert.ok(/^Weekdieren/.test(await w4('[data-test="goods-description"]', 0)), 'omschrijving door Portbase na GN-keuze');
   assert.strictEqual(await w4('[data-test="packaging-number-of-packages"]', 3), '550');
   assert.strictEqual(await w4('[data-test="nett-weight"]', 4), '2300');
   // Brutogewicht: totaal HC I.26 (22280) naar rato van netto verdeeld, som klopt exact

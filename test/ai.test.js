@@ -229,6 +229,25 @@ test('GN-code zoals op het HC (zoekterm GN-dialoog) en Animo-keuzehulp in de pro
   assert.ok(!/Leeg als je het niet zeker weet/.test(p), 'AI mag de Animo-code niet zomaar leeg laten');
 });
 
+test('extension/ai.bundle.js is bijgewerkt met js/ggb-ai.js (anders: cd ai && npm run build)', () => {
+  const bundel = require('fs').readFileSync(require('path').join(__dirname, '..', 'extension', 'ai.bundle.js'), 'utf8');
+  const sleutels = new Set();
+  (function loop(s) { if (!s || typeof s !== 'object') return; if (s.properties) Object.keys(s.properties).forEach((k) => { sleutels.add(k); loop(s.properties[k]); }); if (s.items) loop(s.items); })(AI.SCHEMA);
+  for (const k of sleutels) assert.ok(bundel.includes(k), 'schemaveld ' + k + ' ontbreekt in de bundel');
+  for (const regel of AI.SYSTEM.split('\n').map((r) => r.trim()).filter((r) => r.length > 30 && /^[\x20-\x7e]+$/.test(r) && !/["'\\]/.test(r))) {
+    assert.ok(bundel.includes(regel), 'promptregel ontbreekt in de bundel: ' + regel);
+  }
+});
+
+test('GN-producttype: wild/gefokt, bereiding/vleesproduct uit HC en Animo-code', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const wild = 'Fishery products, Wild stock; Frozen';
+  assert.ok(FILL.kenmerkScore('Wilde dieren', wild, '102108') > FILL.kenmerkScore('Gefokte dieren', wild, '102108'), 'Wild stock -> Wilde dieren');
+  assert.ok(FILL.kenmerkScore('Gefokte dieren', 'Frozen', '206107') > FILL.kenmerkScore('Wilde dieren', 'Frozen', '206107'), 'Animo 206107 -> Gefokte dieren');
+  assert.ok(FILL.kenmerkScore('Vleesbereiding', 'Meat preparation', '201105') > FILL.kenmerkScore('Vleesproducten', 'Meat preparation', '201105'));
+  assert.strictEqual(FILL.kenmerkScore('Wilde dieren', 'wild or farmed', ''), 0, 'tegenstrijdige HC-tekst telt niet');
+});
+
 test('keuzelijsten: verpakking naar Portbase-optie, containernummer met spaties', () => {
   const FILL = require('../extension/portbase-fill.js');
   const optie = (t) => ({ textContent: t });

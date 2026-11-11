@@ -124,8 +124,11 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
      na het kiezen van de GN-code.
    - *GN-code*: zoeken op de **code zoals op het HC** (HS-code, bijv.
      *160232*) **plus de wetenschappelijke naam** van het HC (bijv. *Gallus
-     gallus*), zoals de declarant; daarna zo nodig met 6, 8 of 4 cijfers van
-     de GN-code en zonder naam; kiezen op GN-code en soort, en
+     gallus*), zoals de declarant; geen resultaat of geen passende regel:
+     de volledige GN-code, dan 6, dan 4 cijfers, daarna zonder naam; kiezen
+     op GN-code en soort, en bij meerdere producttypes op kenmerken uit het HC
+     en de Animo-code (bijv. *Wild stock* of Animo 102108 → *Wilde dieren*,
+     *Farmed* of 206107 → *Gefokte dieren*; *preparation* → *Vleesbereiding*), en
      bij meerdere producttypes op de aard van het product en de omschrijving
      van de Animo-code (bijv. *wild gevangen* vs *aquacultuur*).
    - *Animo-code*: de AI kiest die **altijd** uit de Portbase-lijst, met een

@@ -154,10 +154,13 @@
     ['030617', 'Garnalen, bevroren', 'Penaeus vannamei', 'Visserijproducten (aquacultuur)'],
     ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (aquacultuur)'],
     ['030617', 'Garnalen, bevroren', 'Penaeus monodon', 'Visserijproducten (wild gevangen)'],
-    ['030743', 'Inktvissen (Sepia officinalis, Rossia macrosoma, Sepiola spp.) en pijlinktvissen, bevroren', 'Sepia lycidas', 'Visserijproducten (wild gevangen)'],
-    ['030743', 'Inktvissen (Sepia officinalis, Rossia macrosoma, Sepiola spp.) en pijlinktvissen, bevroren', 'Sepia officinalis', 'Visserijproducten (wild gevangen)'],
-    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus membranaceus', 'Visserijproducten (wild gevangen)'],
-    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus vulgaris', 'Visserijproducten (wild gevangen)']
+    // Echte Portbase-resultaten (nov. 2026): 03074399 + Sepia lycidas -> "Gefokte dieren" en "Wilde dieren"
+    ['03074399', 'Weekdieren, ook indien ontdaan van de schelp, levend, vers, gekoeld, bevroren, gedroogd, gezouten of gepekeld; gerookte weekdieren, ook indien ontdaan van de schelp, ook indien voor of tijdens het roken gekookt: / andere', 'Sepia lycidas', 'Gefokte dieren'],
+    ['03074399', 'Weekdieren, ook indien ontdaan van de schelp, levend, vers, gekoeld, bevroren, gedroogd, gezouten of gepekeld; gerookte weekdieren, ook indien ontdaan van de schelp, ook indien voor of tijdens het roken gekookt: / andere', 'Sepia lycidas', 'Wilde dieren'],
+    ['03074399', 'Weekdieren, ook indien ontdaan van de schelp, levend, vers, gekoeld, bevroren, gedroogd, gezouten of gepekeld; gerookte weekdieren, ook indien ontdaan van de schelp, ook indien voor of tijdens het roken gekookt: / andere', 'Sepia officinalis', 'Wilde dieren'],
+    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus membranaceus', 'Gefokte dieren'],
+    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus membranaceus', 'Wilde dieren'],
+    ['030752', 'Octopus (Octopus spp.), bevroren', 'Octopus vulgaris', 'Wilde dieren']
   ];
   var GN_DIALOOG = '<app-gn-code-dialog class="mat-mdc-dialog-component-host"><h2 mat-dialog-title="">GN code</h2><mat-dialog-content><p class="mb-1">Search on description or GN code.</p><form novalidate="" class="responsive-form"><div class="row search">' +
     '<div><mat-form-field><label><mat-label>Description or GN code</mat-label></label><input matinput="" formcontrolname="name" type="text" id="name" minlength="4" data-test="name" placeholder="At least 4 character(s)" required=""></mat-form-field></div>' +
@@ -273,7 +276,7 @@
       var o = document.createElement('mat-option'); o.setAttribute('role', 'option'); o.className = 'mat-mdc-option mdc-list-item';
       o.id = id + '-optie-' + n; o.setAttribute('aria-selected', 'false');
       o.innerHTML = '<span class="mdc-list-item__primary-text"> ' + t + ' </span>';
-      o.__kies = function () { o.setAttribute('aria-selected', 'true'); setTimeout(function () { kies(t, o); sluitPanelen(); }, 60); };
+      o.__kies = function () { if (veld.tagName === 'MAT-SELECT') o.setAttribute('aria-selected', 'true'); /* autocomplete: paneel sluit zonder aria-selected */ setTimeout(function () { kies(t, o); sluitPanelen(); }, 60); };
       o.addEventListener('click', function () { if (!veld.dataset.klikNegeren) o.__kies(); });
       lb.appendChild(o);
     });
@@ -435,7 +438,7 @@
         return;
       }
       var lijst = Object.keys(LANDEN).filter(function (k) { return k.indexOf(term) === 0 || LANDEN[k].toUpperCase().indexOf(term) === 0; }).map(function (k) { return k + ' - ' + LANDEN[k]; });
-      setTimeout(function () { toon(lijst, function (t) { i.value = t; i.dispatchEvent(new Event('mock-gekozen')); }, i); }, 100);
+      setTimeout(function () { toon(lijst, function (t) { i.value = i.dataset.test === 'search-country' ? t.slice(0, 2) : t; i.dispatchEvent(new Event('mock-gekozen')); }, i); }, 100);
     }
   });
   document.addEventListener('change', function (e) {

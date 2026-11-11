@@ -308,8 +308,11 @@
     }
     var tekst = txt(o);
     var klaar = function () {
-      var w = String(el.value || '');
-      return optieGekozen(o) || (norm(w) && norm(w) !== norm(zoekterm)) || (!opties(el).length && termScore(w, tekst) >= 3);
+      var w = String(el.value || '').trim();
+      if (optieGekozen(o) || (norm(w) && norm(w) !== norm(zoekterm))) return true;
+      // Paneel dicht en het veld toont (een deel van) de optie; Portbase toont na de keuze soms
+      // alleen de code, bijv. "VN" voor "VN - Viet Nam", gelijk aan wat getypt is.
+      return !!w && !opties(el).length && (termScore(w, tekst) >= 3 || termScore(tekst, w) >= 3);
     };
     klik(o);
     var ok = await wachtOp(klaar, 1500);
@@ -867,22 +870,24 @@
   /** Land kiezen in het zoekvenster (autocomplete); een ander, eerder gekozen land wordt vervangen. */
   async function kiesLand(landEl, land) {
     if (!landEl || !land || landKlopt(landEl, land)) return { ok: true };
-    var l = await kiesInAutocomplete(landEl, land, landTermen(land));
-    if (!l.ok || !(await wachtOp(function () { return landKlopt(landEl, land); }, 1500))) return { ok: false };
+    await kiesInAutocomplete(landEl, land, landTermen(land));
+    var ok = !!(await wachtOp(function () { return landKlopt(landEl, land); }, 1500));
     await wacht(TEMPO);
-    return { ok: true };
+    return { ok: ok };
   }
 
   async function zoekOrganisatie(dialoog, zoek) {
     var landEl = q('input[data-test="search-country"]', dialoog);
-    if (!(await kiesLand(landEl, zoek.land)).ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ') en klik Search' };
+    // Ook als het land niet te bevestigen is, gewoon zoeken: de zoekterm moet er altijd in.
+    var landOk = (await kiesLand(landEl, zoek.land)).ok;
+    var landNoot = landOk ? '' : ' (land ' + zoek.land + ' niet bevestigd; controleer het landveld)';
     var type = zoek.type || 'NAME', term = zoek.term;
     var rijen = await zoekOrganisatieEenmaal(dialoog, zoek, type, term);
     if (!rijen && zoek.terugval && zoek.terugval.term) {
       type = zoek.terugval.type; term = zoek.terugval.term;
       rijen = await zoekOrganisatieEenmaal(dialoog, zoek, type, term);
     }
-    if (!rijen) return { ok: true, melding: String(term || '').trim().length < 3 ? 'zoekterm te kort; zoek zelf' : 'geen resultaten voor "' + term + '" (' + (zoek.land || '?') + '); zoek zelf of voeg handmatig toe' };
+    if (!rijen) return { ok: true, melding: (String(term || '').trim().length < 3 ? 'zoekterm te kort; zoek zelf' : 'geen resultaten voor "' + term + '" (' + (zoek.land || '?') + '); zoek zelf of voeg handmatig toe') + landNoot };
     var keuze = kiesBeste(rijen, rijen.map(function (r) { return rijScore(r, zoek); }), 40, 8);
     if (keuze.rij) {
       var c = keuze.rij;
@@ -909,7 +914,7 @@
 
   async function kiesUitLijst(dialoog, zoek) {
     var landEl = eerste(['input[data-test="search-country"]', 'input[formcontrolname*="ountry"]', 'input[aria-autocomplete="list"]'], dialoog);
-    if (!(await kiesLand(landEl, zoek.land)).ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ')' };
+    await kiesLand(landEl, zoek.land);
     var rijen = await wachtStabiel(function () { var r = lijstRijen(dialoog); return r.length && !bezig(dialoog) ? r : null; }, 500, 10000,
       function (r) { return r.length + ':' + txt(r[0]); });
     if (!rijen) return { ok: true, melding: 'geen lijst verschenen; kies zelf' };
@@ -998,44 +1003,93 @@
     return laatst.length ? laatst : (geenResultaat(dialoog) ? [] : null);
   }
 
+  /*
+   * Kenmerken om tussen Portbase-producttypes te kiezen, bijv. bij 03074399 +
+   * Sepia lycidas: "Gefokte dieren" of "Wilde dieren". Uit het HC ("Wild stock",
+   * "Farmed", "Aquaculture") en de Animo-code (206107 aquacultuur, 102108 overig/wild).
+   */
+  var KENMERKEN = [
+    ['wild', /\bwild|\bcaught\b|\bcapture|\bvangst|\bgevangen|\bfished\b/],
+    ['kweek', /\bfarm|aquacult|\bcultur|\bkweek|\bgekweekt|gefokt|\bfokk|\bbred\b|\braised\b/],
+    ['bereiding', /bereiding|\bpreparation|\bmarinated|\bseasoned|\bgemarineerd|\bgekruid|\bgehakt|\bminced/],
+    ['vleesproduct', /vleesproduct|\bmeat products?\b|\bcooked\b|\bgekookt|\bverhit|\bheat treated|\bsmoked\b|\bgerookt|\bcanned\b|\bingeblikt/],
+    ['samengesteld', /samengesteld|\bcomposite/],
+    ['niet-houdbaar', /\bniet houdba|\bnot shelf|\bperishable/],
+    ['houdbaar', /\bhoudba|\bshelf stable|\bambient/]
+  ];
+  var TEGENSTELLING = { wild: 'kweek', kweek: 'wild', bereiding: 'vleesproduct', vleesproduct: 'bereiding', houdbaar: 'niet-houdbaar', 'niet-houdbaar': 'houdbaar' };
+  var ANIMO_KENMERKEN = { 206107: ['kweek'], 102108: ['wild'], 101105: ['bereiding'], 201105: ['bereiding'], 202105: ['bereiding'], 201100: ['vleesproduct'], 202103: ['kweek'], 202104: ['wild'], 121000: ['samengesteld', 'niet-houdbaar'], 121001: ['samengesteld', 'houdbaar'] };
+
+  function kenmerken(tekst) {
+    var t = norm(tekst), k = [];
+    KENMERKEN.forEach(function (x) { if (x[1].test(t)) k.push(x[0]); });
+    if (k.indexOf('niet-houdbaar') >= 0) k = k.filter(function (x) { return x !== 'houdbaar'; });
+    // Tegenstrijdig in dezelfde tekst (bijv. "wild of gekweekt"): niet laten meetellen.
+    return k.filter(function (x) { return k.indexOf(TEGENSTELLING[x]) < 0; });
+  }
+
+  /** +2 per gedeeld kenmerk, -3 per tegengesteld kenmerk (producttype vs HC/Animo). */
+  function kenmerkScore(productType, hints, animo) {
+    var typ = kenmerken(productType);
+    var hint = kenmerken(hints).concat(ANIMO_KENMERKEN[animo] || []);
+    hint = hint.filter(function (x, i, a) { return a.indexOf(x) === i && a.indexOf(TEGENSTELLING[x]) < 0; });
+    return typ.reduce(function (s, x) { return s + (hint.indexOf(x) >= 0 ? 2 : 0) - (hint.indexOf(TEGENSTELLING[x]) >= 0 ? 3 : 0); }, 0);
+  }
+
+  /** Beoordeel de regels van één zoekopdracht: duidelijke winnaar, kandidaten, of niets passends. */
+  function beoordeelGn(rijen, gn, zoek) {
+    var basis = rijen.map(function (r) { return gnScore(r, gn, zoek.wetenschappelijk); });
+    var max = Math.max.apply(null, basis);
+    if (max <= 0) return { max: 0 };
+    var hints = zoek.hints || zoek.aard || '';
+    var scores = rijen.map(function (r, j) {
+      if (basis[j] !== max) return 0;
+      var pt = txt(q('.mat-column-productType', r));
+      return 100 + Math.round(typeOvereenkomst(pt, hints) * 10) + kenmerkScore(pt, hints, zoek.animo) * 10;
+    });
+    var keuze = kiesBeste(rijen, scores, 100, 3);
+    keuze.max = max;
+    return keuze;
+  }
+
   async function zoekGn(dialoog, zoek) {
     var gn = String(zoek.gn || zoek.term || '').replace(/\D/g, '');
     var hc = String(zoek.hc || '').replace(/\D/g, '');
+    if (!gn) gn = hc;
     var termEl = eerste(['input[data-test="name"]', 'input[formcontrolname="name"]'], dialoog);
     var wnEl = q('input[data-test="scientific-name"], input[formcontrolname="scientificName"]', dialoog);
     var knop = q('button[data-test="select-search"]', dialoog);
     if (!termEl || !knop) return { ok: true, melding: 'zoekveld niet gevonden; zoek zelf op ' + gn };
-    // Zoals de declarant: de code zoals op het HC (HS-code, meestal 6 cijfers) + wetenschappelijke naam.
-    var codes = [hc, gn.slice(0, 6), gn, gn.slice(0, 4)].filter(function (p, i, a) { return p && p.length >= 4 && a.indexOf(p) === i; });
-    if (!gn) gn = hc;
+    // Zoals de declarant: de code zoals op het HC + wetenschappelijke naam. Niet gevonden of geen
+    // passende regel: de volledige GN-code, dan 6 cijfers, dan 4 cijfers; daarna hetzelfde zonder naam.
+    var codes = [hc, gn, gn.slice(0, 6), gn.slice(0, 4)].filter(function (p, i, a) { return p && p.length >= 4 && a.indexOf(p) === i; });
     if (!codes.length) return { ok: true, melding: 'GN-code "' + gn + '" te kort om te zoeken' };
-    // Eerst GN-code + Latijnse naam (zoals de declarant doet), dan zonder naam.
     var soort = String(zoek.wetenschappelijk || '').trim();
     var pogingen = [];
     if (soort && wnEl) codes.forEach(function (c) { pogingen.push([c, soort]); });
     codes.forEach(function (c) { pogingen.push([c, '']); });
-    var rijen = null, gebruikt = '';
-    for (var i = 0; i < pogingen.length && !(rijen && rijen.length); i++) {
+    var info = function (r) { return [txt(q('.mat-column-gnCode', r)), txt(q('.mat-column-scientificName', r)), txt(q('.mat-column-productType', r))].filter(Boolean).join(' · '); };
+    var geprobeerd = [], zonderMatch = [];
+    for (var i = 0; i < pogingen.length; i++) {
       zetWaarde(termEl, pogingen[i][0]); blur(termEl);
       if (wnEl) { zetWaarde(wnEl, pogingen[i][1]); blur(wnEl); }
       await wacht(TEMPO);
-      gebruikt = pogingen[i][0] + (pogingen[i][1] ? ' + ' + pogingen[i][1] : '');
-      rijen = await zoekEnWacht(dialoog, knop, gnRijen);
+      var gebruikt = pogingen[i][0] + (pogingen[i][1] ? ' + ' + pogingen[i][1] : '');
+      geprobeerd.push(gebruikt);
+      var rijen = await zoekEnWacht(dialoog, knop, gnRijen);
+      if (!rijen || !rijen.length) continue;            // niets gevonden: volgende poging
+      var keuze = beoordeelGn(rijen, gn, zoek);
+      if (!keuze.max) { zonderMatch.push(gebruikt); continue; } // wel regels, maar geen passende GN-code
+      if (keuze.rij) {
+        if (!(await selecteerRij(keuze.rij))) return { ok: true, melding: 'regel ' + info(keuze.rij) + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
+        return { ok: true, gekozen: true, melding: 'gekozen: ' + info(keuze.rij) + ' (gezocht: ' + gebruikt + ')' };
+      }
+      // Passende GN-code maar meerdere producttypes zonder duidelijke winnaar: een andere zoekterm helpt niet.
+      var types = keuze.kandidaten.map(function (r) { return txt(q('.mat-column-productType', r)); }).filter(function (x, j, a) { return x && a.indexOf(x) === j; });
+      return { ok: true, melding: keuze.kandidaten.length + ' regels gemarkeerd; kies het producttype: ' + types.join(' · ') + (zoek.aard ? ' (HC: ' + zoek.aard + ')' : '') };
     }
-    if (!rijen || !rijen.length) return { ok: true, melding: 'geen GN-codes gevonden voor ' + gn + (soort ? ' / ' + soort : '') + '; zoek zelf (bijv. op omschrijving)' };
-    var basis = rijen.map(function (r) { return gnScore(r, gn, zoek.wetenschappelijk); });
-    var max = Math.max.apply(null, basis);
-    if (max <= 0) return { ok: true, melding: rijen.length + ' resultaten voor "' + gebruikt + '", maar geen passende GN-code; kies zelf' };
-    // Gelijke GN + soort: het producttype beslist (aard product + Animo-omschrijving).
-    var scores = rijen.map(function (r, j) { return basis[j] === max ? 100 + Math.round(typeOvereenkomst(txt(q('.mat-column-productType', r)), zoek.hints || zoek.aard || '') * 10) : 0; });
-    var info = function (r) { return [txt(q('.mat-column-gnCode', r)), txt(q('.mat-column-scientificName', r)), txt(q('.mat-column-productType', r))].filter(Boolean).join(' · '); };
-    var keuze = kiesBeste(rijen, scores, 100, 3);
-    if (keuze.rij) {
-      if (!(await selecteerRij(keuze.rij))) return { ok: true, melding: 'regel ' + info(keuze.rij) + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
-      return { ok: true, gekozen: true, melding: 'gekozen: ' + info(keuze.rij) };
-    }
-    var types = keuze.kandidaten.map(function (r) { return txt(q('.mat-column-productType', r)); }).filter(function (x, j, a) { return x && a.indexOf(x) === j; });
-    return { ok: true, melding: keuze.kandidaten.length + ' regels gemarkeerd; kies het producttype: ' + types.join(' · ') + (zoek.aard ? ' (HC: ' + zoek.aard + ')' : '') };
+    if (zonderMatch.length) return { ok: true, melding: 'wel resultaten voor "' + zonderMatch[0] + '", maar geen passende GN-code (' + gn + '); kies zelf' };
+    return { ok: true, melding: 'geen GN-codes gevonden (gezocht: ' + geprobeerd.join('; ') + '); zoek zelf (bijv. op omschrijving)' };
   }
 
   /* ---- Animo-code ---- */
@@ -1142,7 +1196,7 @@
     var r = { naam: 'ANIMO code', waarde: item.animoCode || '', status: 'overgeslagen', melding: '' };
     if (!item.animoCode) { r.melding = 'geen Animo-code in het voorstel'; return r; }
     if (!opts.dialogen) { r.status = 'handmatig'; return r; }
-    if (gnRes && gnRes.status !== 'ingevuld' && gnRes.status !== 'overgeslagen') { r.status = 'handmatig'; r.melding = 'eerst de GN-code kiezen'; return r; }
+    var gnMislukt = gnRes && gnRes.status !== 'ingevuld' && gnRes.status !== 'overgeslagen';
     var animoVeld = q('input[data-test="animo-code-selector"], #animoCodeSelector', kaart);
     var huidig = animoVeld ? String(animoVeld.value || '').trim() : '';
     if (huidig && !opts.overschrijven) {
@@ -1151,7 +1205,8 @@
       return r;
     }
     var zoek = { animo: item.animoCode };
-    var open = await wachtOp(function () { return dialogen().filter(function (d) { return q('app-animo-code-dialog, [data-test="animo-codes-list"]', d); })[0]; }, 1000);
+    // Portbase kan het Animo-venster zelf openen na Save in het GN-venster; daar even op wachten.
+    var open = gnMislukt ? null : await wachtOp(function () { return dialogen().filter(function (d) { return q('app-animo-code-dialog, [data-test="animo-codes-list"]', d); })[0]; }, 2500);
     var res;
     if (open) {
       res = await verwerkDialoog(open, zoek);
@@ -1159,6 +1214,8 @@
     } else {
       var knop = eerste(['button[data-test="animo-code-dialog"]', 'button[data-test*="animo"]'], kaart) || knopMetTekst(/animo/i, kaart);
       if (!knop) { r.status = 'handmatig'; r.melding = 'Animo-knop niet gevonden; kies ' + item.animoCode + ' zelf'; return r; }
+      // Ook als de GN-code niet lukte: het Animo-venster is los te openen (tenzij Portbase de knop uitschakelt).
+      if (knop.disabled || knop.getAttribute('aria-disabled') === 'true') { r.status = 'handmatig'; r.melding = gnMislukt ? 'Animo-knop pas actief na de GN-code; kies eerst de GN-code, dan ' + item.animoCode : 'Animo-knop niet actief; kies ' + item.animoCode + ' zelf'; return r; }
       r.knop = knop;
       r.zoek = zoek;
       res = await zoekInDialoog(knop, zoek);
@@ -1182,7 +1239,7 @@
     return qa('input:not([disabled]):not([type="hidden"])', f).length > 0;
   }
 
-  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, afhandelen: afhandelen, rijScore: rijScore, gnScore: gnScore, typeOvereenkomst: typeOvereenkomst, orgZoek: orgZoek, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
+  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, afhandelen: afhandelen, rijScore: rijScore, gnScore: gnScore, kenmerkScore: kenmerkScore, typeOvereenkomst: typeOvereenkomst, orgZoek: orgZoek, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_FILL = exported;
 })(typeof window !== 'undefined' ? window : this);
