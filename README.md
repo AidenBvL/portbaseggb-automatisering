@@ -90,9 +90,9 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    inrichting van oorsprong, erkenningsnummer) doet die knop:
    zoektype kiezen (*Organisation name* of *Approval number*), **land**
    invullen (exporteur/inrichting: land van oorsprong, importeur: NL),
-   zoekterm invullen, **Search** klikken en – als er precies één goede
-   treffer is – die rij aanvinken. Bij meerdere even goede treffers worden ze
-   gemarkeerd en kies je zelf. **Save** in de dialoog klik je altijd zelf.
+   zoekterm invullen, **Search** klikken en – als er precies één exacte
+   treffer is (naam op B.V./Pvt Ltd na, of erkenningsnummer) – die rij aanvinken. Gedeeltelijke of meerdere treffers worden
+   gemarkeerd en dan kies je zelf. **Save** in de dialoog klik je altijd zelf.
    Bij andere dialogen (grenscontrolepost, GN-code) wordt alleen de
    zoekterm ingevuld (bijv. `NLRTM1` of de GN-code).
 

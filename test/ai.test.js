@@ -154,7 +154,8 @@ test('zoekresultaat in organisatiedialoog: naam (zonder B.V./Pvt Ltd) en erkenni
   const rij = (naam, erk) => ({ querySelector: (sel) => ({ textContent: /approvalNumber/.test(sel) ? erk : /name/.test(sel) ? naam : '' }) });
   assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 4);
   assert.strictEqual(FILL.rijScore(rij('GHAN MARINE PRODUCTS PVT LTD', ''), { term: 'Ghan Marine Products', type: 'NAME' }), 4);
-  assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK LOGISTICS B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 0);
+  // Andere firma met dezelfde beginnaam: alleen kandidaat (2), nooit exact (4) -> wordt niet automatisch aangevinkt
+  assert.strictEqual(FILL.rijScore(rij('EUROFOODLINK LOGISTICS B.V.', ''), { term: 'EUROFOODLINK B.V.', type: 'NAME' }), 2);
   assert.strictEqual(FILL.rijScore(rij('X', '1234'), { term: '1234', type: 'APPROVAL_NUMBER' }), 4);
   assert.strictEqual(FILL.rijScore(rij('X', 'IN-1234-A'), { term: '1234', type: 'APPROVAL_NUMBER' }), 2);
 });

@@ -473,7 +473,8 @@
     var scores = rijen.map(function (r) { return rijScore(r, zoek); });
     var max = Math.max.apply(null, scores);
     var besten = rijen.filter(function (r, i) { return scores[i] === max; });
-    if (max >= 2 && besten.length === 1) {
+    // Alleen bij een exacte match (naam op rechtsvorm na, of erkenningsnummer) automatisch aanvinken.
+    if (max >= 4 && besten.length === 1) {
       selecteerRij(besten[0]);
       return { ok: true, gekozen: true, melding: 'aangevinkt: ' + (cel(besten[0], 'name') || txt(besten[0])) + (cel(besten[0], 'city') ? ', ' + cel(besten[0], 'city') : '') + ' – controleer en klik Save' };
     }
