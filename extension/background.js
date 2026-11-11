@@ -1,5 +1,13 @@
-/* Service worker: levert de kennisbank (JSON) aan het content script en opent de volledige tool. */
+/*
+ * Service worker: levert de kennisbank (JSON) aan het content script, opent de
+ * volledige tool en voert het uitlezen van documenten met Claude uit
+ * (ai.bundle.js, gebouwd uit ai/src/ met de Anthropic SDK).
+ */
 'use strict';
+
+importScripts('ai.bundle.js');
+
+var AI_INSTELLINGEN = 'ggb.ai';
 
 var cache = null;
 
@@ -39,6 +47,31 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     return false;
   }
   return false;
+});
+
+/* Uitlezen met AI via een lange verbinding: het content script stuurt elke 20 s
+ * een ping, zodat de service worker actief blijft tijdens een lang verzoek. */
+chrome.runtime.onConnect.addListener(function (port) {
+  if (port.name !== 'ggb-ai') return;
+  var open = true;
+  port.onDisconnect.addListener(function () { open = false; });
+  port.onMessage.addListener(function (msg) {
+    if (!msg || msg.type !== 'extract') return;
+    chrome.storage.local.get(AI_INSTELLINGEN, function (opgeslagen) {
+      var inst = opgeslagen[AI_INSTELLINGEN] || {};
+      self.GGB_AI_CLIENT.extract({
+        apiKey: inst.apiKey,
+        model: inst.model || self.GGB_AI_CLIENT.STANDAARD_MODEL,
+        effort: inst.effort || 'high',
+        bestanden: msg.bestanden,
+        context: msg.context
+      }).then(function (res) {
+        if (open) port.postMessage({ type: 'resultaat', resultaat: res.resultaat, model: res.model, gebruik: res.gebruik });
+      }, function (e) {
+        if (open) port.postMessage({ type: 'fout', melding: e && e.message ? e.message : String(e) });
+      });
+    });
+  });
 });
 
 chrome.action.onClicked.addListener(function () {

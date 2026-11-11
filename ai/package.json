@@ -1,0 +1,14 @@
+{
+  "name": "ggb-ai",
+  "private": true,
+  "description": "Bouwt extension/ai.bundle.js: uitlezen van GGB-documenten met Claude (Anthropic SDK).",
+  "scripts": {
+    "build": "esbuild src/entry.mjs --bundle --format=iife --platform=browser --target=chrome110 --minify --legal-comments=eof --outfile=../extension/ai.bundle.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

@@ -26,7 +26,7 @@ jobs:
         run: |
           python3 sync/run.py ${{ inputs.maand && format('--maand {0}', inputs.maand) || '' }}
       - name: Tests
-        run: node test/engine.test.js
+        run: node test/engine.test.js && node test/ai.test.js
       - name: Wijzigingen committen
         run: |
           git config user.name "kennisbank-sync"

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GGB-assistent – instellingen</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color: #1c2430; background: #f6f8fb; margin: 0; }
+    main { max-width: 640px; margin: 2rem auto; background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 1.5rem; }
+    h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
+    label { display: block; font-weight: 600; margin: 1rem 0 .3rem; }
+    input, select { width: 100%; box-sizing: border-box; font: inherit; padding: .45rem .55rem; border: 1px solid #d9dee6; border-radius: 6px; }
+    .hint { color: #5f6b7a; font-size: .85rem; margin: .3rem 0 0; }
+    .actions { margin-top: 1.25rem; display: flex; gap: .75rem; align-items: center; }
+    button { font: inherit; padding: .45rem 1rem; border-radius: 6px; border: 1px solid #0b5fa5; background: #0b5fa5; color: #fff; cursor: pointer; }
+    #msg { color: #157347; }
+    .box { background: #fff4e0; color: #7a4a00; border-radius: 6px; padding: .6rem .8rem; font-size: .88rem; margin-top: 1.25rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>GGB-assistent – AI-instellingen</h1>
+    <p class="hint">Voor <b>AI invullen</b> gebruikt de extensie Claude van Anthropic. Je hebt een eigen API-sleutel nodig (console.anthropic.com → API keys).</p>
+
+    <label for="apiKey">Anthropic API-sleutel</label>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
+    <p class="hint">Wordt alleen lokaal in deze browser bewaard (chrome.storage.local) en alleen naar api.anthropic.com gestuurd.</p>
+
+    <label for="model">Model</label>
+    <select id="model">
+      <option value="claude-opus-5-5">Claude Opus 5.5 (aanbevolen)</option>
+      <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (sneller, goedkoper)</option>
+      <option value="claude-fable-5-2">Claude Fable 5.2 (meest capabel, duurder)</option>
+    </select>
+
+    <label for="effort">Grondigheid (effort)</label>
+    <select id="effort">
+      <option value="medium">Gemiddeld – sneller</option>
+      <option value="high">Hoog (aanbevolen)</option>
+      <option value="xhigh">Zeer hoog – langzamer</option>
+    </select>
+
+    <div class="actions"><button id="save">Opslaan</button><span id="msg"></span></div>
+
+    <div class="box"><b>Privacy:</b> bij <i>Uitlezen met AI</i> worden de geselecteerde documenten (HC, factuur, enz.) naar de API van Anthropic gestuurd. Er wordt niets verstuurd zolang je die knop niet gebruikt. Controleer of dit past binnen de afspraken van je organisatie.</div>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

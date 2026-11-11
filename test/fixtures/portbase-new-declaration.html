@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Portbase fixture – New declaration</title>
+<style>
+  body { font: 13px sans-serif; } .cdk-overlay-container { position: fixed; top: 0; left: 0; }
+  mat-option { display: block; padding: 2px 6px; cursor: pointer; } .hidden { display: none; }
+  mat-card { display: block; border: 1px solid #ccc; margin: 4px; padding: 4px; }
+</style>
+</head>
+<body>
+<!--
+  NAGEBOOTST formulier "New declaration" voor de invultest. Gebaseerd op de
+  structuur van de echte view-declaration (data-test / formcontrolname) en de
+  labels van het nieuwe-declaratieformulier. Velden waarvan de echte selector
+  onbekend is, worden in de invuller via hun label gevonden – zo ook hier.
+  Kleine scripts bootsen mat-select, autocomplete en "Add ..."-knoppen na.
+-->
+<app-declaration-form>
+<form id="form">
+<app-form-general>
+  <mat-radio-group data-test="goods-classification-code">
+    <mat-radio-button><input type="radio" name="goodsClassificationCode" value="PRD"><label>Products of animal origin (CHED-P)</label></mat-radio-button>
+    <mat-radio-button><input type="radio" name="goodsClassificationCode" value="LNV"><label>Food/feed of non-animal origin (CHED-D)</label></mat-radio-button>
+  </mat-radio-group>
+  <mat-form-field><mat-label>Bill of lading number (I.13)</mat-label><input formcontrolname="billOfLadingNumber" data-test="bill-of-lading-number"></mat-form-field>
+  <mat-form-field><mat-label>Destination (I.20-25)</mat-label><mat-select formcontrolname="purposeCode" data-test="purpose-code" data-opties="Import|Transit|Transhipment|Warehouse"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
+  <mat-form-field><mat-label>Own reference</mat-label><input formcontrolname="customerReference" data-test="customer-reference"></mat-form-field>
+  <mat-form-field><mat-label>Exporter (I.1)</mat-label><input id="exporterSelector" readonly data-test="organisation-selector"></mat-form-field>
+  <mat-form-field><mat-label>Importer (I.6)</mat-label><input id="importerSelector" readonly></mat-form-field>
+  <mat-form-field><mat-label>Border control post (I.4)</mat-label><input id="borderControlPostSelector" readonly data-test="border-control-post-selector"></mat-form-field>
+  <mat-form-field><mat-label>Place of destination (I.7)</mat-label><input id="placeOfDestinationSelector" readonly></mat-form-field>
+  <mat-form-field><mat-label>Country of origin (I.11)</mat-label><input formcontrolname="countryOfOriginUnCode" data-test="country-of-origin-un-code" role="combobox" aria-autocomplete="list"></mat-form-field>
+  <mat-form-field><mat-label>Country of loading (I.14)</mat-label><input formcontrolname="countryOfLoadingUnCode" data-test="country-of-loading-un-code" role="combobox" aria-autocomplete="list"></mat-form-field>
+</app-form-general>
+<app-form-goods>
+  <mat-form-field><mat-label>Goods certified as or for (I.18)</mat-label><mat-select formcontrolname="goodsIntendedUseCode" data-test="goods-intended-use-code" data-opties="Human consumption|Feedingstuff|Technical use|Pharmaceutical use|Other"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
+  <mat-form-field><mat-label>Transport conditions (I.16)</mat-label><mat-select formcontrolname="transportConditionsCode" data-test="transport-conditions-code" data-opties="Ambient|Chilled|Frozen"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
+</app-form-goods>
+<app-form-means-of-transport-before-border>
+  <mat-form-field><mat-label>Means of transport (I.13)</mat-label><mat-select data-opties="Ship|Aircraft|Train|Truck"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
+  <mat-form-field><mat-label>Name / identification (I.13)</mat-label><input></mat-form-field>
+  <mat-form-field><mat-label>Nationality (I.13)</mat-label><input role="combobox" aria-autocomplete="list"></mat-form-field>
+  <mat-form-field><mat-label>Expected date of arrival (I.10)</mat-label><input data-test="arrival-date-time-estimated" placeholder="e.g. 25-03-2023"></mat-form-field>
+  <mat-form-field><input placeholder="e.g. 10:15"></mat-form-field>
+</app-form-means-of-transport-before-border>
+<app-form-transport-equipments>
+  <mat-card><mat-form-field><mat-label>Equipment number</mat-label><input></mat-form-field><mat-form-field><mat-label>Seal number</mat-label><input></mat-form-field></mat-card>
+  <button type="button" class="add">Add equipment</button>
+</app-form-transport-equipments>
+<app-form-documents><form data-test="document-form">
+  <mat-card>
+    <mat-form-field><mat-label>Type</mat-label><mat-select data-test="document-type" formcontrolname="documentType" data-opties="Health certificate (636)|Certified lab report|Catch certificate|Commercial document|Other"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
+    <mat-form-field><mat-label>Identification</mat-label><input data-test="document-number" formcontrolname="documentNumber"></mat-form-field>
+    <mat-form-field><mat-label>Date of issue</mat-label><input data-test="document-date-of-issue" formcontrolname="dateOfIssue" placeholder="e.g. 25-03-2023"></mat-form-field>
+    <mat-form-field><mat-label>Establishment of origin</mat-label><input readonly data-test="organisation-selector"></mat-form-field>
+    <mat-form-field><mat-label>Country of issue</mat-label><input data-test="document-country-un-code-of-issue" role="combobox" aria-autocomplete="list"></mat-form-field>
+    <div class="upload"><mat-label>Upload document</mat-label><input type="file" class="hidden"><span class="file-name"></span></div>
+  </mat-card>
+  <button type="button" data-test="add-document" class="add">Add document</button>
+</form></app-form-documents>
+<app-form-goods-items>
+  <mat-card>
+    <mat-form-field><mat-label>GN-code (I.31)</mat-label><input readonly data-test="gn-code-selector"></mat-form-field>
+    <mat-form-field><mat-label>Goods description (I.31)</mat-label><input data-test="goods-description"></mat-form-field>
+    <mat-form-field><mat-label>Gross weight (I.34)</mat-label><input data-test="gross-weight"></mat-form-field>
+    <mat-form-field><mat-label>Nett weight (I.34)</mat-label><input data-test="nett-weight"></mat-form-field>
+    <mat-form-field><mat-label>Number of packages (I.32)</mat-label><input></mat-form-field>
+    <mat-form-field><mat-label>Package type (I.32)</mat-label><mat-select data-opties="Bag|Box|Carton|Pallet"><div class="mat-mdc-select-trigger"><span class="mat-mdc-select-value-text"></span></div></mat-select></mat-form-field>
+    <mat-form-field><mat-label>Batch number (I.34)</mat-label><input></mat-form-field>
+    <mat-form-field><mat-label>Additional units (I.33)</mat-label><input></mat-form-field>
+    <mat-form-field><mat-label>Activity / approval number (I.15)</mat-label><input></mat-form-field>
+  </mat-card>
+  <button type="button" data-test="add-goods-item" class="add">Add goods item</button>
+</app-form-goods-items>
+</form>
+</app-declaration-form>
+<div class="cdk-overlay-container"></div>
+<script>
+  var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam' };
+  var overlay = document.querySelector('.cdk-overlay-container');
+  function toon(opties, kies) {
+    overlay.innerHTML = '';
+    opties.forEach(function (t) {
+      var o = document.createElement('mat-option'); o.setAttribute('role', 'option'); o.textContent = t;
+      o.addEventListener('click', function () { kies(t); overlay.innerHTML = ''; });
+      overlay.appendChild(o);
+    });
+  }
+  // mat-select: klik opent opties met vertraging (zoals de animatie)
+  document.addEventListener('click', function (e) {
+    var sel = e.target.closest && e.target.closest('mat-select');
+    if (sel) setTimeout(function () {
+      toon(sel.getAttribute('data-opties').split('|'), function (t) { sel.querySelector('.mat-mdc-select-value-text').textContent = t; sel.setAttribute('data-waarde', t); });
+    }, 120);
+    var add = e.target.closest && e.target.closest('button.add');
+    if (add) setTimeout(function () {
+      var kaarten = add.parentElement.querySelectorAll('mat-card');
+      var nieuw = kaarten[kaarten.length - 1].cloneNode(true);
+      nieuw.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      nieuw.querySelectorAll('.mat-mdc-select-value-text').forEach(function (s) { s.textContent = ''; });
+      add.parentElement.insertBefore(nieuw, add);
+    }, 150);
+  });
+  // autocomplete: bij typen opties tonen "IN - India"
+  document.addEventListener('input', function (e) {
+    var i = e.target;
+    if (i.getAttribute && i.getAttribute('aria-autocomplete') === 'list') {
+      var term = i.value.toUpperCase();
+      var lijst = Object.keys(LANDEN).filter(function (k) { return k.indexOf(term) === 0 || LANDEN[k].toUpperCase().indexOf(term) === 0; }).map(function (k) { return k + ' - ' + LANDEN[k]; });
+      setTimeout(function () { toon(lijst, function (t) { i.value = t; }); }, 100);
+    }
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.type === 'file') e.target.parentElement.querySelector('.file-name').textContent = e.target.files[0] ? e.target.files[0].name : '';
+  });
+</script>
+</body></html>
