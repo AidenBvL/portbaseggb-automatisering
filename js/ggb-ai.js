@@ -15,28 +15,13 @@
 (function (root) {
   'use strict';
 
-  /* Vaste keuzelijsten van Portbase (dialogen "Border control post" en
-   * "Inspection centre", land NL; stand nov. 2026). Bij wijzigingen hier bijwerken. */
+  /* Vaste keuzelijst van Portbase (dialoog "Border control post", land NL;
+   * stand nov. 2026). Bij wijzigingen hier bijwerken. Het inspectiecentrum
+   * vult de declarant zelf in en wordt bewust niet door de AI voorgesteld. */
   var BCP_NL = [
     ['Amsterdam', 'NLAMS1'], ['Amsterdam Airport Schiphol', 'NLAMS4'], ['Eemshaven', 'NLEEM1'], ['Harlingen', 'NLHAR1'],
     ['Maastricht', 'NLMST4'], ['Rotterdam', 'NLRTM1'], ['Vlissingen', 'NLVLI1']
   ].map(function (x) { return { naam: x[0], code: x[1], label: x[0] + ' (' + x[1] + ')' }; });
-
-  var INSPECTIECENTRA_NL = [
-    ['Americold Maasvlakte B.V.', '9'], ['Animal Centre Hoek van Holland', '108'], ['Apm Terminals Maasvlakte Il Bv', '55'],
-    ['Barge Center Waalhaven', '98'], ['Blankendaal Coldstores', '58'], ['C P T Amsterdam', '28'], ['C. Steinweg-Handelsveem', '30'],
-    ['C. Vrolijk', '19'], ['Chane Terminal Amsterdam B.V.', '110'], ['Chane Terminal Welplaat B.V.', '59'], ['CTT Rotterdam b.v.', '138'],
-    ['D E K A', '23'], ['Dnata B.V.', '6'], ['E B S', '11'], ['Hanno / Uniport', '21'], ['Hutchinson Ports Delta 2', '27'],
-    ['Hutchinson Ports ECT Delta', '26'], ['Hutchinson Ports ECT Euromax', '31'], ['K L M-2', '4'], ['Kühne & Nagel (Anchoragelaan)', '44'],
-    ['Lineage NL 3 TRS B.V. (locatie Harlingen)', '3'], ['Lineage NL 3 TRS B.V. (locatie IJmuiden)', '2'],
-    ['Lineage NL 3 TRS B.V. (locatie Velsen)', '1'], ['Lineage NL 3 TRS B.V. (locatie Vlissingen)', '18'],
-    ['Lineage Rotterdam Eemhaven B.V.', '10'], ['Lineage Rotterdam Maasvlakte B.V.', '49'], ['Maastricht Aachen Airport', '15'],
-    ['Matrans Rotterdam Terminal B.V', '120'], ['R S T Noord', '24'], ['R S T Zuid', '25'], ['Rhenus Deep Sea Terminal', '149'],
-    ['Rwg - Rotterdam World Gateway', '56'], ['Sealane Coldstorage', '14'], ['Thermotraffic B.V. Abel Tasmanstraat', '13'],
-    ['Thermotraffic B.V. Maasvlakte (HC)', '12'], ['Thermotraffic B.V. Maasvlakte (NHC)', '52'],
-    ['Thermotraffic B.V. MV II keurpunt (HC)', '90'], ['Vopak Terminal Vlaardingen', '60'], ['Vriescentrum Vink Beverwijk Bv', '57'],
-    ['Waalhaven Botlekterminal', '109']
-  ].map(function (x) { return { naam: x[0], code: x[1], label: x[0] }; });
 
   function lijstNorm(v) { return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
 
@@ -96,8 +81,6 @@
     }),
     grenscontrolepost: veld('Border control post (I.4) uit de Portbase-lijst. Afleiden uit HC vak I.4 / haven van binnenkomst (zeevracht via Rotterdam: "Rotterdam (NLRTM1)", luchtvracht Schiphol: "Amsterdam Airport Schiphol (NLAMS4)").',
       { enum: BCP_NL.map(function (e) { return e.label; }).concat(['']) }),
-    inspectiecentrum: veld('Inspection centre (I.4) uit de Portbase-lijst: alleen invullen als een document of de extra info de terminal of het koelhuis noemt waar de partij gekeurd wordt; anders leeg.',
-      { enum: INSPECTIECENTRA_NL.map(function (e) { return e.label; }).concat(['']) }),
     plaatsBestemming: veld('Place of destination (I.7): naam + adres van de plaats van bestemming.'),
     landOorsprong: veld('Country of origin (I.11), ISO alpha-2.'),
     landLading: veld('Country of loading (I.14), ISO alpha-2 (land van de laadhaven).'),
@@ -254,7 +237,7 @@
     raw = raw || {};
     var w = (raw.waarschuwingen || []).map(s).filter(Boolean);
     var r = {};
-    ['declaratieType', 'bol', 'bestemming', 'grenscontrolepost', 'inspectiecentrum', 'plaatsBestemming', 'landOorsprong', 'landLading',
+    ['declaratieType', 'bol', 'bestemming', 'grenscontrolepost', 'plaatsBestemming', 'landOorsprong', 'landLading',
      'gecertificeerdVoor', 'transportconditie', 'vervoermiddel', 'vervoermiddelNaam', 'vervoermiddelNationaliteit',
      'aankomstDatum', 'aankomstTijd'].forEach(function (k) { r[k] = normVeld(raw[k]); });
 
@@ -263,7 +246,7 @@
       r[k].waarde = normLand(oud);
       if (oud && !r[k].waarde) w.push('Landcode "' + oud + '" (' + k + ') is geen ISO-code; vul handmatig in.');
     });
-    [['grenscontrolepost', BCP_NL, 'Grenscontrolepost'], ['inspectiecentrum', INSPECTIECENTRA_NL, 'Inspectiecentrum']].forEach(function (x) {
+    [['grenscontrolepost', BCP_NL, 'Grenscontrolepost']].forEach(function (x) {
       var oud = r[x[0]].waarde;
       if (!oud) return;
       var e = zoekInLijst(x[1], oud);
@@ -377,7 +360,7 @@
 
   var exported = {
     SCHEMA: SCHEMA, SYSTEM: SYSTEM, DOC_CODES: DOC_CODES,
-    BCP_NL: BCP_NL, INSPECTIECENTRA_NL: INSPECTIECENTRA_NL, zoekInLijst: zoekInLijst,
+    BCP_NL: BCP_NL, zoekInLijst: zoekInLijst,
     normaliseer: normaliseer, naarDeclaratie: naarDeclaratie, gebruikersPrompt: gebruikersPrompt,
     normDatum: normDatum, normTijd: normTijd, normLand: normLand, normGetal: normGetal, containerGeldig: containerGeldig
   };

@@ -202,7 +202,6 @@
 
   function zonderLand(v) { return String(v || '').replace(/\s*\([A-Z]{2}\)\s*$/, ''); }
   function zonderCode(v) { return String(v || '').replace(/\s*\([A-Z]{2}[A-Z0-9]{2,}\)\s*$/, ''); }
-  function lijstItem(lijst, v) { var AI = root.GGB_AI; return AI && AI[lijst] ? AI.zoekInLijst(AI[lijst], v) : null; }
   function codeTussenHaakjes(v) { var m = String(v || '').match(/\(([A-Z]{2}[A-Z0-9]{2,})\)/); return m ? m[1] : v; }
 
   var VERVOER_TERMEN = {
@@ -222,8 +221,6 @@
       dialoogZoek: function (r) { return { term: r.importeur.naam, land: r.importeur.land || 'NL', type: 'NAME' }; } },
     { naam: 'Border control post (I.4)', key: 'grenscontrolepost', sel: ['button[data-test="border-control-post-dialog"]'], label: /^border control post/i, soort: 'dialoog', zoekterm: codeTussenHaakjes,
       dialoogZoek: function (r) { var v = r.grenscontrolepost.waarde; return { term: zonderCode(v), code: codeTussenHaakjes(v), land: 'NL' }; } },
-    { naam: 'Inspection centre (I.4)', key: 'inspectiecentrum', sel: ['button[data-test="inspection-centre-dialog"]'], label: /^inspection centre/i, soort: 'dialoog',
-      dialoogZoek: function (r) { var v = r.inspectiecentrum.waarde; var e = lijstItem('INSPECTIECENTRA_NL', v); return { term: v, code: e ? e.code : '', land: 'NL' }; } },
     { naam: 'Place of destination (I.7)', key: 'plaatsBestemming', sel: ['button[data-test="place-of-destination-dialog"]'], label: /^place of destination/i, soort: 'dialoog',
       dialoogZoek: function (r) { return { term: zonderLand(r.plaatsBestemming.waarde).split(',')[0], land: r.importeur.land || 'NL', type: 'NAME' }; } },
     { naam: 'Country of origin (I.11)', key: 'landOorsprong', sel: ['app-form-general input[formcontrolname="countryOfOriginUnCode"]', 'input[data-test="country-of-origin-un-code"]'], label: /^country of origin/i, termen: landTermen },
@@ -501,7 +498,7 @@
   }
 
   /**
-   * Lijstdialoog zonder zoekterm (Border control post, Inspection centre):
+   * Lijstdialoog zonder zoekterm (Border control post):
    * land invullen als het leeg is, dan de rij met de juiste code of naam aanvinken.
    */
   async function kiesUitLijst(dialoog, zoek) {

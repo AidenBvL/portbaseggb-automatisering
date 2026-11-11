@@ -29,7 +29,7 @@ const AI_JSON = {
   declaratieType: v('PRD'), bol: v('HLCUMA3260712342', 'hoog', 'B/L'), bestemming: v('Import', 'middel'),
   exporteur: { naam: 'GHAN MARINE PRODUCTS', adres: 'Kakinada', land: 'IN', bron: 'HC I.1', zekerheid: 'hoog' },
   importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Rotterdam', land: 'NL', bron: 'HC I.5', zekerheid: 'hoog' },
-  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), inspectiecentrum: v('Hutchinson Ports ECT Delta', 'middel', 'B/L: discharge terminal'), plaatsBestemming: v('KOELHUIS ONBEKEND, Rotterdam'),
+  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), plaatsBestemming: v('KOELHUIS ONBEKEND, Rotterdam'),
   landOorsprong: v('IN'), landLading: v('IN'), gecertificeerdVoor: v('Human consumption'), transportconditie: v('Frozen'),
   vervoermiddel: v('Vessel'), vervoermiddelNaam: v('MSC ANNA'), vervoermiddelNationaliteit: v('PA'),
   aankomstDatum: v('26-09-2026', 'laag', 'Extra info'), aankomstTijd: v('07:00', 'laag'),
@@ -193,16 +193,13 @@ try {
   await dlg.locator('[data-test="save"]').click();
   assert.strictEqual(await page.locator('[data-test="border-control-post-dialog"]').innerText(), 'Rotterdam');
 
-  // Inspectiecentrum: land leeg -> NL gekozen, dan "Hutchinson Ports ECT Delta" (niet "Delta 2") aangevinkt
-  melding = await zoek('Inspection centre');
-  assert.ok(/aangevinkt: Hutchinson Ports ECT Delta\s*26/.test(melding), melding);
-  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'NL - Netherlands');
-  assert.strictEqual(await dlg.locator('mat-row.mat-mdc-row-selected .mat-column-code').innerText(), '26');
-  await sluitDialoog();
+  // Inspectiecentrum vult de declarant zelf in: geen regel in het verslag, knop niet aangeraakt
+  assert.ok(!/Inspection centre/.test(verslag), 'inspectiecentrum hoort niet in het verslag');
 
   // Nooit opslaan of verzenden
   const klikken = await page.evaluate(() => window.__klikken);
   assert.ok(!klikken.some((k) => /^(save|send)-declaration$/.test(k)), 'Save/Send van de declaratie niet aangeklikt: ' + klikken.join(','));
+  assert.ok(!klikken.includes('inspection-centre-dialog'), 'inspectiecentrum niet aangeraakt');
   assert.strictEqual(klikken.filter((k) => k === 'save').length, 2, 'dialoog-Save alleen door de gebruiker (2x in deze test)');
   assert.deepStrictEqual(fouten, []);
 

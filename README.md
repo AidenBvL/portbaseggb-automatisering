@@ -93,18 +93,15 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    zoekterm invullen, **Search** klikken en – als er precies één exacte
    treffer is (naam op B.V./Pvt Ltd na, of erkenningsnummer) – die rij aanvinken. Gedeeltelijke of meerdere treffers worden
    gemarkeerd en dan kies je zelf. **Save** in de dialoog klik je altijd zelf.
-   In de lijstdialogen **Border control post** en **Inspection centre**
-   wordt het land (NL) ingevuld als het leeg is en de regel met de juiste
-   code aangevinkt (bijv. *Rotterdam – NLRTM1*, *Hutchinson Ports ECT Delta –
-   26*). Bij de GN-code-dialoog wordt alleen de zoekterm ingevuld.
+   In de lijstdialoog **Border control post** wordt het land (NL) ingevuld
+   als het leeg is en de regel met de juiste code aangevinkt (bijv.
+   *Rotterdam – NLRTM1*). Bij de GN-code-dialoog wordt alleen de zoekterm
+   ingevuld.
 
-   De grenscontrolepost en het inspectiecentrum kiest de AI uit de vaste
-   Portbase-lijsten (in `js/ggb-ai.js`: `BCP_NL`, `INSPECTIECENTRA_NL`;
-   bijwerken als Portbase de lijst wijzigt). Een inspectiecentrum wordt
-   alleen voorgesteld als een document of de extra info het noemt; anders
-   geldt het **standaard inspectiecentrum** uit de instellingen (optioneel).
-   Een dubbelzinnige naam (bijv. alleen "Thermotraffic") wordt niet gekozen
-   maar als aandachtspunt gemeld.
+   De grenscontrolepost kiest de AI uit de vaste Portbase-lijst
+   (`BCP_NL` in `js/ggb-ai.js`; bijwerken als Portbase de lijst wijzigt).
+   Het **inspectiecentrum** vult de declarant zelf in; de extensie stelt het
+   niet voor en raakt het veld niet aan.
 
 Er wordt **nooit** op Opslaan of Verzenden geklikt: de declarant controleert
 en verstuurt zelf.
@@ -114,7 +111,6 @@ en verstuurt zelf.
 Rechtsklik op het extensie-icoon → **Opties** (of `edge://extensions` →
 Details → Extensieopties): vul een Anthropic API-sleutel in
 (console.anthropic.com). Standaardmodel: Claude Opus 5.5, grondigheid *hoog*.
-Optioneel: een standaard inspectiecentrum (bijv. je vaste koelhuis).
 De sleutel blijft lokaal in de browser.
 
 **Privacy:** bij *Uitlezen met AI* gaan de geselecteerde documenten naar de
