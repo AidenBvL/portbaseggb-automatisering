@@ -150,8 +150,9 @@
     '  Gebruik factuur, paklijst en B/L voor B/L-nummer, containers, zegels, colli en gewichten als die niet op het HC staan.',
     '- Datums altijd als dd-mm-jjjj, tijden als uu:mm, landen als ISO alpha-2, GN-codes als 8 cijfers zonder scheidingstekens,',
     '  gewichten in kg met een punt als decimaalteken.',
-    '- Neem elk aangeleverd certificaat of rapport op onder "documenten" (één regel per document) met het nummer precies',
-    '  zoals gedrukt. Vermeld bij een labrapport naar welk HC-nummer het verwijst, als dat erin staat.',
+    '- Neem elk aangeleverd document op onder "documenten" (één regel per document) met het nummer precies zoals gedrukt,',
+    '  ook factuur, paklijst en B/L (als COMM). Welke documenten in de GGB komen, bepaalt de declarant aan de hand van de',
+    '  NVWA-regels (meestal alleen het HC, soms een labrapport). Vermeld bij een labrapport naar welk HC-nummer het verwijst.',
     '- Maak één goederenitem per GN-code/partij zoals op het HC. Tel gewichten niet zelf op tenzij nodig, en meld het dan.',
     '- Neem per goederenitem de wetenschappelijke naam en de aard/behandeling van het product (vak I.28) letterlijk over;',
     '  Portbase heeft per GN-code en soort meerdere producttypes en de declarant kiest daarmee het juiste.',
@@ -349,7 +350,7 @@
       landOorsprong: r.landOorsprong.waarde,
       landLading: r.landLading.waarde,
       eta: r.aankomstDatum.waarde,
-      documenten: r.documenten.map(function (doc) {
+      documenten: r.documenten.filter(function (doc) { return doc.opnemen !== false; }).map(function (doc) {
         return { naam: doc.type, type: doc.type, identificatie: doc.identificatie, datum: doc.datumAfgifte, verwijstNaar: doc.verwijstNaar, bestand: doc.bestand, landAfgifte: doc.landAfgifte };
       }),
       goederen: r.goederen.map(function (g) {
@@ -364,6 +365,56 @@
       'Bestanden: ' + bestandsnamen.join(', ') + '.';
     if (context && s(context)) t += '\n\nAanvullende informatie van de declarant:\n' + s(context);
     return t;
+  }
+
+  /* ---------------- documenten in de GGB ---------------- */
+
+  /* Documenttypes zoals in de Portbase-keuzelijst "Type" (Document(s), I.9). */
+  var PORTBASE_DOCTYPE = {
+    HC: 'Health certificate (636)', LAB: 'Certified lab report (162)', CATCH: 'Catch certificate / private attestation (916)',
+    PRIVATT: 'Catch certificate / private attestation (916)', OFFCERT: 'Official certificate 2019/1793 (100)',
+    COI: 'Certificate of Inspection (COI) (C644)', CITES: 'Import permit (521)', PHYTO: 'Certificate (16)',
+    COMM: 'Commercial invoice (380)', OTHER: 'Certificate (16)'
+  };
+  /* Volledige keuzelijst van Portbase (stand nov. 2026), voor handmatig corrigeren. */
+  var PORTBASE_DOCTYPES = ["Analysis certificate (1)", "Certified lab report 2019/1793 (4)", "Analysis certificate 2019/1793 (5)", "Certified lab report 2020/1158 (6)", "Certified lab report 2011/884 (7)", "Analysis certificate 2011/884 (8)", "Certificate (16)", "Official certificate 2019/1793 (100)", "Proof of purchase (105)", "Certified lab report (162)", "Order (220)", "Packing list (271)", "Request for import (303)", "Health certificate 2011/884 (309)", "Contract (315)", "Proforma invoice (325)", "Official certificate 2020/1158 (375)", "Commercial invoice (380)", "Import permit (521)", "Heat treatment certificate (625)", "Customs receipt (635)", "Health certificate (636)", "Delivery order (640)", "Certificate of Inspection (COI) (C644)", "General transport document (701)", "Bill of lading (705)", "Sea waybill (710)", "Air waybill (740)", "Freight invoice (780)", "Delivery notice (784)", "Freight list (785)", "Container manifest (788)", "Veterinary certificate (853)", "Inspection certificate (856)", "Certificate of origin (861)", "Statement 2011/884 (862)", "Catch certificate / private attestation (916)", "Customs invoice (935)", "Transit declaration (950)", "Administrative document (960)"];
+
+  /* Varianten per EU-verordening (herkend aan de regel die het document vraagt). */
+  var VERORDENINGEN = [
+    { naam: '2019/1793', re: /2019\/1793|1793\/19|179319/, types: { LAB: 'Certified lab report 2019/1793 (4)', OFFCERT: 'Official certificate 2019/1793 (100)' } },
+    { naam: '2020/1158', re: /2020\/1158|1158\/20|115820/, types: { LAB: 'Certified lab report 2020/1158 (6)', OFFCERT: 'Official certificate 2020/1158 (375)' } },
+    { naam: '2011/884', re: /2011\/884|0?884\/11|088411/, types: { LAB: 'Certified lab report 2011/884 (7)', HC: 'Health certificate 2011/884 (309)' } }
+  ];
+
+  /**
+   * Bepaalt per document of het in de GGB hoort (alleen wat de NVWA-/TARIC-regels
+   * vragen; factuur, paklijst en B/L zijn alleen bron) en welk Portbase-type erbij hoort.
+   * @param r          genormaliseerd voorstel (documenten krijgen opnemen, reden, portbaseType)
+   * @param eisen      per goederenitem de vereisten uit ENGINE.requirementsFor(...).vereisten
+   * @param regelOpId  functie id -> regel (voor de bron/verordening), optioneel
+   */
+  function bepaalGgbDocumenten(r, eisen, regelOpId) {
+    var gevraagd = {};
+    (eisen || []).forEach(function (lijst) {
+      (lijst || []).forEach(function (v) {
+        [v.type].concat(v.alternatieven || []).forEach(function (t) {
+          var g = gevraagd[t] || (gevraagd[t] = { niveau: v.niveau, ids: [] });
+          if (v.niveau === 'verplicht') g.niveau = 'verplicht';
+          g.ids = g.ids.concat(v.regelIds || []);
+        });
+      });
+    });
+    (r.documenten || []).forEach(function (doc) {
+      var g = gevraagd[doc.type];
+      var tekst = g ? g.ids.map(function (id) { var regel = regelOpId ? regelOpId(id) : null; return id + ' ' + (regel ? (regel.bron || '') + ' ' + (regel.naam || '') : ''); }).join(' ') : '';
+      var ver = VERORDENINGEN.filter(function (v) { return v.re.test(tekst) && v.types[doc.type]; })[0];
+      if (!doc.portbaseTypeHandmatig) doc.portbaseType = ver ? ver.types[doc.type] : (PORTBASE_DOCTYPE[doc.type] || PORTBASE_DOCTYPE.OTHER);
+      doc.gevraagd = !!g;
+      doc.reden = g ? (g.niveau === 'verplicht' ? 'Vereist' : 'Ter beoordeling') + (ver ? ' (Ver. ' + ver.naam + ')' : '') + ' volgens de regels'
+        : 'Niet gevraagd door de regels; alleen bron voor gegevens';
+      if (typeof doc.opnemen !== 'boolean') doc.opnemen = !!g;
+    });
+    return r;
   }
 
   /* ---------------- aanbieders en instellingen ---------------- */
@@ -432,6 +483,7 @@
   }
 
   var exported = {
+    PORTBASE_DOCTYPE: PORTBASE_DOCTYPE, PORTBASE_DOCTYPES: PORTBASE_DOCTYPES, bepaalGgbDocumenten: bepaalGgbDocumenten,
     PROVIDERS: PROVIDERS, EFFORTS: EFFORTS, instellingen: instellingen, aanbiederProbleem: aanbiederProbleem,
     handmatigePrompt: handmatigePrompt, leesJsonAntwoord: leesJsonAntwoord,
     SCHEMA: SCHEMA, SYSTEM: SYSTEM, DOC_CODES: DOC_CODES,

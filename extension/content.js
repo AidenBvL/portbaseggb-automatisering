@@ -55,6 +55,7 @@
     'textarea{width:100%;min-height:3.2em;font:inherit;padding:.35rem;border:1px solid #d9dee6;border-radius:5px;resize:vertical}',
     '.row-actions{display:flex;gap:.5rem;align-items:center;margin:.5rem 0;flex-wrap:wrap}',
     'table.velden{width:100%;border-collapse:collapse;font-size:.82rem}table.velden td{padding:.18rem .25rem;border-bottom:1px solid #eef1f5;vertical-align:middle}table.velden td.l{color:#5f6b7a;width:42%}table.velden td.z{width:1%;text-align:right}',
+    'table.velden select{width:100%;font:inherit;font-size:.8rem;padding:.15rem;border:1px solid #d9dee6;border-radius:4px;background:#fff}',
     'table.velden input{width:100%;font:inherit;padding:.15rem .3rem;border:1px solid #d9dee6;border-radius:4px}table.velden input:focus{border-color:#0b5fa5;outline:none}',
     '.groep{border:1px solid #d9dee6;border-radius:6px;padding:.35rem .5rem;margin:.4rem 0}.groep .gt{font-weight:600;font-size:.82rem;margin-bottom:.2rem}',
     '.verslag li{font-size:.82rem;margin:.15rem 0;list-style:none}.verslag{padding:0}.verslag button{font:inherit;font-size:.72rem;padding:0 .35rem;margin-left:.3rem;border:1px solid #d9dee6;border-radius:4px;background:#fff;cursor:pointer}',
@@ -63,6 +64,7 @@
     '.modus{display:flex;border:1px solid #d9dee6;border-radius:7px;overflow:hidden;margin-bottom:.6rem}.modus button{flex:1;border:0;background:#fff;padding:.35rem;font:inherit;cursor:pointer;color:#5f6b7a}.modus button[aria-pressed="true"]{background:#0b5fa5;color:#fff;font-weight:600}',
     '.stappen{padding-left:1.2rem;margin:.6rem 0;font-size:.85rem}.stappen li{margin:.3rem 0}',
     'textarea.json{min-height:7em;font-family:ui-monospace,Consolas,monospace;font-size:.75rem}',
+    '.uit .groep{opacity:.55}.uit .groep .gt{text-decoration:line-through}',
     '.spinner{display:inline-block;width:12px;height:12px;border:2px solid #b7cde3;border-top-color:#0b5fa5;border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}'
   ].join('\n');
 
@@ -265,6 +267,15 @@
     });
     res.addEventListener('change', function (e) {
       if (e.target.getAttribute && e.target.getAttribute('data-pad')) renderAiCheck();
+      var dt = e.target.getAttribute && e.target.getAttribute('data-doctype');
+      if (dt != null) { aiResultaat.documenten[+dt].portbaseType = e.target.value; aiResultaat.documenten[+dt].portbaseTypeHandmatig = true; }
+      var o = e.target.getAttribute && e.target.getAttribute('data-opnemen');
+      if (o != null) {
+        aiResultaat.documenten[+o].opnemen = e.target.checked;
+        $('docgroep-' + o).className = e.target.checked ? '' : 'uit';
+        $('doc-samenvatting').innerHTML = docSamenvatting();
+        renderAiCheck();
+      }
     });
     res.addEventListener('click', function (e) {
       var t = e.target;
@@ -427,13 +438,18 @@
         return '<tr><td class="l">' + esc(d.naam) + '</td><td>' + invoer('containers.' + i + '.' + d.key, c[d.key]) + '</td><td class="z"></td></tr>';
       }).join(''));
     });
+    bepaalDocumenten();
+    html += '<div class="melding info" id="doc-samenvatting">' + docSamenvatting() + '</div>';
     r.documenten.forEach(function (doc, i) {
-      var rijen = FILL.DOCUMENT.map(function (d) {
-        return '<tr><td class="l">' + esc(d.naam) + (d.key === 'type' ? ' <span class="muted">(code)</span>' : '') + '</td><td>' + invoer('documenten.' + i + '.' + d.key, doc[d.key]) + '</td><td class="z"></td></tr>';
+      var rijen = '<tr><td class="l">Opnemen in GGB</td><td><label class="small"><input type="checkbox" data-opnemen="' + i + '"' + (doc.opnemen ? ' checked' : '') + '> ' + esc(doc.reden) + '</label></td><td class="z"></td></tr>' +
+        '<tr><td class="l">Type in Portbase</td><td><select data-doctype="' + i + '">' + AI.PORTBASE_DOCTYPES.map(function (t) {
+          return '<option' + (t === doc.portbaseType ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></td><td class="z"></td></tr>' +
+        FILL.DOCUMENT.filter(function (d) { return d.key !== 'type'; }).map(function (d) {
+        return '<tr><td class="l">' + esc(d.naam) + '</td><td>' + invoer('documenten.' + i + '.' + d.key, doc[d.key]) + '</td><td class="z"></td></tr>';
       }).join('') +
         '<tr><td class="l">Verwijst naar</td><td>' + invoer('documenten.' + i + '.verwijstNaar', doc.verwijstNaar) + '</td><td class="z"></td></tr>' +
         '<tr><td class="l">Bestand</td><td class="small">' + esc(doc.bestand || '–') + '</td><td class="z">' + zekerheidBadge(doc.zekerheid) + '</td></tr>';
-      html += groep('Document ' + (i + 1) + ' (I.9) – ' + esc((RULES.DOC_TYPES[doc.type] || {}).naam || doc.type), rijen);
+      html += '<div class="' + (doc.opnemen ? '' : 'uit') + '" id="docgroep-' + i + '">' + groep('Document ' + (i + 1) + ' – ' + esc((RULES.DOC_TYPES[doc.type] || {}).naam || doc.type), rijen) + '</div>';
     });
     r.goederen.forEach(function (g, i) {
       html += groep('Goods item ' + (i + 1) + ' (I.31-I.34)', FILL.GOED.map(function (d) {
@@ -452,9 +468,28 @@
   }
 
   /** Documentcheck op het AI-voorstel: welke documenten zijn vereist en zijn ze aangeleverd? */
+  /** Welke documenten in de GGB horen volgens de regels (per goederenitem). */
+  function bepaalDocumenten() {
+    if (!aiResultaat) return;
+    var decl = AI.naarDeclaratie(aiResultaat);
+    var index = {};
+    rules.forEach(function (x) { index[x.id] = x; });
+    var eisen = decl.goederen.map(function (g) { return ENGINE.requirementsFor({ type: decl.type, gn: g.gn, animo: g.animo, land: decl.landOorsprong }, rules).vereisten; });
+    AI.bepaalGgbDocumenten(aiResultaat, eisen, function (id) { return index[id]; });
+  }
+
+  function docSamenvatting() {
+    var docs = aiResultaat.documenten, inGgb = docs.filter(function (d) { return d.opnemen; });
+    var naam = function (d) { return (RULES.DOC_TYPES[d.type] || {}).naam || d.type; };
+    var bron = docs.filter(function (d) { return !d.opnemen; });
+    return '<b>In de GGB: ' + (inGgb.length ? esc(inGgb.map(naam).join(', ')) : 'geen documenten') + '</b> (' + inGgb.length + ' van ' + docs.length + ').' +
+      (bron.length ? ' Alleen als bron gebruikt: ' + esc(bron.map(naam).join(', ')) + '.' : '');
+  }
+
   function renderAiCheck() {
     var el = $('ai-check');
     if (!el || !aiResultaat) return;
+    bepaalDocumenten();
     var decl = AI.naarDeclaratie(aiResultaat);
     if (!decl.goederen.length) { el.innerHTML = '<div class="melding aandacht">Geen goederenitems herkend; de documentcheck kan niet draaien.</div>'; return; }
     el.innerHTML = R.renderDeclResult(ENGINE.checkDeclaration(decl, rules));

@@ -242,7 +242,8 @@
 
   var DOCUMENT = [
     { naam: 'Type', key: 'type', sel: ['mat-select[data-test="document-type"]', 'mat-select[formcontrolname="documentType"]'], label: /^type$/i,
-      termen: function (code) { var d = DOC_TYPES[code]; return [d && d.portbase, code === 'LAB' ? 'Lab report' : '', code === 'COMM' ? 'Commercial' : ''].filter(Boolean); } },
+      // waarde is het exacte Portbase-type (bijv. "Certified lab report 2019/1793 (4)") of een documentcode
+      termen: function (v) { var d = DOC_TYPES[v]; return d ? [d.portbase] : [v, String(v).replace(/\s*\([A-Z]?\d+\)\s*$/, '')]; } },
     { naam: 'Identification', key: 'identificatie', sel: ['input[data-test="document-number"]', 'input[formcontrolname="documentNumber"]'], label: /^identification$/i },
     { naam: 'Date of issue', key: 'datumAfgifte', sel: ['input[data-test="document-date-of-issue"]', 'input[formcontrolname="dateOfIssue"]'], label: /^date of issue/i, soort: 'tekst' },
     { naam: 'Establishment of origin', key: 'inrichtingOorsprong', sel: ['button[data-test="organisation-dialog"]'], label: /^establishment of origin/i, soort: 'dialoog',
@@ -381,8 +382,12 @@
     }
 
     gebruikt = [];
-    for (var d = 0; d < (r.documenten || []).length; d++) {
-      var doc = r.documenten[d];
+    // Alleen de documenten die in de GGB horen (meestal alleen het HC); de rest was bron voor de gegevens.
+    var ggbDocs = (r.documenten || []).filter(function (x) { return x.opnemen !== false; }).map(function (x) {
+      return Object.assign({}, x, { type: x.portbaseType || x.type });
+    });
+    for (var d = 0; d < ggbDocs.length; d++) {
+      var doc = ggbDocs[d];
       meld('Document ' + (d + 1) + '…');
       var dk = await legeKaart('app-form-documents', /^document\(s\)/i, ['button[data-test="add-document"]'], /add document/i, gebruikt);
       if (!dk) {

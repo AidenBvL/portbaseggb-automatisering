@@ -72,18 +72,30 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    landcodes, GN-codes en gewichten, controleert containernummers
    (ISO 6346-controlecijfer) en meldt tegenstrijdigheden tussen documenten
    onder *Aandachtspunten*.
-3. Op het voorstel draait direct de **documentcheck**: welke documenten zijn
+3. **Welke documenten in de GGB komen** bepaalt de extensie met dezelfde
+   regels als de documentcheck (TARIC + NVWA) op basis van GN-code en land
+   van oorsprong: meestal alleen het **gezondheidscertificaat**, soms ook
+   een labrapport of officieel certificaat. Factuur, paklijst en B/L worden
+   wel uitgelezen (bron voor B/L-nummer, containers, gewichten), maar niet
+   als document opgenomen. Per document zie je de reden ("Vereist (Ver.
+   2019/1793) volgens de regels" / "Niet gevraagd…") en kun je het vinkje
+   *Opnemen in GGB* aanpassen. Het **Portbase-documenttype** wordt exact
+   gekozen, ook de variant per verordening, bijv. *Health certificate
+   (636)*, *Certified lab report (162)*, of bij Ver. 2019/1793 *Official
+   certificate 2019/1793 (100)* + *Certified lab report 2019/1793 (4)*;
+   corrigeren kan met de keuzelijst (volledige Portbase-lijst).
+4. Op het voorstel draait direct de **documentcheck**: welke documenten zijn
    voor deze GN-code/land vereist (TARIC + NVWA-regels) en zitten ze bij de
    upload, inclusief de verwijzing van het labrapport naar het HC.
-4. Pas waarden aan waar nodig en klik **Invullen in Portbase** (op "New
+5. Pas waarden aan waar nodig en klik **Invullen in Portbase** (op "New
    declaration" of een bewerkbare declaratie). De extensie vult:
    declaratietype, B/L, bestemming, land van oorsprong/lading, I.18, I.16,
    vervoermiddel + naam + nationaliteit, ETA, containers + zegels,
-   documentregels (type, nummer, datum, land, **en uploadt het bijbehorende
-   bestand**) en goederenitems (omschrijving, gewichten, colli, verpakking,
+   documentregels voor de documenten die in de GGB horen (type, nummer,
+   datum, land, **en uploadt het bijbehorende bestand**) en goederenitems (omschrijving, gewichten, colli, verpakking,
    batch, erkenningsnummer). Ontbrekende documentregels/goederenitems worden
    aangemaakt met *Add document* / *Add goods item*.
-5. Velden die in Portbase via een zoekdialoog gaan (**exporteur, importeur,
+6. Velden die in Portbase via een zoekdialoog gaan (**exporteur, importeur,
    grenscontrolepost, plaats van bestemming, inrichting van oorsprong,
    GN-code, activity/approval number**) worden niet automatisch gekozen. Ze
    staan als *handmatig* in het verslag met een knop **Zoek in Portbase**.

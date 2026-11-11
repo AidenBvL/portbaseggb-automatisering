@@ -36,7 +36,9 @@ const AI_JSON = {
   containers: [{ containernummer: 'HLBU9066045', zegelnummer: 'EIA123', bron: 'HC' }],
   documenten: [
     { type: 'HC', identificatie: 'EIA/VSP/2026-27/02937', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' },
-    { type: 'LAB', identificatie: 'EIA/VZ/26-27/0003572', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: 'EIA/VSP/2026-27/02937', bestand: 'hc.pdf', zekerheid: 'hoog' }
+    { type: 'LAB', identificatie: 'EIA/VZ/26-27/0003572', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: 'EIA/VSP/2026-27/02937', bestand: 'hc.pdf', zekerheid: 'hoog' },
+    { type: 'COMM', identificatie: 'INV-2026-0815', datumAfgifte: '05-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' },
+    { type: 'COMM', identificatie: 'HLCUMA3260712342', datumAfgifte: '12-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' }
   ],
   goederen: [
     { gnCode: '03061792', omschrijving: 'Frozen shrimps (Penaeus vannamei)', brutoGewicht: '21516', nettoGewicht: '13447.5', aantalColli: '1600', verpakkingstype: 'Carton', batchnummer: 'L123', aanvullendeEenheden: '', erkenningsnummer: '1234', containernummer: 'HLBU9066045', wetenschappelijkeNaam: 'Penaeus vannamei', aardProduct: 'Farmed, frozen', bron: 'HC', zekerheid: 'hoog' },
@@ -94,6 +96,12 @@ try {
   assert.strictEqual(apiVerzoek.messages[0].content[0].type, 'document');
   assert.strictEqual(apiVerzoek.messages[0].content[0].title, 'hc.pdf');
 
+  // Alleen HC en labrapport in de GGB (regels garnalen India); factuur en B/L alleen bron
+  const samenvatting = await page.locator('#doc-samenvatting').innerText();
+  assert.ok(/In de GGB: Gezondheidscertificaat, Gecertificeerd laboratoriumrapport \(2 van 4\)/.test(samenvatting), samenvatting);
+  assert.ok(await page.locator('input[data-opnemen="0"]').isChecked());
+  assert.ok(!(await page.locator('input[data-opnemen="2"]').isChecked()));
+  assert.strictEqual(await page.locator('select[data-doctype="1"]').inputValue(), 'Certified lab report (162)');
   const check = await page.locator('#ai-check').innerText();
   assert.ok(/Gezondheidscertificaat/i.test(check), 'documentcheck toont HC');
 
@@ -129,7 +137,7 @@ try {
   // Documenten: tweede kaart via "Add document"
   assert.strictEqual(await page.locator('app-form-documents form > mat-card').count(), 2);
   assert.strictEqual(await keuze('[data-test="document-type"]', 0), 'Health certificate (636)');
-  assert.strictEqual(await keuze('[data-test="document-type"]', 1), 'Certified lab report');
+  assert.strictEqual(await keuze('[data-test="document-type"]', 1), 'Certified lab report (162)');
   assert.strictEqual(await waarde('[data-test="document-number"]', 1), 'EIA/VZ/26-27/0003572');
   assert.strictEqual(await waarde('[data-test="document-date-of-issue"]', 0), '07-08-2026');
   assert.strictEqual(await waarde('[data-test="document-country-un-code-of-issue"]', 1), 'IN - India');

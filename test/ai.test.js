@@ -229,4 +229,54 @@ test('geplakt chat-antwoord: met tekst eromheen, codeblok en kale waarden', () =
   assert.throws(() => AI.leesJsonAntwoord('{"naam": "x"}'), /niet op een GGB-voorstel/);
 });
 
+const ALLE_REGELS = (() => {
+  const fs = require('fs'), path = require('path');
+  const p = path.join(__dirname, '..', 'data', 'rules.taric.json');
+  return DEFAULT_RULES.concat(fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : []);
+})();
+function ggbDocs(voorstel) {
+  const r = AI.normaliseer(voorstel);
+  const decl = AI.naarDeclaratie(r);
+  const index = Object.fromEntries(ALLE_REGELS.map((x) => [x.id, x]));
+  const eisen = decl.goederen.map((g) => engine.requirementsFor({ type: decl.type, gn: g.gn, animo: g.animo, land: decl.landOorsprong }, ALLE_REGELS).vereisten);
+  return AI.bepaalGgbDocumenten(r, eisen, (id) => index[id]);
+}
+const doc = (type, identificatie) => ({ type, identificatie, datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: '', zekerheid: 'hoog' });
+
+test('GGB-documenten: garnalen India -> HC (636) en labrapport (162); factuur en B/L alleen bron', () => {
+  const r = ggbDocs({ declaratieType: veld('PRD'), landOorsprong: veld('IN'), goederen: [{ gnCode: '03061792', omschrijving: 'Shrimps' }],
+    documenten: [doc('HC', 'HC1'), doc('LAB', 'LAB1'), doc('COMM', 'INV-1'), doc('COMM', 'BL-1')] });
+  assert.deepStrictEqual(r.documenten.map((d) => [d.type, d.opnemen, d.portbaseType]), [
+    ['HC', true, 'Health certificate (636)'], ['LAB', true, 'Certified lab report (162)'],
+    ['COMM', false, 'Commercial invoice (380)'], ['COMM', false, 'Commercial invoice (380)']]);
+  assert.ok(/Niet gevraagd/.test(r.documenten[2].reden));
+  assert.deepStrictEqual(AI.naarDeclaratie(r).documenten.map((d) => d.type), ['HC', 'LAB'], 'documentcheck kijkt alleen naar GGB-documenten');
+});
+
+test('GGB-documenten: sesamzaad India -> varianten Ver. 2019/1793', () => {
+  const r = ggbDocs({ declaratieType: veld('LNV'), landOorsprong: veld('IN'), goederen: [{ gnCode: '12074090', omschrijving: 'Sesame seeds' }],
+    documenten: [doc('OFFCERT', 'OC1'), doc('LAB', 'LAB1'), doc('COMM', 'INV-1')] });
+  assert.deepStrictEqual(r.documenten.map((d) => [d.opnemen, d.portbaseType]), [
+    [true, 'Official certificate 2019/1793 (100)'], [true, 'Certified lab report 2019/1793 (4)'], [false, 'Commercial invoice (380)']]);
+  assert.ok(/Ver\. 2019\/1793/.test(r.documenten[1].reden));
+});
+
+test('GGB-documenten: garnalen Noorwegen -> alleen HC; meegestuurd labrapport niet opnemen', () => {
+  const r = ggbDocs({ declaratieType: veld('PRD'), landOorsprong: veld('NO'), goederen: [{ gnCode: '03061792', omschrijving: 'Shrimps' }],
+    documenten: [doc('HC', 'HC1'), doc('LAB', 'LAB1')] });
+  assert.deepStrictEqual(r.documenten.map((d) => d.opnemen), [true, false]);
+});
+
+test('GGB-documenten: keuze en type van de gebruiker blijven staan', () => {
+  const r = ggbDocs({ declaratieType: veld('PRD'), landOorsprong: veld('NO'), goederen: [{ gnCode: '03061792', omschrijving: 'Shrimps' }],
+    documenten: [doc('HC', 'HC1'), doc('LAB', 'LAB1')] });
+  r.documenten[1].opnemen = true;
+  r.documenten[0].portbaseType = 'Veterinary certificate (853)';
+  r.documenten[0].portbaseTypeHandmatig = true;
+  AI.bepaalGgbDocumenten(r, [[{ type: 'HC', niveau: 'verplicht', alternatieven: [], regelIds: [] }]]);
+  assert.strictEqual(r.documenten[1].opnemen, true);
+  assert.strictEqual(r.documenten[0].portbaseType, 'Veterinary certificate (853)');
+  assert.ok(Object.values(AI.PORTBASE_DOCTYPE).every((t) => AI.PORTBASE_DOCTYPES.includes(t)), 'standaardtypes staan in de Portbase-lijst');
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');
