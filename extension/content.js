@@ -276,6 +276,8 @@
       }
       var res = await vraagAi({ bestanden: payload, context: $('ctx').value });
       aiResultaat = res.resultaat;
+      var std = await standaardInspectiecentrum();
+      if (std && !aiResultaat.inspectiecentrum.waarde) aiResultaat.inspectiecentrum = { waarde: std, bron: 'Standaard uit instellingen', zekerheid: 'middel' };
       zetStatus('Klaar in ' + Math.round((Date.now() - start) / 1000) + 's · ' + esc(res.model) + ' · ' + res.gebruik.input + ' in / ' + res.gebruik.output + ' uit tokens');
       renderAiResultaat();
     } catch (e) {
@@ -285,6 +287,13 @@
       aiBezig = false;
       renderBestanden();
     }
+  }
+
+  function standaardInspectiecentrum() {
+    return new Promise(function (resolve) {
+      try { chrome.storage.local.get('ggb.ai', function (r) { resolve(((r && r['ggb.ai']) || {}).inspectiecentrum || ''); }); }
+      catch (e) { resolve(''); }
+    });
   }
 
   function zetPad(obj, pad, waarde) {
@@ -305,7 +314,7 @@
   var ALG_LABELS = [
     ['declaratieType', 'Declaration type (PRD = CHED-P, LNV = CHED-D)'],
     ['bol', 'Bill of lading number (I.13)'], ['bestemming', 'Destination (I.20-25)'],
-    ['grenscontrolepost', 'Border control post (I.4)'], ['plaatsBestemming', 'Place of destination (I.7)'],
+    ['grenscontrolepost', 'Border control post (I.4)'], ['inspectiecentrum', 'Inspection centre (I.4)'], ['plaatsBestemming', 'Place of destination (I.7)'],
     ['landOorsprong', 'Country of origin (I.11)'], ['landLading', 'Country of loading (I.14)'],
     ['gecertificeerdVoor', 'Goods certified as or for (I.18)'], ['transportconditie', 'Transport conditions (I.16)'],
     ['vervoermiddel', 'Means of transport (I.13)'], ['vervoermiddelNaam', 'Name / identification (I.13)'],

@@ -41,10 +41,15 @@
       <option value="xhigh">Zeer hoog – langzamer</option>
     </select>
 
+    <label for="inspectiecentrum">Standaard inspectiecentrum</label>
+    <select id="inspectiecentrum"><option value="">– geen (alleen als de documenten het noemen) –</option></select>
+    <p class="hint">Wordt gebruikt als de documenten en de extra info geen inspectiecentrum noemen.</p>
+
     <div class="actions"><button id="save">Opslaan</button><span id="msg"></span></div>
 
     <div class="box"><b>Privacy:</b> bij <i>Uitlezen met AI</i> worden de geselecteerde documenten (HC, factuur, enz.) naar de API van Anthropic gestuurd. Er wordt niets verstuurd zolang je die knop niet gebruikt. Controleer of dit past binnen de afspraken van je organisatie.</div>
   </main>
+  <script src="../js/ggb-ai.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

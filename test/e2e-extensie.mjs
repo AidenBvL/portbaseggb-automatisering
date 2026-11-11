@@ -29,7 +29,7 @@ const AI_JSON = {
   declaratieType: v('PRD'), bol: v('HLCUMA3260712342', 'hoog', 'B/L'), bestemming: v('Import', 'middel'),
   exporteur: { naam: 'GHAN MARINE PRODUCTS', adres: 'Kakinada', land: 'IN', bron: 'HC I.1', zekerheid: 'hoog' },
   importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Rotterdam', land: 'NL', bron: 'HC I.5', zekerheid: 'hoog' },
-  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), plaatsBestemming: v('KOELHUIS ONBEKEND, Rotterdam'),
+  grenscontrolepost: v('Rotterdam (NLRTM1)', 'middel'), inspectiecentrum: v('Hutchinson Ports ECT Delta', 'middel', 'B/L: discharge terminal'), plaatsBestemming: v('KOELHUIS ONBEKEND, Rotterdam'),
   landOorsprong: v('IN'), landLading: v('IN'), gecertificeerdVoor: v('Human consumption'), transportconditie: v('Frozen'),
   vervoermiddel: v('Vessel'), vervoermiddelNaam: v('MSC ANNA'), vervoermiddelNationaliteit: v('PA'),
   aankomstDatum: v('26-09-2026', 'laag', 'Extra info'), aankomstTijd: v('07:00', 'laag'),
@@ -186,15 +186,24 @@ try {
   assert.ok(/geen resultaten/.test(melding), melding);
   await sluitDialoog();
 
-  // Onbekende dialoog (grenscontrolepost): zoekterm in het zoekveld
+  // Grenscontrolepost: land staat al op NL, rij met code NLRTM1 wordt aangevinkt; gebruiker klikt Save
   melding = await zoek('Border control post');
-  assert.strictEqual(await dlg.locator('input').first().inputValue(), 'NLRTM1');
-  await page.evaluate(() => document.querySelector('mat-dialog-container').remove());
+  assert.ok(/aangevinkt: Rotterdam\s*NLRTM1/.test(melding), melding);
+  assert.strictEqual(await dlg.locator('mat-row.mat-mdc-row-selected .mat-column-code').innerText(), 'NLRTM1');
+  await dlg.locator('[data-test="save"]').click();
+  assert.strictEqual(await page.locator('[data-test="border-control-post-dialog"]').innerText(), 'Rotterdam');
+
+  // Inspectiecentrum: land leeg -> NL gekozen, dan "Hutchinson Ports ECT Delta" (niet "Delta 2") aangevinkt
+  melding = await zoek('Inspection centre');
+  assert.ok(/aangevinkt: Hutchinson Ports ECT Delta\s*26/.test(melding), melding);
+  assert.strictEqual(await dlg.locator('[data-test="search-country"]').inputValue(), 'NL - Netherlands');
+  assert.strictEqual(await dlg.locator('mat-row.mat-mdc-row-selected .mat-column-code').innerText(), '26');
+  await sluitDialoog();
 
   // Nooit opslaan of verzenden
   const klikken = await page.evaluate(() => window.__klikken);
   assert.ok(!klikken.some((k) => /^(save|send)-declaration$/.test(k)), 'Save/Send van de declaratie niet aangeklikt: ' + klikken.join(','));
-  assert.strictEqual(klikken.filter((k) => k === 'save').length, 1, 'dialoog-Save alleen door de gebruiker (1x in deze test)');
+  assert.strictEqual(klikken.filter((k) => k === 'save').length, 2, 'dialoog-Save alleen door de gebruiker (2x in deze test)');
   assert.deepStrictEqual(fouten, []);
 
   await page.screenshot({ path: path.join(os.tmpdir(), 'ggb-e2e.png'), fullPage: false });

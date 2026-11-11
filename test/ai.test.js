@@ -160,4 +160,19 @@ test('zoekresultaat in organisatiedialoog: naam (zonder B.V./Pvt Ltd) en erkenni
   assert.strictEqual(FILL.rijScore(rij('X', 'IN-1234-A'), { term: '1234', type: 'APPROVAL_NUMBER' }), 2);
 });
 
+test('grenscontrolepost en inspectiecentrum worden op de Portbase-lijst gezet', () => {
+  assert.strictEqual(AI.zoekInLijst(AI.BCP_NL, 'Port of Rotterdam').label, 'Rotterdam (NLRTM1)');
+  assert.strictEqual(AI.zoekInLijst(AI.BCP_NL, 'NLAMS4').label, 'Amsterdam Airport Schiphol (NLAMS4)');
+  assert.strictEqual(AI.zoekInLijst(AI.BCP_NL, 'Amsterdam').label, 'Amsterdam (NLAMS1)');
+  assert.strictEqual(AI.zoekInLijst(AI.BCP_NL, 'Antwerpen'), null);
+  assert.strictEqual(AI.zoekInLijst(AI.INSPECTIECENTRA_NL, 'ECT Delta').code, '26');
+  assert.strictEqual(AI.zoekInLijst(AI.INSPECTIECENTRA_NL, 'Thermotraffic'), null, 'dubbelzinnig -> zelf kiezen');
+  const r = AI.normaliseer({ grenscontrolepost: veld('Rotterdam'), inspectiecentrum: veld('Thermotraffic') });
+  assert.strictEqual(r.grenscontrolepost.waarde, 'Rotterdam (NLRTM1)');
+  assert.strictEqual(r.inspectiecentrum.waarde, '');
+  assert.ok(r.waarschuwingen.some(w => /Inspectiecentrum "Thermotraffic"/.test(w)));
+  const bcpEnum = AI.SCHEMA.properties.grenscontrolepost.properties.waarde.enum;
+  assert.ok(bcpEnum.includes('Rotterdam (NLRTM1)') && bcpEnum.includes(''));
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

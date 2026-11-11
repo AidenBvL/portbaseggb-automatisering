@@ -201,6 +201,8 @@
   function landTermen(code) { var naam = (root.GGB_LANDNAMEN || {})[code]; return [code, naam].filter(Boolean); }
 
   function zonderLand(v) { return String(v || '').replace(/\s*\([A-Z]{2}\)\s*$/, ''); }
+  function zonderCode(v) { return String(v || '').replace(/\s*\([A-Z]{2}[A-Z0-9]{2,}\)\s*$/, ''); }
+  function lijstItem(lijst, v) { var AI = root.GGB_AI; return AI && AI[lijst] ? AI.zoekInLijst(AI[lijst], v) : null; }
   function codeTussenHaakjes(v) { var m = String(v || '').match(/\(([A-Z]{2}[A-Z0-9]{2,})\)/); return m ? m[1] : v; }
 
   var VERVOER_TERMEN = {
@@ -218,19 +220,22 @@
       dialoogZoek: function (r) { return { term: r.exporteur.naam, land: r.exporteur.land || r.landOorsprong.waarde, type: 'NAME' }; } },
     { naam: 'Importer (I.6)', key: 'importeur', sel: ['button[data-test="organisation-dialog-importer"]'], label: /^importer/i, soort: 'dialoog', zoekterm: zonderLand,
       dialoogZoek: function (r) { return { term: r.importeur.naam, land: r.importeur.land || 'NL', type: 'NAME' }; } },
-    { naam: 'Border control post (I.4)', key: 'grenscontrolepost', sel: ['button[data-test="border-control-post-dialog"]'], label: /^border control post/i, soort: 'dialoog', zoekterm: codeTussenHaakjes },
+    { naam: 'Border control post (I.4)', key: 'grenscontrolepost', sel: ['button[data-test="border-control-post-dialog"]'], label: /^border control post/i, soort: 'dialoog', zoekterm: codeTussenHaakjes,
+      dialoogZoek: function (r) { var v = r.grenscontrolepost.waarde; return { term: zonderCode(v), code: codeTussenHaakjes(v), land: 'NL' }; } },
+    { naam: 'Inspection centre (I.4)', key: 'inspectiecentrum', sel: ['button[data-test="inspection-centre-dialog"]'], label: /^inspection centre/i, soort: 'dialoog',
+      dialoogZoek: function (r) { var v = r.inspectiecentrum.waarde; var e = lijstItem('INSPECTIECENTRA_NL', v); return { term: v, code: e ? e.code : '', land: 'NL' }; } },
     { naam: 'Place of destination (I.7)', key: 'plaatsBestemming', sel: ['button[data-test="place-of-destination-dialog"]'], label: /^place of destination/i, soort: 'dialoog',
       dialoogZoek: function (r) { return { term: zonderLand(r.plaatsBestemming.waarde).split(',')[0], land: r.importeur.land || 'NL', type: 'NAME' }; } },
     { naam: 'Country of origin (I.11)', key: 'landOorsprong', sel: ['app-form-general input[formcontrolname="countryOfOriginUnCode"]', 'input[data-test="country-of-origin-un-code"]'], label: /^country of origin/i, termen: landTermen },
     { naam: 'Country of loading (I.14)', key: 'landLading', sel: ['app-form-general input[formcontrolname="countryOfLoadingUnCode"]', 'input[formcontrolname="countryOfLoadingUnCode"]'], label: /^country of loading/i, termen: landTermen },
-    { naam: 'Goods certified as or for (I.18)', key: 'gecertificeerdVoor', sel: ['mat-select[data-test="goods-intended-use-code"]', 'mat-select[formcontrolname="goodsIntendedUseCode"]'], label: /^goods certified/i },
-    { naam: 'Transport conditions (I.16)', key: 'transportconditie', sel: ['mat-select[data-test="transport-conditions-code"]', 'mat-select[formcontrolname="transportConditionsCode"]'], label: /^transport conditions/i },
-    { naam: 'Means of transport (I.13)', key: 'vervoermiddel', sel: ['mat-select[data-test="arrival-means-of-transport-mode"]', 'app-form-means-of-transport-before-border mat-select[formcontrolname="mode"]'],
+    { naam: 'Goods certified as or for (I.18)', key: 'gecertificeerdVoor', sectie: 'Goods', sel: ['mat-select[data-test="goods-intended-use-code"]', 'mat-select[formcontrolname="goodsIntendedUseCode"]'], label: /^goods certified/i },
+    { naam: 'Transport conditions (I.16)', key: 'transportconditie', sectie: 'Goods', sel: ['mat-select[data-test="transport-conditions-code"]', 'mat-select[formcontrolname="transportConditionsCode"]'], label: /^transport conditions/i },
+    { naam: 'Means of transport (I.13)', key: 'vervoermiddel', sectie: 'Means of transport', sel: ['mat-select[data-test="arrival-means-of-transport-mode"]', 'app-form-means-of-transport-before-border mat-select[formcontrolname="mode"]'],
       termen: function (v) { return VERVOER_TERMEN[v] || [v]; } },
-    { naam: 'Name / identification (I.13)', key: 'vervoermiddelNaam', sel: ['input[data-test="arrival-means-of-transport-identification"]', 'app-form-means-of-transport-before-border input[formcontrolname="identification"]'] },
-    { naam: 'Nationality (I.13)', key: 'vervoermiddelNationaliteit', sel: ['input[data-test="arrival-means-of-transport-nationality-un-code"]', 'app-form-means-of-transport-before-border input[formcontrolname="nationalityUnCode"]'], termen: landTermen },
-    { naam: 'Expected date of arrival (I.10)', key: 'aankomstDatum', sel: ['app-form-means-of-transport-before-border input[data-test="arrival-date-time-estimated"]', 'input[data-test="arrival-date-time-estimated"]'], soort: 'tekst' },
-    { naam: 'Expected time of arrival', key: 'aankomstTijd', sel: ['app-form-means-of-transport-before-border input[data-test="start-time"]', 'app-form-means-of-transport-before-border input.mat-timepicker-input'], soort: 'tekst' }
+    { naam: 'Name / identification (I.13)', key: 'vervoermiddelNaam', sectie: 'Means of transport', sel: ['input[data-test="arrival-means-of-transport-identification"]', 'app-form-means-of-transport-before-border input[formcontrolname="identification"]'] },
+    { naam: 'Nationality (I.13)', key: 'vervoermiddelNationaliteit', sectie: 'Means of transport', sel: ['input[data-test="arrival-means-of-transport-nationality-un-code"]', 'app-form-means-of-transport-before-border input[formcontrolname="nationalityUnCode"]'], termen: landTermen },
+    { naam: 'Expected date of arrival (I.10)', key: 'aankomstDatum', sectie: 'Means of transport', sel: ['app-form-means-of-transport-before-border input[data-test="arrival-date-time-estimated"]', 'input[data-test="arrival-date-time-estimated"]'], soort: 'tekst' },
+    { naam: 'Expected time of arrival', key: 'aankomstTijd', sectie: 'Means of transport', sel: ['app-form-means-of-transport-before-border input[data-test="start-time"]', 'app-form-means-of-transport-before-border input.mat-timepicker-input'], soort: 'tekst' }
   ];
 
   var CONTAINER = [
@@ -361,7 +366,7 @@
     meld('Algemene gegevens…');
     for (var i = 0; i < ALGEMEEN.length; i++) {
       var def = ALGEMEEN[i];
-      push(def.key === 'gecertificeerdVoor' || def.key === 'transportconditie' ? 'Goods' : (i >= 10 ? 'Means of transport' : 'General'),
+      push(def.sectie || 'General',
         metZoek(def, await vulVeld(def, algemeneWaarde(r, def.key), form, opts)));
     }
 
@@ -482,6 +487,48 @@
     return { ok: true, melding: rijen.length + ' resultaten' + (max > 0 ? ', ' + besten.length + ' even goed (gemarkeerd)' : '') + '; kies zelf en klik Save' };
   }
 
+  /** Rijen van een resultatentabel in een dialoog (zonder kop- en "geen resultaten"-rijen). */
+  function lijstRijen(dialoog) {
+    return qa('mat-row, tr, [role="row"]', dialoog).filter(function (rij) {
+      if (rij.matches('mat-header-row, .mat-mdc-header-row, .mat-mdc-no-data-row, .cdk-no-data-row')) return false;
+      if (q('th, mat-header-cell, [role="columnheader"]', rij)) return false;
+      return !!txt(rij);
+    });
+  }
+  function cellen(rij) {
+    var c = qa('mat-cell, td, [role="cell"]', rij).map(function (x) { return norm(txt(x)); }).filter(Boolean);
+    return c.length ? c : [norm(txt(rij))];
+  }
+
+  /**
+   * Lijstdialoog zonder zoekterm (Border control post, Inspection centre):
+   * land invullen als het leeg is, dan de rij met de juiste code of naam aanvinken.
+   */
+  async function kiesUitLijst(dialoog, zoek) {
+    var landEl = eerste(['input[data-test="search-country"]', 'input[formcontrolname*="ountry"]', 'input[aria-autocomplete="list"]'], dialoog);
+    if (landEl && zoek.land && !String(landEl.value || '').trim()) {
+      var l = await kiesInAutocomplete(landEl, zoek.land, landTermen(zoek.land));
+      if (!l.ok) return { ok: true, melding: 'kies eerst het land (' + zoek.land + ')' };
+    }
+    var rijen = await wachtOp(function () { var r = lijstRijen(dialoog); return r.length ? r : null; }, 8000);
+    if (!rijen) return { ok: true, melding: 'geen lijst verschenen; kies zelf' };
+    var code = norm(zoek.code), naam = norm(zoek.term);
+    var scores = rijen.map(function (rij) {
+      var c = cellen(rij);
+      if (code && c.indexOf(code) >= 0) return 4;
+      if (naam && c.indexOf(naam) >= 0) return 3;
+      return naam && c.some(function (x) { return x.indexOf(naam) >= 0; }) ? 1 : 0;
+    });
+    var max = Math.max.apply(null, scores);
+    var besten = rijen.filter(function (r, i) { return scores[i] === max; });
+    if (max >= 3 && besten.length === 1) {
+      selecteerRij(besten[0]);
+      return { ok: true, gekozen: true, melding: 'aangevinkt: ' + txt(besten[0]) + ' – controleer en klik Save' };
+    }
+    besten.forEach(function (r) { if (max > 0) r.style.outline = '2px dashed #b26a00'; });
+    return { ok: true, melding: max > 0 ? besten.length + ' mogelijke regels gemarkeerd; kies zelf en klik Save' : '"' + (zoek.term || zoek.code) + '" niet in de lijst; kies zelf' };
+  }
+
   /**
    * Opent een Portbase-zoekdialoog en vult de zoekopdracht in.
    * zoek: {term, land?, type?: 'NAME'|'APPROVAL_NUMBER'|'CITY'|'POSTAL_CODE'} of een string.
@@ -489,13 +536,16 @@
    */
   async function zoekInDialoog(knop, zoek) {
     if (typeof zoek === 'string' || !zoek) zoek = { term: zoek || '' };
+    // Bestaande (verborgen) dialogen niet meenemen: we zoeken de nieuw geopende.
+    var voor = qa('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]').length;
     if (!knop || !knop.isConnected) return { ok: false, melding: 'knop niet meer op de pagina' };
     knop.scrollIntoView({ block: 'center' });
     knop.click();
-    var dialoog = await wachtOp(function () { var d = qa('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]'); return d[d.length - 1]; }, 3000);
+    var dialoog = await wachtOp(function () { var d = qa('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]'); return d.length > voor ? d[d.length - 1] : null; }, 3000);
     if (!dialoog) return { ok: false, melding: 'dialoog ging niet open' };
     var termEl = await wachtOp(function () { return q('input[data-test="search-term"]', dialoog); }, 1000);
     if (termEl) return zoekOrganisatie(dialoog, zoek);
+    if (zoek.code || q('mat-table, table, [role="table"], input[aria-autocomplete="list"]', dialoog)) return kiesUitLijst(dialoog, zoek);
     // Onbekende dialoog (bijv. grenscontrolepost, GN-code): eerste zoekveld invullen.
     var veld = await wachtOp(function () {
       return qa('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([disabled])', dialoog).filter(function (i) { return i.offsetParent !== null || i.getClientRects().length; })[0];
@@ -516,7 +566,7 @@
     return qa('input:not([disabled]):not([type="hidden"])', f).length > 0;
   }
 
-  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, rijScore: rijScore, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
+  var exported = { vul: vul, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, rijScore: rijScore, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_FILL = exported;
 })(typeof window !== 'undefined' ? window : this);

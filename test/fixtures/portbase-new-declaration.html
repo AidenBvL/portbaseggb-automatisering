@@ -32,13 +32,13 @@
     <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Own reference </mat-label></label><input matinput="" type="text" id="customerReference" formcontrolname="customerReference" data-test="customer-reference"></mat-form-field></div></div>
   <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Exporter <span>(I.1)</span></mat-label><button type="button" data-test="organisation-dialog-exporter" data-dialoog="Select exporter" data-org="1"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select exporter</span></span></button></div></div>
     <div class="col"><div class="error-placeholder"><mat-label class="label">Importer <span>(I.6)</span></mat-label><button type="button" data-test="organisation-dialog-importer" data-dialoog="Select importer" data-org="1"><span class="mdc-button__label"><i class="fal fa-building"></i><span>Select importer</span></span></button></div></div></div>
-  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Border control post <span>(I.4)</span></mat-label><button type="button" data-test="border-control-post-dialog" data-dialoog="Select border control post"><span class="mdc-button__label"><span>Select border control post</span></span></button></div></div>
+  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label">Border control post <span>(I.4)</span></mat-label><button type="button" data-test="border-control-post-dialog" data-dialoog="Select border control post" data-lijst="bcp"><span class="mdc-button__label"><span>Select border control post</span></span></button></div></div>
     <div class="col"><div class="error-placeholder"><mat-label class="label">Place of destination <span>(I.7)</span></mat-label><button type="button" data-test="place-of-destination-dialog" data-dialoog="Select place of destination" data-org="1"><span class="mdc-button__label"><span>Select place of destination</span></span></button></div></div></div>
   <div class="row"><div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of origin <span>(I.11)</span></mat-label></label>
       <input matinput="" type="text" id="countryOfOriginUnCode" formcontrolname="countryOfOriginUnCode" data-test="country-of-origin-un-code" class="mat-mdc-input-element mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div>
     <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label>Country of loading <span>(I.14)</span></mat-label></label>
       <input matinput="" type="text" id="countryOfLoadingUnCode" formcontrolname="countryOfLoadingUnCode" data-test="country-of-loading-un-code" class="mat-mdc-input-element mat-mdc-autocomplete-trigger" required="" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div></div>
-  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label"> Inspection centre <span>(I.4)</span></mat-label><button type="button" data-test="inspection-centre-dialog" data-dialoog="Select inspection centre"><span>Select inspection centre</span></button></div></div>
+  <div class="row"><div class="col"><div class="error-placeholder"><mat-label class="label"> Inspection centre <span>(I.4)</span></mat-label><button type="button" data-test="inspection-centre-dialog" data-dialoog="Select inspection centre" data-lijst="ic"><span>Select inspection centre</span></button></div></div>
     <div class="col"><mat-form-field class="mat-mdc-form-field"><label><mat-label> Cargo handler <i class="fal fa-info-circle"></i></mat-label></label>
       <input matinput="" type="text" id="cargoHandler" formcontrolname="cargoHandler" data-test="cargo-handler" autocomplete="off" role="combobox" aria-autocomplete="list"><mat-autocomplete panelwidth="300"></mat-autocomplete></mat-form-field></div></div>
 </form></app-form-general></mat-card-content>
@@ -137,6 +137,23 @@
   window.__klikken = [];
   var LANDEN = { IN: 'India', NL: 'Netherlands', PA: 'Panama', VN: 'Viet Nam', ID: 'Indonesia' };
   var overlay = document.querySelector('.cdk-overlay-container');
+  // Lijstdialogen (Border control post / Inspection centre): tekst zoals in Portbase (Search on country, Name, Code)
+  var LIJSTEN = {
+    bcp: [['Amsterdam', 'NLAMS1'], ['Amsterdam Airport Schiphol', 'NLAMS4'], ['Eemshaven', 'NLEEM1'], ['Harlingen', 'NLHAR1'], ['Maastricht', 'NLMST4'], ['Rotterdam', 'NLRTM1'], ['Vlissingen', 'NLVLI1']],
+    ic: [['Americold Maasvlakte B.V.', '9'], ['Hutchinson Ports Delta 2', '27'], ['Hutchinson Ports ECT Delta', '26'], ['Hutchinson Ports ECT Euromax', '31'], ['Thermotraffic B.V. Maasvlakte (HC)', '12'], ['Thermotraffic B.V. Maasvlakte (NHC)', '52']]
+  };
+  var LIJST_DIALOOG = '<h2 mat-dialog-title="">{titel}</h2><mat-dialog-content><p>Search on country</p><form novalidate=""><mat-form-field><label><mat-label>Country</mat-label></label>' +
+    '<input matinput="" type="text" data-test="search-country" class="mat-mdc-autocomplete-trigger" autocomplete="off" role="combobox" aria-autocomplete="list"></mat-form-field></form>' +
+    '<mat-table class="mat-mdc-table" role="table"><mat-header-row role="row" class="mat-mdc-header-row"><mat-header-cell role="columnheader" class="mat-column-name">Name</mat-header-cell><mat-header-cell role="columnheader" class="mat-column-code">Code</mat-header-cell></mat-header-row></mat-table>' +
+    '</mat-dialog-content><mat-dialog-actions align="end"><button data-test="cancel" type="button"><span>Cancel</span></button><button data-test="save"><span>Save</span></button></mat-dialog-actions>';
+  function toonLijst(d, soort) {
+    setTimeout(function () {
+      var tabel = d.querySelector('mat-table');
+      LIJSTEN[soort].forEach(function (x) {
+        tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" class="mat-mdc-row"><mat-cell role="cell" class="mat-column-name">' + x[0] + '</mat-cell><mat-cell role="cell" class="mat-column-code">' + x[1] + '</mat-cell></mat-row>');
+      });
+    }, 200);
+  }
   var ORGANISATIES = [
     { naam: 'GHAN MARINE PRODUCTS', adres: 'Plot 12, Port Road', plaats: 'KAKINADA', erk: '1234', land: 'IN' },
     { naam: 'GHAN MARINE EXPORTS PVT LTD', adres: 'Beach Road 4', plaats: 'VISAKHAPATNAM', erk: '5678', land: 'IN' },
@@ -161,7 +178,7 @@
     overlay.innerHTML = '';
     opties.forEach(function (t) {
       var o = document.createElement('mat-option'); o.setAttribute('role', 'option'); o.textContent = t;
-      o.addEventListener('click', function () { kies(t); overlay.innerHTML = ''; });
+      o.addEventListener('click', function () { kies(t, o); overlay.innerHTML = ''; });
       overlay.appendChild(o);
     });
   }
@@ -197,9 +214,18 @@
       d.className = 'mat-mdc-dialog-container mdc-dialog cdk-dialog-container'; d.setAttribute('role', 'dialog');
       d.__bron = knop;
       d.innerHTML = knop.dataset.org ? ORG_DIALOOG.replace('{titel}', knop.dataset.dialoog.replace('Select ', '')) :
+        knop.dataset.lijst ? LIJST_DIALOOG.replace('{titel}', knop.dataset.lijst === 'bcp' ? 'Border control post' : 'Inspection centre') :
         '<h2>' + knop.dataset.dialoog + '</h2><input type="text" placeholder="Search" data-test="dialog-search"><div class="results"></div>';
       overlay.parentNode.appendChild(d);
+      if (knop.dataset.lijst === 'bcp') { d.querySelector('[data-test="search-country"]').value = 'NL'; toonLijst(d, 'bcp'); }
+      if (knop.dataset.lijst === 'ic') d.querySelector('[data-test="search-country"]').addEventListener('mock-gekozen', function () { toonLijst(d, 'ic'); });
     }, 100);
+    // rij in lijstdialoog aanklikken = selecteren
+    var lijstRij = t.closest('mat-dialog-container mat-row');
+    if (lijstRij) {
+      lijstRij.parentElement.querySelectorAll('mat-row').forEach(function (r) { r.classList.remove('mat-mdc-row-selected'); });
+      lijstRij.classList.add('mat-mdc-row-selected');
+    }
     // Search in de organisatiedialoog: resultaten met vertraging (API)
     if (knop && knop.dataset.test === 'select-search') {
       e.preventDefault();
@@ -221,7 +247,8 @@
     }
     if (knop && knop.dataset.test === 'save' && knop.closest('mat-dialog-container')) {
       var dl = knop.closest('mat-dialog-container'), gekozen = dl.querySelector('input[name="org-keuze"]:checked');
-      if (gekozen) dl.__bron.querySelector('.mdc-button__label span:last-child').textContent = gekozen.value;
+      var rijKeuze = dl.querySelector('mat-row.mat-mdc-row-selected .mat-column-name');
+      if (gekozen || rijKeuze) dl.__bron.querySelector('span span:last-child, span').textContent = gekozen ? gekozen.value : rijKeuze.textContent;
       dl.remove();
     }
     if (knop && knop.dataset.test === 'cancel') knop.closest('mat-dialog-container').remove();
@@ -232,7 +259,7 @@
     if (i.getAttribute && i.getAttribute('aria-autocomplete') === 'list') {
       var term = i.value.toUpperCase();
       var lijst = Object.keys(LANDEN).filter(function (k) { return k.indexOf(term) === 0 || LANDEN[k].toUpperCase().indexOf(term) === 0; }).map(function (k) { return k + ' - ' + LANDEN[k]; });
-      setTimeout(function () { toon(lijst, function (t) { i.value = t; }); }, 100);
+      setTimeout(function () { toon(lijst, function (t) { i.value = t; i.dispatchEvent(new Event('mock-gekozen')); }); }, 100);
     }
   });
   document.addEventListener('change', function (e) {
