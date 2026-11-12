@@ -196,7 +196,9 @@
       description: 'Document(s) (I.9): elk aangeleverd document dat in de GGB opgenomen moet worden.',
       items: obj({
         type: str('Documentcode: HC gezondheidscertificaat, LAB gecertificeerd labrapport/analyseverslag, CATCH vangstcertificaat, OFFCERT officieel certificaat Ver. 2019/1793, PRIVATT private attestation, CITES, COI biologisch, PHYTO fytosanitair, COMM handelsdocument (factuur, paklijst, B/L), OTHER.', DOC_CODES),
-        identificatie: str('Certificaat-/documentnummer precies zoals op het document'),
+        identificatie: str('Documentnummer zoals in de GGB. Voor het HC (TRACES): ALTIJD de IMSOC-referentie uit vak I.2.a (bijv. "IMPORT.EU.IN.2026.0012345"), NIET de certificate reference uit vak I.2. Overige documenten: nummer precies zoals gedrukt.'),
+        imsocReferentie: str('Alleen bij het HC: IMSOC-referentie uit vak I.2.a (bijv. "IMPORT.EU.VN.2026.0001234"). Leeg bij andere documenten of als niet vermeld.'),
+        certificaatReferentie: str('Alleen bij het HC: certificate reference uit vak I.2 (lokaal nummer van de bevoegde autoriteit, bijv. "EIA/VSP/2026-27/02937"). Leeg bij andere documenten.'),
         datumAfgifte: str('Datum van afgifte, dd-mm-jjjj'),
         landAfgifte: str('Land van afgifte, ISO alpha-2'),
         inrichtingOorsprong: str('Establishment of origin: naam en erkenningsnummer, indien vermeld'),
@@ -250,7 +252,9 @@
     '    I.15 Means of transport: Mode -> vervoermiddel, Identification "SHIP NAME 123W | Singapore" -> naam "SHIP NAME 123W"',
     '    en nationaliteit SG; I.16 Entry Border Control Post -> grenscontrolepost; I.17 Accompanying documents -> B/L-nummer;',
     '    I.18 Transport conditions -> transportconditie; I.19 Container/Seal -> containers; I.20 Certified as or for -> gecertificeerdVoor;',
-    '    I.22 For internal market -> bestemming "Import" (I.21 For transit -> "Transit"); I.2 Certificate reference -> nummer van het HC;',
+    '    I.22 For internal market -> bestemming "Import" (I.21 For transit -> "Transit");',
+    '    I.2.a IMSOC reference -> nummer van het HC (identificatie én imsocReferentie); I.2 Certificate reference -> certificaatReferentie.',
+    '    Gebruik voor het HC ALTIJD de IMSOC-referentie (bijv. "IMPORT.EU.IN.2026.0012345") als nummer, nooit de certificate reference.',
     '    I.27 Description of consignment -> goederen (CN code, Species, Nature of commodity, Batch number, Package count, Net weight,',
     '    Manufacturing plant). Brutogewichten per product uit paklijst of B/L als het HC alleen een totaal geeft.',
     '- Goederenitems moeten identiek zijn aan het HC: maak precies één goederenitem per regel van vak I.27 (#1, #2, …),',
@@ -296,7 +300,7 @@
     var m = v.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/); // ISO
     if (m) return geldig(+m[3], +m[2], +m[1]);
     m = v.match(/^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{2,4})/); // dd-mm-jjjj
-    if (m) return geldig(+m[1], +m[2], jaar(m[3]));
+    if (m) return geldig(+m[1], +m[2], jaar(m[3])) || geldig(+m[2], +m[1], jaar(m[3])); // ook 11/29/2026 (MM/DD)
     m = v.match(/^(\d{1,2})[-/. ]+([A-Za-z]{3})[A-Za-z]*\.?[-/. ,]+(\d{2,4})/); // 07 Aug 2026
     if (m && MAANDEN[m[2].toLowerCase()]) return geldig(+m[1], MAANDEN[m[2].toLowerCase()], jaar(m[3]));
     m = v.match(/^([A-Za-z]{3})[A-Za-z]*\.?[ ]+(\d{1,2}),?[ ]+(\d{4})/); // Aug 7, 2026
@@ -308,6 +312,35 @@
     var dt = new Date(Date.UTC(j, m - 1, d));
     if (dt.getUTCFullYear() !== j || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return '';
     return pad(d) + '-' + pad(m) + '-' + j;
+  }
+
+  /* IMSOC-referentie (TRACES), bijv. IMPORT.EU.IN.2026.0012345 of CHEDP.NL.2026.0001234. */
+  var IMSOC_RE = /^(IMPORT|INTRA|EXPORT|TRANSIT|DOCOM|CHED[A-Z]*|CVED[A-Z]*|CED|COI)\.[A-Z]{2}(\.[A-Z]{2})?\.\d{4}\.\d{3,}[A-Z0-9.]*$/;
+  function normImsoc(v) { return s(v).toUpperCase().replace(/\s+/g, ''); }
+  function isImsoc(v) { return IMSOC_RE.test(normImsoc(v)); }
+
+  /* ---------------- datums op het Portbase-formulier ---------------- */
+
+  var DATUMFORMATEN = ['MM/DD/YYYY', 'DD-MM-YYYY'];
+  var STANDAARD_DATUMFORMAAT = 'MM/DD/YYYY';
+
+  /** dd-mm-jjjj (intern) -> notatie van het Portbase-formulier, bijv. 11/29/2026 (MM/DD/YYYY). */
+  function naarPortbaseDatum(v, formaat) {
+    var d = normDatum(v);
+    if (!d) return s(v);
+    var m = d.split('-');
+    return (formaat || STANDAARD_DATUMFORMAAT) === 'DD-MM-YYYY' ? d : m[1] + '/' + m[0] + '/' + m[2];
+  }
+
+  /**
+   * Datum zoals op de Portbase-pagina -> dd-mm-jjjj. Met schuine strepen is het
+   * MM/DD/YYYY (Engelse notatie van het formulier), met streepjes dd-mm-jjjj.
+   */
+  function vanPortbaseDatum(v) {
+    v = s(v);
+    var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) return geldig(+m[2], +m[1], +m[3]) || geldig(+m[1], +m[2], +m[3]);
+    return normDatum(v) || v;
   }
 
   function normTijd(v) {
@@ -410,15 +443,29 @@
     r.documenten = (raw.documenten || []).map(function (doc) {
       var datum = normDatum(doc.datumAfgifte);
       if (s(doc.datumAfgifte) && !datum) w.push('Afgiftedatum "' + s(doc.datumAfgifte) + '" van ' + s(doc.identificatie) + ' niet herkend.');
+      var type = DOC_CODES.indexOf(doc.type) >= 0 ? doc.type : 'OTHER';
+      var id = s(doc.identificatie), imsoc = '', certRef = '', zekerheid = ZEKERHEID.indexOf(doc.zekerheid) >= 0 ? doc.zekerheid : 'laag';
+      if (type === 'HC') {
+        // Op TRACES-certificaten altijd de IMSOC-referentie (I.2.a) gebruiken, niet de certificate reference (I.2).
+        imsoc = normImsoc(doc.imsocReferentie) || (isImsoc(id) ? normImsoc(id) : '');
+        certRef = s(doc.certificaatReferentie) || (id && !isImsoc(id) ? id : '');
+        if (imsoc) id = imsoc;
+        else {
+          w.push('IMSOC-referentie (HC vak I.2.a) niet gevonden' + (id ? '; nu staat de certificate reference "' + id + '" als nummer' : '') + '. Vul de IMSOC-referentie (bijv. IMPORT.EU.XX.2026.0000000) zelf in.');
+          zekerheid = 'laag';
+        }
+      }
       return {
-        type: DOC_CODES.indexOf(doc.type) >= 0 ? doc.type : 'OTHER',
-        identificatie: s(doc.identificatie),
+        type: type,
+        identificatie: id,
+        imsocReferentie: imsoc,
+        certificaatReferentie: certRef,
         datumAfgifte: datum,
         landAfgifte: normLand(doc.landAfgifte),
         inrichtingOorsprong: s(doc.inrichtingOorsprong),
         verwijstNaar: s(doc.verwijstNaar),
         bestand: s(doc.bestand),
-        zekerheid: ZEKERHEID.indexOf(doc.zekerheid) >= 0 ? doc.zekerheid : 'laag'
+        zekerheid: zekerheid
       };
     }).filter(function (doc) { return doc.identificatie || doc.type !== 'OTHER'; });
 
@@ -511,7 +558,8 @@
       landLading: r.landLading.waarde,
       eta: r.aankomstDatum.waarde,
       documenten: r.documenten.filter(function (doc) { return doc.opnemen !== false; }).map(function (doc) {
-        return { naam: doc.type, type: doc.type, identificatie: doc.identificatie, datum: doc.datumAfgifte, verwijstNaar: doc.verwijstNaar, bestand: doc.bestand, landAfgifte: doc.landAfgifte };
+        return { naam: doc.type, type: doc.type, identificatie: doc.identificatie, datum: doc.datumAfgifte, verwijstNaar: doc.verwijstNaar, bestand: doc.bestand, landAfgifte: doc.landAfgifte,
+          aliassen: [doc.imsocReferentie, doc.certificaatReferentie].filter(function (x) { return x && x !== doc.identificatie; }) };
       }),
       goederen: r.goederen.map(function (g) {
         return { gn: g.gnCode, animo: g.animoCode || '', omschrijving: g.omschrijving, brutoGewicht: g.brutoGewicht, nettoGewicht: g.nettoGewicht };
@@ -598,9 +646,26 @@
       provider: PROVIDERS[raw.provider] ? raw.provider : 'claude',
       claude: { apiKey: s(claude.apiKey), model: s(claude.model) || PROVIDERS.claude.standaardModel, effort: EFFORTS.indexOf(claude.effort) >= 0 ? claude.effort : 'high' },
       openai: { apiKey: s((raw.openai || {}).apiKey), model: s((raw.openai || {}).model) || PROVIDERS.openai.standaardModel },
-      gemini: { apiKey: s((raw.gemini || {}).apiKey), model: s((raw.gemini || {}).model) || PROVIDERS.gemini.standaardModel }
+      gemini: { apiKey: s((raw.gemini || {}).apiKey), model: s((raw.gemini || {}).model) || PROVIDERS.gemini.standaardModel },
+      invullen: invulInstellingen(raw.invullen)
     };
     return r;
+  }
+
+  /**
+   * Instellingen voor het invullen in Portbase.
+   *  datumFormaat: notatie van de datumvelden op het formulier (standaard MM/DD/YYYY, bijv. 11/29/2026)
+   *  maxWacht:     hoe lang (seconden) op een zoekresultaat in een Portbase-venster gewacht wordt
+   *  trefwoorden:  bij "No results" verder zoeken op trefwoorden (naam zonder rechtsvorm, losse woorden, plaats)
+   */
+  function invulInstellingen(raw) {
+    raw = raw || {};
+    var wacht = parseInt(raw.maxWacht, 10);
+    return {
+      datumFormaat: DATUMFORMATEN.indexOf(raw.datumFormaat) >= 0 ? raw.datumFormaat : STANDAARD_DATUMFORMAAT,
+      maxWacht: wacht >= 10 && wacht <= 600 ? wacht : 120,
+      trefwoorden: raw.trefwoorden !== false
+    };
   }
 
   /** Is de gekozen aanbieder klaar voor automatisch uitlezen? Geeft een foutmelding of ''. */
@@ -651,7 +716,8 @@
     SCHEMA: SCHEMA, SYSTEM: SYSTEM, DOC_CODES: DOC_CODES,
     BCP_NL: BCP_NL, zoekInLijst: zoekInLijst,
     normaliseer: normaliseer, naarDeclaratie: naarDeclaratie, gebruikersPrompt: gebruikersPrompt,
-    normDatum: normDatum, normTijd: normTijd, normLand: normLand, normGetal: normGetal, containerGeldig: containerGeldig
+    normDatum: normDatum, naarPortbaseDatum: naarPortbaseDatum, vanPortbaseDatum: vanPortbaseDatum, DATUMFORMATEN: DATUMFORMATEN,
+    isImsoc: isImsoc, invulInstellingen: invulInstellingen, normTijd: normTijd, normLand: normLand, normGetal: normGetal, containerGeldig: containerGeldig
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_AI = exported;

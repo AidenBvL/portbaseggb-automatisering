@@ -368,4 +368,60 @@ test('goederenitems = HC-regels: brutogewicht naar rato verdeeld, som exact geli
   assert.ok(r2.waarschuwingen.some((w) => /wijkt af van het totaal/.test(w)));
 });
 
+test('HC: altijd de IMSOC-referentie (I.2.a) als nummer, certificate reference (I.2) als verwijzing', () => {
+  const doc = (x) => Object.assign({ type: 'HC', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' }, x);
+  // AI zet de certificate reference als identificatie, maar geeft ook de IMSOC-referentie
+  let r = AI.normaliseer({ documenten: [doc({ identificatie: 'EIA/VSP/2026-27/02937', imsocReferentie: 'import.eu.in.2026.0012345', certificaatReferentie: '' })] });
+  assert.strictEqual(r.documenten[0].identificatie, 'IMPORT.EU.IN.2026.0012345');
+  assert.strictEqual(r.documenten[0].certificaatReferentie, 'EIA/VSP/2026-27/02937');
+  assert.ok(!r.waarschuwingen.some((w) => /IMSOC/.test(w)));
+  // IMSOC alleen als identificatie (handmatige modus, oud formaat)
+  r = AI.normaliseer({ documenten: [doc({ identificatie: 'IMPORT.EU.VN.2026.0000001' })] });
+  assert.strictEqual(r.documenten[0].identificatie, 'IMPORT.EU.VN.2026.0000001');
+  assert.strictEqual(r.documenten[0].imsocReferentie, 'IMPORT.EU.VN.2026.0000001');
+  // Geen IMSOC-referentie: waarschuwing en zekerheid laag
+  r = AI.normaliseer({ documenten: [doc({ identificatie: 'EIA/VSP/2026-27/02937' })] });
+  assert.strictEqual(r.documenten[0].zekerheid, 'laag');
+  assert.ok(r.waarschuwingen.some((w) => /IMSOC-referentie \(HC vak I\.2\.a\) niet gevonden/.test(w)));
+  // Andere documenten: nummer ongewijzigd
+  r = AI.normaliseer({ documenten: [doc({ type: 'LAB', identificatie: 'EIA/VZ/26-27/0003572', imsocReferentie: 'IMPORT.EU.IN.2026.0012345' })] });
+  assert.strictEqual(r.documenten[0].identificatie, 'EIA/VZ/26-27/0003572');
+  assert.ok(AI.isImsoc('CHEDP.NL.2026.0001234') && AI.isImsoc('IMPORT.EU.IN.2026.0012345') && !AI.isImsoc('EIA/VSP/2026-27/02937'));
+  assert.ok(/IMSOC/.test(AI.SYSTEM) && AI.SCHEMA.properties.documenten.items.required.includes('imsocReferentie'));
+});
+
+test('labrapport dat naar de certificate reference verwijst, verwijst correct naar het HC (IMSOC)', () => {
+  const r = AI.normaliseer({ declaratieType: veld('PRD'), landOorsprong: veld('IN'),
+    documenten: [{ type: 'HC', identificatie: 'IMPORT.EU.IN.2026.0012345', certificaatReferentie: 'EIA/VSP/2026-27/02937', datumAfgifte: '07-08-2026' },
+      { type: 'LAB', identificatie: 'LAB-1', verwijstNaar: 'EIA/VSP/2026-27/02937', datumAfgifte: '07-08-2026' }],
+    goederen: [{ gnCode: '03061792', animoCode: '206107', nettoGewicht: '100' }] });
+  r.documenten.forEach((d) => { d.opnemen = true; });
+  const res = engine.checkDeclaration(AI.naarDeclaratie(r), DEFAULT_RULES);
+  const lab = res.items[0].vereisten.filter((v) => v.type === 'LAB')[0];
+  assert.ok(lab && lab.tekst.some((t) => /Verwijst correct/.test(t)), JSON.stringify(lab));
+});
+
+test('datums op het Portbase-formulier: MM/DD/YYYY (11/29/2026) en terug', () => {
+  assert.strictEqual(AI.naarPortbaseDatum('29-11-2026'), '11/29/2026');
+  assert.strictEqual(AI.naarPortbaseDatum('07-08-2026', 'MM/DD/YYYY'), '08/07/2026');
+  assert.strictEqual(AI.naarPortbaseDatum('2026-11-29', 'DD-MM-YYYY'), '29-11-2026');
+  assert.strictEqual(AI.vanPortbaseDatum('11/29/2026'), '29-11-2026');
+  assert.strictEqual(AI.vanPortbaseDatum('8/7/2026'), '07-08-2026');
+  assert.strictEqual(AI.vanPortbaseDatum('29-11-2026'), '29-11-2026');
+  assert.strictEqual(AI.normDatum('11/29/2026'), '29-11-2026', 'ook een Amerikaanse datum van een document');
+  assert.deepStrictEqual(AI.instellingen({}).invullen, { datumFormaat: 'MM/DD/YYYY', maxWacht: 120, trefwoorden: true });
+  assert.deepStrictEqual(AI.invulInstellingen({ datumFormaat: 'DD-MM-YYYY', maxWacht: '5', trefwoorden: false }), { datumFormaat: 'DD-MM-YYYY', maxWacht: 120, trefwoorden: false });
+});
+
+test('organisatie zoeken: na "No results" verder op trefwoorden', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  FILL.instellen({ trefwoorden: true });
+  const p = FILL.orgPogingen(FILL.orgZoek({ naam: 'QUANG PHU SEAFOOD IMPORT-EXPORT CO., LTD', plaats: 'Binh An' }, 'exporter', 'VN', {}));
+  assert.deepStrictEqual(p.map((x) => x.type + ':' + x.term), ['NAME:QUANG PHU SEAFOOD IMPORT-EXPORT CO., LTD', 'NAME:quang phu seafood import export', 'NAME:quang phu', 'NAME:quang', 'CITY:Binh An']);
+  const i = FILL.orgPogingen(FILL.orgZoek({ naam: 'Koelhuis X B.V.', erkenningsnummer: 'NL 1001 EG' }, 'inrichting', 'NL', {}));
+  assert.deepStrictEqual(i.map((x) => x.type + ':' + x.term), ['APPROVAL_NUMBER:NL 1001 EG', 'NAME:Koelhuis X B.V.', 'NAME:koelhuis x', 'NAME:koelhuis', 'APPROVAL_NUMBER:1001']);
+  FILL.instellen({ trefwoorden: false });
+  assert.strictEqual(FILL.orgPogingen(FILL.orgZoek({ naam: 'QUANG PHU SEAFOOD CO., LTD' }, 'exporter', 'VN', {})).length, 1);
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

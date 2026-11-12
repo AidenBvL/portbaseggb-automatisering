@@ -37,6 +37,15 @@
     return '';
   }
 
+  /** Datum van het formulier (11/29/2026 = MM/DD/YYYY, of 29-11-2026) -> dd-mm-jjjj. */
+  function datumVan(v) {
+    v = String(v || '').trim();
+    if (!v) return '';
+    if (root.GGB_AI && root.GGB_AI.vanPortbaseDatum) return root.GGB_AI.vanPortbaseDatum(v);
+    var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m ? ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) + '-' + m[3] : v;
+  }
+
   function DOC_MAP(naam) {
     if (root.GGB_PARSER && root.GGB_PARSER.mapDocType) return root.GGB_PARSER.mapDocType(naam);
     return 'OTHER';
@@ -55,7 +64,7 @@
           var waarde = txt(col).replace(label, '').trim();
           if (/^type$/i.test(label)) { d.naam = waarde; d.type = DOC_MAP(waarde); }
           else if (/^identification$/i.test(label)) d.identificatie = waarde;
-          else if (/^date of issue$/i.test(label)) d.datum = waarde;
+          else if (/^date of issue$/i.test(label)) d.datum = datumVan(waarde);
         });
         if (d.naam || d.identificatie) docs.push(d);
         return;
@@ -64,7 +73,7 @@
       var sel = q('mat-select[data-test="document-type"] .mat-mdc-select-value-text', card) || q('mat-select[formcontrolname="documentType"] .mat-mdc-select-value-text', card);
       var naam = txt(sel).replace(/\s*\(\d+\)\s*$/, '');
       var nummer = val(q('input[data-test="document-number"]', card) || q('input[formcontrolname="documentNumber"]', card));
-      var datum = val(q('input[data-test="document-date-of-issue"]', card) || q('input[formcontrolname="dateOfIssue"]', card));
+      var datum = datumVan(val(q('input[data-test="document-date-of-issue"]', card) || q('input[formcontrolname="dateOfIssue"]', card)));
       var bestand = txt(q('.file-name a', card));
       if (naam || nummer) docs.push({ naam: naam, type: DOC_MAP(naam), identificatie: nummer, datum: datum, verwijstNaar: '', bestand: bestand, landAfgifte: landCode(val(q('input[data-test="document-country-un-code-of-issue"]', card))) });
     });
@@ -110,7 +119,7 @@
       grenscontrolepost: val(q('input[data-test="border-control-post-selector"]', page)),
       landOorsprong: landCode(val(q('input[data-test="country-of-origin-un-code"]', page))),
       landLading: landCode(val(q('input[data-test="country-of-loading-un-code"]', page))),
-      eta: val(q('input[data-test="arrival-date-time-estimated"]', page)),
+      eta: datumVan(val(q('input[data-test="arrival-date-time-estimated"]', page))),
       bestemming: txt(q('mat-select[data-test="purpose-code"] .mat-mdc-select-value-text', page)),
       gebruik: txt(q('mat-select[data-test="goods-intended-use-code"] .mat-mdc-select-value-text', page)),
       transportconditie: txt(q('mat-select[data-test="transport-conditions-code"] .mat-mdc-select-value-text', page)),

@@ -42,7 +42,12 @@ function toonPagina() {
   document.querySelectorAll('.pagina').forEach(function (s) { s.hidden = s.id !== 'pagina-' + p; });
   document.querySelectorAll('nav a').forEach(function (a) { a.classList.toggle('actief', a.getAttribute('data-pagina') === p); });
   if (p === 'prompt') $('prompt-tekst').value = AI.handmatigePrompt([], '');
+  if (p === 'invullen') renderInvullen();
 }
+// Direct wisselen bij klikken (niet wachten op hashchange).
+document.querySelectorAll('nav a').forEach(function (a) {
+  a.addEventListener('click', function () { setTimeout(toonPagina, 0); });
+});
 window.addEventListener('hashchange', toonPagina);
 
 /* ---------------- aanbieder ---------------- */
@@ -146,6 +151,26 @@ $('kaarten').addEventListener('click', function (e) {
   opslaan(true);
 });
 
+/* ---------------- invullen in Portbase ---------------- */
+
+function renderInvullen() {
+  var inv = inst.invullen;
+  $('datumformaat').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-formaat') === inv.datumFormaat)); });
+  var sel = $('maxwacht');
+  if (!sel.querySelector('option[value="' + inv.maxWacht + '"]')) sel.insertAdjacentHTML('beforeend', '<option value="' + inv.maxWacht + '">' + inv.maxWacht + ' seconden</option>');
+  sel.value = String(inv.maxWacht);
+  $('trefwoorden').checked = inv.trefwoorden;
+}
+$('datumformaat').addEventListener('click', function (e) {
+  var b = e.target.closest('button');
+  if (!b) return;
+  inst.invullen.datumFormaat = b.getAttribute('data-formaat');
+  renderInvullen();
+  opslaan(true);
+});
+$('maxwacht').addEventListener('change', function () { inst.invullen.maxWacht = +this.value; opslaan(true); });
+$('trefwoorden').addEventListener('change', function () { inst.invullen.trefwoorden = this.checked; opslaan(true); });
+
 /* ---------------- handmatige prompt ---------------- */
 
 $('prompt-kopie').addEventListener('click', function () {
@@ -163,7 +188,7 @@ $('prompt-download').addEventListener('click', function () {
 
 $('wis-alles').addEventListener('click', function () {
   if (!confirm('Alle API-sleutels en AI-instellingen uit deze browser verwijderen?')) return;
-  chrome.storage.local.remove([SLEUTEL, MODELLEN], function () {
+  chrome.storage.local.remove([SLEUTEL, MODELLEN, 'ggb.ai.laatste'], function () {
     inst = AI.instellingen({});
     modellenCache = {};
     renderKaarten();

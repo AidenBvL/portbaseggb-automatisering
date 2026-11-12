@@ -185,7 +185,9 @@
             status = status === 'ok' ? 'aandacht' : status;
             tekst.push('Moet verwijzen naar ' + req.verwijstNaar + ', maar dat document is niet aanwezig.');
           } else {
-            var doelIds = doelen.map(function (d) { return normCode(d.identificatie); }).filter(Boolean);
+            // Een HC heeft twee nummers (IMSOC-referentie I.2.a en certificate reference I.2); beide gelden als verwijzing.
+            var doelIds = [];
+            doelen.forEach(function (d) { [d.identificatie].concat(d.aliassen || []).forEach(function (x) { x = normCode(x); if (x && doelIds.indexOf(x) < 0) doelIds.push(x); }); });
             aanwezig.forEach(function (d) {
               var ref = normCode(d.verwijstNaar);
               if (!ref) {

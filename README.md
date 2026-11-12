@@ -59,7 +59,8 @@ Drie tabbladen:
 
 ## AI invullen: GGB maken vanuit het HC en andere documenten
 
-In het paneel op de Portbase-pagina, tabblad **AI invullen**:
+In het paneel op de Portbase-pagina, tabblad **AI invullen** (drie stappen:
+*Documenten → Controleren → Invullen*, bovenaan zichtbaar):
 
 1. Sleep het **gezondheidscertificaat (HC)** en eventueel labrapport,
    vangstcertificaat, factuur, paklijst en B/L in het paneel (PDF, JPG, PNG,
@@ -86,10 +87,26 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    (636)*, *Certified lab report (162)*, of bij Ver. 2019/1793 *Official
    certificate 2019/1793 (100)* + *Certified lab report 2019/1793 (4)*;
    corrigeren kan met de keuzelijst (volledige Portbase-lijst).
+   Het **HC-nummer** is altijd de **IMSOC-referentie** (TRACES, vak I.2.a,
+   bijv. `IMPORT.EU.IN.2026.0012345`), niet de *certificate reference*
+   (vak I.2). Die laatste staat apart in het voorstel en telt mee als
+   verwijzing van een labrapport naar het HC. Ontbreekt de IMSOC-referentie,
+   dan meldt het paneel dat onder *Aandachtspunten*.
 4. Op het voorstel draait direct de **documentcheck**: welke documenten zijn
    voor deze GN-code/land vereist (TARIC + NVWA-regels) en zitten ze bij de
    upload, inclusief de verwijzing van het labrapport naar het HC.
-5. Pas waarden aan waar nodig en klik **Invullen in Portbase** (op "New
+   Het voorstel begint met een **samenvatting** (type, oorsprong, grenspost,
+   B/L, HC-nummer, goederen, containers, ETA) en een balk met de
+   **zekerheid** van de velden. Velden met zekerheid middel/laag zijn
+   gekleurd; **Alleen te controleren** verbergt de rest. De blokken
+   (Algemeen, Organisaties, Containers, Documenten, Goederenitems) zijn in te
+   klappen. Onder elk datumveld staat hoe de datum in Portbase komt.
+   **Exporteren** downloadt het voorstel als JSON; **Nieuw** maakt het paneel
+   leeg. Het laatste voorstel wordt lokaal bewaard en kan na herladen van de
+   pagina met **Herstellen** worden teruggezet (documenten opnieuw toevoegen
+   als ze geüpload moeten worden).
+5. Pas waarden aan waar nodig en klik **Invullen in Portbase** (onderaan het
+   paneel, altijd zichtbaar) (op "New
    declaration" of een bewerkbare declaratie). De extensie vult:
    declaratietype, B/L, bestemming, land van oorsprong/lading, I.18, I.16,
    vervoermiddel + naam + nationaliteit, ETA, containers + zegels,
@@ -102,7 +119,12 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
    documentregels voor de documenten die in de GGB horen (type, nummer,
    datum, land, **en uploadt het bijbehorende bestand**) en goederenitems (gewichten, colli, verpakking,
    batch, erkenningsnummer). Ontbrekende documentregels/goederenitems worden
-   aangemaakt met *Add document* / *Add goods item*.
+   aangemaakt met *Add document* / *Add goods item*. **Datums** worden in de
+   notatie van het formulier ingevuld: standaard **MM/DD/YYYY** (bijv.
+   `11/29/2026`), in te stellen bij *Opties → Invullen in Portbase*.
+   Tijdens het invullen zie je een voortgangsbalk met de huidige stap (en
+   hoe lang er al op Portbase gewacht wordt) en kun je op **Stop** klikken.
+   Het verslag is te filteren op *ingevuld*, *handmatig*, enz.
 6. **Zoekvensters worden automatisch afgehandeld** (uit te zetten met het
    vinkje onder *Invullen in Portbase*): exporteur, importeur, plaats van
    bestemming, inrichting van oorsprong (documenten en goederenitems),
@@ -136,6 +158,19 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen**:
      bereid, aquacultuur of wild gevangen, gekoeld/bevroren of ambient; bijv.
      kip vleesbereiding 201105, kweekgarnalen 206107, wild gevangen inktvis
      102108); in het venster wordt de code opgezocht en gekozen.
+   - **Wachten op Portbase**: na *Search* wacht de extensie tot het
+     zoekverzoek van Portbase terug is en de resultaten (of *No results*)
+     niet meer veranderen; geen vaste korte time-out meer, alleen de
+     ingestelde maximale wachttijd (standaard 2 minuten). Portbase toont
+     tijdens het zoeken vaak al *No results*; daarom kijkt
+     `extension/page-net.js` of er nog een verzoek van de pagina loopt
+     (alleen tijdstippen, geen adressen of inhoud).
+   - **Trefwoorden na "No results"**: organisaties op de naam zonder
+     rechtsvorm (B.V., Co., Ltd) en leestekens, de eerste woorden, losse
+     kenmerkende woorden, het erkenningsnummer zonder letters en de plaats;
+     GN-code op het geslacht uit de Latijnse naam en woorden uit de
+     omschrijving; Animo op woorden uit de omschrijving van de code.
+     Resultaten die niet op de naam/het nummer lijken tellen niet als treffer.
    - Alleen een **duidelijke winnaar** wordt gekozen en opgeslagen. Anders
      klikt de extensie *Cancel* en staat het veld als *handmatig* in het
      verslag, met **Zoek in Portbase** (opent het venster met de zoekterm en
@@ -150,7 +185,7 @@ nemen.
 ### Instellen: AI-aanbieder kiezen
 
 Rechtsklik op het extensie-icoon → **Opties** (of `edge://extensions` →
-Details → Extensieopties). De instellingenpagina heeft vier onderdelen:
+Details → Extensieopties). De instellingenpagina heeft vijf onderdelen:
 
 - **AI-aanbieder** – kies **Claude** (Anthropic), **ChatGPT** (OpenAI),
   **Gemini** (Google) of **Handmatig**. Per aanbieder bewaar je een eigen
@@ -161,6 +196,9 @@ Details → Extensieopties). De instellingenpagina heeft vier onderdelen:
   `claude-opus-5-5`, Gemini `gemini-pro-latest`; bij ChatGPT kies je na
   het ophalen (het nieuwste chatmodel wordt voorgesteld). Bij Claude stel je
   ook de grondigheid in. Wijzigingen worden direct opgeslagen.
+- **Invullen in Portbase** – datumnotatie van het formulier (MM/DD/YYYY of
+  DD-MM-YYYY), maximale wachttijd op een zoekresultaat, en of er na
+  *No results* op trefwoorden verder gezocht wordt.
 - **Handmatige prompt** – de prompt bekijken, kopiëren of downloaden.
 - **Privacy & gegevens** – wat er waarheen gaat; alle sleutels wissen.
 - **Over** – versie en wat de extensie wel/niet automatisch doet.
@@ -197,7 +235,7 @@ naar de GGB: I.1 → exporteur, I.5 → importeur (niet I.6 *operator
 responsible*), I.11 → inrichting van oorsprong (met approval number),
 I.12 → plaats van bestemming (met approval number, kan in een ander
 EU-land liggen), I.15 → vervoermiddel (naam + vlag), I.16 → grenscontrolepost,
-I.18 → transportconditie, I.19 → containers, I.20 → *certified as or for*,
+I.2.a → nummer van het HC (IMSOC-referentie), I.18 → transportconditie, I.19 → containers, I.20 → *certified as or for*,
 I.22 → *Import*, I.27 → goederenitems.
 
 **Goederenitems zijn identiek aan het HC**: elke regel van I.27 (#1, #2, …)
@@ -337,6 +375,7 @@ extension/content.js          paneel op de Portbase-pagina
 extension/portbase-dom.js     leest de declaratie uit de Portbase-DOM
 extension/background.js       service worker: levert kennisbank, opent de tool, roept Claude aan
 extension/portbase-fill.js    vult het formulier "New declaration" met het AI-voorstel
+extension/page-net.js         (in de pagina) houdt bij of Portbase nog een verzoek open heeft
 extension/options.html/.css/.js  instellingen (aanbieder, sleutels, modellen, prompt, privacy)
 extension/ai.bundle.js        gebundelde Anthropic SDK + extract (gebouwd uit ai/)
 ai/src/extract.mjs            uitlezen van documenten met Claude (structured output)

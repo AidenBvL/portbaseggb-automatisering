@@ -12,6 +12,7 @@
       <div class="brand"><span class="logo">GGB</span><div><b>GGB-assistent</b><small id="versie">Instellingen</small></div></div>
       <nav>
         <a href="#aanbieder" data-pagina="aanbieder"><span class="ico">✦</span>AI-aanbieder</a>
+        <a href="#invullen" data-pagina="invullen"><span class="ico">⇥</span>Invullen in Portbase</a>
         <a href="#prompt" data-pagina="prompt"><span class="ico">⧉</span>Handmatige prompt</a>
         <a href="#privacy" data-pagina="privacy"><span class="ico">⛨</span>Privacy &amp; gegevens</a>
         <a href="#over" data-pagina="over"><span class="ico">ⓘ</span>Over</a>
@@ -30,6 +31,40 @@
         <div class="kaarten" role="radiogroup" aria-label="AI-aanbieder" id="kaarten"></div>
 
         <div class="paneel" id="config"></div>
+      </section>
+
+      <!-- ============ INVULLEN ============ -->
+      <section class="pagina" id="pagina-invullen" hidden>
+        <header>
+          <h1>Invullen in Portbase</h1>
+          <p>Hoe de extensie het formulier <i>New declaration</i> invult en de zoekvensters (exporteur, importeur, GN-code, Animo-code, …) afhandelt.</p>
+        </header>
+        <div class="paneel">
+          <div class="veld">
+            <label>Datumnotatie op het formulier</label>
+            <div class="segment" id="datumformaat" role="radiogroup">
+              <button data-formaat="MM/DD/YYYY" aria-pressed="true">MM/DD/YYYY <span class="voorbeeld">11/29/2026</span></button>
+              <button data-formaat="DD-MM-YYYY" aria-pressed="false">DD-MM-YYYY <span class="voorbeeld">29-11-2026</span></button>
+            </div>
+            <p class="hint">Zo worden <i>Expected date of arrival</i> en <i>Date of issue</i> ingevuld. In het paneel staan datums als dd-mm-jjjj; onder elk datumveld zie je de waarde zoals die in Portbase komt.</p>
+          </div>
+          <div class="veld">
+            <label for="maxwacht">Maximale wachttijd op een zoekresultaat</label>
+            <select id="maxwacht" style="max-width:260px">
+              <option value="30">30 seconden</option><option value="60">1 minuut</option><option value="120">2 minuten (aanbevolen)</option>
+              <option value="180">3 minuten</option><option value="300">5 minuten</option>
+            </select>
+            <p class="hint">Na <i>Search</i> wacht de extensie tot Portbase resultaten of <i>No results</i> toont; pas na deze tijd geeft ze het op en zet ze het veld op <i>handmatig</i>.</p>
+          </div>
+          <div class="veld">
+            <label class="vink-label"><input type="checkbox" id="trefwoorden" checked> Bij <i>No results</i> verder zoeken op trefwoorden</label>
+            <p class="hint">Organisaties: naam zonder rechtsvorm (B.V., Co., Ltd), de eerste woorden, losse kenmerkende woorden, erkenningsnummer zonder letters en de plaats. GN-code: geslacht uit de Latijnse naam en woorden uit de omschrijving. Animo: woorden uit de omschrijving. Alleen een duidelijke winnaar wordt gekozen; anders vul je het zelf in via <i>Zoek in Portbase</i>.</p>
+          </div>
+        </div>
+        <div class="paneel lijst">
+          <div><b>HC-nummer</b><span>Bij gezondheidscertificaten uit TRACES wordt altijd de <b>IMSOC-referentie</b> (vak I.2.a, bijv. <code>IMPORT.EU.IN.2026.0012345</code>) als nummer gebruikt, niet de certificate reference (I.2). De certificate reference telt wel mee als verwijzing van een labrapport.</span></div>
+          <div><b>Nooit verzenden</b><span>De extensie klikt alleen op <i>Save</i> in de zoekvensters, nooit op <i>Save</i>/<i>Send</i> van de declaratie.</span></div>
+        </div>
       </section>
 
       <!-- ============ HANDMATIGE PROMPT ============ -->
@@ -65,12 +100,14 @@
           <div><b>Documentcheck</b><span>Leest alleen de Portbase-pagina; er wordt niets verstuurd.</span></div>
           <div><b>Uitlezen met AI</b><span>Alleen als je op <i>Uitlezen</i> klikt, gaan de geselecteerde documenten naar de gekozen aanbieder: <code>api.anthropic.com</code>, <code>api.openai.com</code> of <code>generativelanguage.googleapis.com</code>.</span></div>
           <div><b>Handmatige modus</b><span>De extensie verstuurt niets; jij plakt zelf in een chat. Let op de instellingen van je chat-account (bijv. of gesprekken voor training gebruikt mogen worden).</span></div>
+          <div><b>Wachten op Portbase</b><span>Om te weten of een zoekopdracht nog loopt, telt de extensie op de Portbase-pagina de openstaande verzoeken (alleen tijdstippen; geen adressen, inhoud of gegevens) en verstuurt ze niets.</span></div>
+          <div><b>Laatste voorstel</b><span>Het laatste AI-voorstel wordt lokaal bewaard (<code>chrome.storage.local</code>), zodat je het na herladen van de pagina kunt herstellen. <i>Nieuw</i> in het paneel of de knop hieronder wist het.</span></div>
           <div><b>API-sleutels</b><span>Staan alleen lokaal in deze browser (<code>chrome.storage.local</code>) en gaan alleen naar de bijbehorende aanbieder.</span></div>
         </div>
         <div class="waarschuwing">Controleer of het versturen van handelsdocumenten naar een AI-dienst past binnen de afspraken van je organisatie en met je klanten.</div>
         <div class="paneel">
           <h2>Gegevens wissen</h2>
-          <p class="hint">Verwijdert alle API-sleutels en modelkeuzes uit deze browser.</p>
+          <p class="hint">Verwijdert alle API-sleutels, modelkeuzes, invulinstellingen en het bewaarde laatste voorstel uit deze browser.</p>
           <button class="knop gevaar" id="wis-alles">Alle sleutels en instellingen wissen</button>
         </div>
       </section>

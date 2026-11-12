@@ -36,7 +36,7 @@ const AI_JSON = {
   aankomstDatum: v('26-09-2026', 'laag', 'Extra info'), aankomstTijd: v('07:00', 'laag'),
   containers: [{ containernummer: 'HLBU9066045', zegelnummer: 'EIA123', bron: 'HC' }],
   documenten: [
-    { type: 'HC', identificatie: 'EIA/VSP/2026-27/02937', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' },
+    { type: 'HC', identificatie: 'EIA/VSP/2026-27/02937', imsocReferentie: 'IMPORT.EU.IN.2026.0012345', certificaatReferentie: 'EIA/VSP/2026-27/02937', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' },
     { type: 'LAB', identificatie: 'EIA/VZ/26-27/0003572', datumAfgifte: '07-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: 'EIA/VSP/2026-27/02937', bestand: 'hc.pdf', zekerheid: 'hoog' },
     { type: 'COMM', identificatie: 'INV-2026-0815', datumAfgifte: '05-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' },
     { type: 'COMM', identificatie: 'HLCUMA3260712342', datumAfgifte: '12-08-2026', landAfgifte: 'IN', inrichtingOorsprong: '', verwijstNaar: '', bestand: 'hc.pdf', zekerheid: 'hoog' }
@@ -73,8 +73,15 @@ await context.route('https://api.anthropic.com/**', async (route) => {
   apiVerzoek = JSON.parse(route.request().postData());
   await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' }, body: sseBody(AI_JSON) });
 });
-await context.route('https://food-and-consumer-products.pcs.portbase.com/**', (route) =>
-  route.fulfill({ status: 200, contentType: 'text/html', body: fixture }));
+await context.route('https://food-and-consumer-products.pcs.portbase.com/**', async (route) => {
+  const url = new URL(route.request().url());
+  // Nagebootste Portbase-API (zoekvensters): antwoord na ?ms= milliseconden
+  if (url.pathname.startsWith('/api/')) {
+    await new Promise((r) => setTimeout(r, Number(url.searchParams.get('ms')) || 0));
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }).catch(() => {});
+  }
+  return route.fulfill({ status: 200, contentType: 'text/html', body: fixture });
+});
 
 try {
   let [sw] = context.serviceWorkers();
@@ -105,6 +112,19 @@ try {
   assert.strictEqual(await page.locator('select[data-doctype="1"]').inputValue(), 'Certified lab report (162)');
   const check = await page.locator('#ai-check').innerText();
   assert.ok(/Gezondheidscertificaat/i.test(check), 'documentcheck toont HC');
+  // HC: IMSOC-referentie als nummer; het labrapport verwijst naar de certificate reference en dat telt ook
+  assert.strictEqual(await page.locator('input[data-pad="documenten.0.identificatie"]').inputValue(), 'IMPORT.EU.IN.2026.0012345');
+  assert.strictEqual(await page.locator('input[data-pad="documenten.0.certificaatReferentie"]').inputValue(), 'EIA/VSP/2026-27/02937');
+  assert.ok(/Verwijst correct naar HC/.test(check), check);
+  // Samenvatting, stappen en datumnotatie van Portbase onder het datumveld
+  assert.ok(/IMPORT\.EU\.IN\.2026\.0012345/.test(await page.locator('#feiten').innerText()));
+  assert.ok(/Controleren/.test(await page.locator('#stepper li.actief').innerText()));
+  assert.strictEqual(await page.locator('input[data-pad="documenten.0.datumAfgifte"] + .datum-hint').innerText(), 'In Portbase: 08/07/2026');
+  // Filter "Alleen te controleren" verbergt velden met zekerheid hoog
+  await page.locator('#res-filter').click();
+  assert.ok(!(await page.locator('input[data-pad="bol.waarde"]').isVisible()), 'hoog verborgen');
+  assert.ok(await page.locator('input[data-pad="bestemming.waarde"]').isVisible(), 'middel zichtbaar');
+  await page.locator('#res-filter').click();
 
   // Correctie door de gebruiker in het voorstel
   await page.locator('input[data-pad="vervoermiddelNaam.waarde"]').fill('MSC ANNA / IMO 9000000');
@@ -136,7 +156,7 @@ try {
   assert.strictEqual(await keuze('[data-test="arrival-means-of-transport-mode"]'), 'Sea transport', 'Vessel -> Sea transport');
   assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-identification"]'), 'MSC ANNA / IMO 9000000');
   assert.strictEqual(await waarde('[data-test="arrival-means-of-transport-nationality-un-code"]'), 'PA - Panama');
-  assert.strictEqual(await waarde('app-form-means-of-transport-before-border [data-test="arrival-date-time-estimated"]'), '26-09-2026');
+  assert.strictEqual(await waarde('app-form-means-of-transport-before-border [data-test="arrival-date-time-estimated"]'), '09/26/2026', 'datum als MM/DD/YYYY');
   assert.strictEqual(await waarde('app-form-means-of-transport-before-border [data-test="start-time"]'), '07:00');
   // Verborgen secties met dezelfde data-test-namen blijven onaangeroerd
   assert.strictEqual(await waarde('app-form-means-of-transport-after-border [data-test="start-time"]'), '');
@@ -150,7 +170,8 @@ try {
   assert.strictEqual(await keuze('[data-test="document-type"]', 0), 'Health certificate (636)');
   assert.strictEqual(await keuze('[data-test="document-type"]', 1), 'Certified lab report (162)');
   assert.strictEqual(await waarde('[data-test="document-number"]', 1), 'EIA/VZ/26-27/0003572');
-  assert.strictEqual(await waarde('[data-test="document-date-of-issue"]', 0), '07-08-2026');
+  assert.strictEqual(await waarde('[data-test="document-date-of-issue"]', 0), '08/07/2026', 'afgiftedatum als MM/DD/YYYY');
+  assert.strictEqual(await waarde('[data-test="document-number"]', 0), 'IMPORT.EU.IN.2026.0012345', 'HC: IMSOC-referentie, niet de certificate reference');
   assert.strictEqual(await waarde('[data-test="document-country-un-code-of-issue"]', 1), 'IN - India');
   assert.strictEqual(await tekst('app-form-documents .file-name', 0), 'hc.pdf', 'HC geüpload in documentregel');
   // Goederen: twee items
@@ -247,6 +268,14 @@ try {
   await opties.locator('nav a[data-pagina="prompt"]').click();
   await opties.waitForFunction(() => document.querySelector('#prompt-tekst').value.includes('"goederen"'), null, { timeout: 5000 });
   assert.ok((await opties.locator('#prompt-tekst').inputValue()).includes('Keuzehulp'), 'Animo-keuzehulp in de prompt');
+  // Invullen: standaard MM/DD/YYYY; wachttijd aanpassen wordt bewaard
+  await opties.locator('nav a[data-pagina="invullen"]').click();
+  await opties.locator('#pagina-invullen:not([hidden])').waitFor();
+  assert.strictEqual(await opties.locator('#datumformaat button[aria-pressed="true"]').getAttribute('data-formaat'), 'MM/DD/YYYY');
+  await opties.locator('#maxwacht').selectOption('180');
+  await opties.waitForTimeout(300);
+  assert.deepStrictEqual((await opgeslagen()).invullen, { datumFormaat: 'MM/DD/YYYY', maxWacht: 180, trefwoorden: true });
+  await opties.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties-invullen.png') });
   await opties.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties-prompt.png') });
 
   /* ================= Paneel met ChatGPT ================= */
@@ -301,7 +330,7 @@ try {
     gecertificeerdVoor: v('Human consumption', 'hoog', 'HC I.20'), transportconditie: v('Frozen', 'hoog', 'HC I.18'),
     vervoermiddel: v('Vessel'), vervoermiddelNaam: v('TEST VESSEL 001W'), vervoermiddelNationaliteit: v('SG'),
     aankomstDatum: v(''), aankomstTijd: v(''),
-    exporteur: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: ADRES_QP, plaats: 'Binh An', land: 'VN', erkenningsnummer: '', bron: 'HC I.1', zekerheid: 'hoog' },
+    exporteur: { naam: 'QUANG PHU SEAFOOD IMPORT-EXPORT CO., LTD', adres: ADRES_QP, plaats: 'Binh An', land: 'VN', erkenningsnummer: '', bron: 'HC I.1', zekerheid: 'hoog' },
     importeur: { naam: 'EUROFOODLINK B.V.', adres: 'Waalhaven 10', plaats: 'Rotterdam', land: 'NL', erkenningsnummer: '', bron: 'HC I.5', zekerheid: 'hoog' },
     plaatsBestemming: { naam: 'Testbestemming GmbH', adres: 'Teststraße 1', plaats: 'Teststadt', land: 'DE', erkenningsnummer: '99999ES', bron: 'HC I.12', zekerheid: 'hoog' },
     plaatsVerzending: { naam: 'Quang Phu Seafood Import Export Company Limited', adres: ADRES_QP, plaats: 'Binh An', land: 'VN', erkenningsnummer: 'DL 1022', bron: 'HC I.11', zekerheid: 'hoog' },
@@ -332,8 +361,13 @@ try {
   await p4.locator('#blok-hand:not([hidden])').waitFor();
   await p4.locator('#json-in').fill(JSON.stringify(QUANG));
   await p4.locator('#json-verwerk').click();
+  // Portbase traag: de eerste twee zoekopdrachten (exporteur) duren 20 s en tonen intussen al "No results";
+  // de extensie moet wachten tot het zoekverzoek terug is (geen vaste time-out)
+  await p4.evaluate(() => { window.__trageZoek = 2; });
   const t4 = Date.now();
   await p4.locator('#ai-fill').click();
+  await p4.locator('#ai-voortgang:not([hidden])').waitFor();
+  await p4.locator('#ai-fase', { hasText: 'wachten op Portbase' }).waitFor({ timeout: 15000 });
   await p4.locator('#ai-verslag h3').waitFor({ timeout: 400000 });
   assert.strictEqual(await p4.evaluate(() => window.__zijbalkDicht), 0, 'zijbalk bleef open (Quang Phu)');
   console.log('Quang Phu invullen duurde ' + Math.round((Date.now() - t4) / 1000) + ' s');
@@ -349,6 +383,9 @@ try {
   assert.strictEqual(await w4('#countryOfOriginUnCode'), 'VN - Viet Nam');
   // Zoekvensters: van de 5 regels "Quang Phu…" de exporteur in Binh An met EX (zoals de declarant deed)
   assert.strictEqual(await k4('[data-test="organisation-dialog-exporter"]'), 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED | Binh An | EX - exporter');
+  const v4 = await p4.locator('#ai-verslag').innerText();
+  assert.ok(/Exporter \(I\.1\): .*via trefwoord "quang phu seafood import export"/.test(v4), 'exporteur gevonden na "No results" via trefwoorden (trage zoekopdracht afgewacht)');
+  assert.strictEqual(await w4('[data-test="document-date-of-issue"]'), '11/10/2026');
   assert.strictEqual(await k4('[data-test="organisation-dialog-importer"]'), 'EUROFOODLINK B.V. | ROTTERDAM | NL 1001 EG | IM - importer');
   assert.strictEqual(await k4('[data-test="place-of-destination-dialog"]'), 'Testbestemming GmbH | Teststadt | 99999ES | ES - establishment', 'HC I.12 via approval number, land DE');
   assert.strictEqual(await k4('[data-test="border-control-post-dialog"]'), 'Rotterdam');

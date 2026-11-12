@@ -236,6 +236,10 @@
     if (e.key === 'Escape' || e.keyCode === 27) { window.__zijbalkDicht++; e.currentTarget.remove(); }
   });
   // Zoals Angular bij een nieuwe zoekopdracht: rijen weg, direct de lege staat "No results" (nieuw element), resultaten volgen later.
+  // Zoekverzoek naar de "API" (de e2e beantwoordt /api/* na ms milliseconden), zoals Portbase via HttpClient.
+  function api(pad, ms, klaar) {
+    fetch('/api/' + pad + '?ms=' + ms).then(function () { setTimeout(klaar, 30); }, function () { setTimeout(klaar, ms); });
+  }
   function leegTabel(tab, kolommen) {
     tab.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
     tab.insertAdjacentHTML('beforeend', '<tr class="mat-row cdk-no-data-row mat-mdc-no-data-row mat-mdc-row" role="row"><td colspan="' + kolommen + '"><ic-no-results><p>No results</p></ic-no-results></td></tr>');
@@ -363,7 +367,7 @@
       var zt = gdl.querySelector('[data-test="name"]').value, wn = gdl.querySelector('[data-test="scientific-name"]').value.toLowerCase();
       window.__gnZoek = (window.__gnZoek || []).concat([zt + (wn ? ' + ' + wn : '')]);
       leegTabel(gdl.querySelector('[data-test="gn-codes-list"]'), 5);
-      setTimeout(function () {
+      api('gn', 700, function () {
         var tab = gdl.querySelector('[data-test="gn-codes-list"]');
         tab.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
         var hits = GN_CODES.filter(function (x) { return x[0].indexOf(zt) === 0 && (!wn || x[2].toLowerCase().indexOf(wn) >= 0); });
@@ -372,7 +376,7 @@
           tab.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="gn-codes-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell cell field selection mat-column-selection" role="cell"><mat-radio-button class="mat-mdc-radio-button"><div class="mdc-radio"><input type="radio" class="mdc-radio__native-control"></div><label class="mdc-label"></label></mat-radio-button></mat-cell>' +
             '<mat-cell class="mat-mdc-cell mat-column-gnCode" role="cell"> ' + x[0] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-description" role="cell"> ' + x[1] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-scientificName" role="cell"> ' + x[2] + ' </mat-cell><mat-cell class="mat-mdc-cell mat-column-productType" role="cell"> ' + x[3] + ' </mat-cell></mat-row>');
         });
-      }, 700);
+      });
     }
     // Search in de organisatiedialoog: resultaten met vertraging (API)
     if (knop && knop.dataset.test === 'select-search' && !knop.closest('app-gn-code-dialog')) {
@@ -382,9 +386,11 @@
       var term = dlg.querySelector('[data-test="search-term"]').value.toUpperCase();
       var type = dlg.querySelector('[data-test="search-type"] input:checked').value;
       leegTabel(dlg.querySelector('[data-test="organisations-list"]'), 11);
-      setTimeout(function () {
+      // Trage Portbase nabootsen: window.__trageZoek zoekopdrachten duren 20 s (langer dan de vorige grens van 15 s)
+      var vertraging = window.__trageZoek > 0 ? (window.__trageZoek--, 20000) : 900;
+      api('organisaties', vertraging, function () {
         var hits = ORGANISATIES.filter(function (o) {
-          return o.land === land && (type === 'APPROVAL_NUMBER' ? o.erk.toUpperCase().indexOf(term) >= 0 : o.naam.toUpperCase().indexOf(term) >= 0);
+          return o.land === land && (type === 'APPROVAL_NUMBER' ? o.erk.toUpperCase().indexOf(term) >= 0 : type === 'CITY' ? o.plaats.toUpperCase() === term : o.naam.toUpperCase().indexOf(term) >= 0);
         });
         var tabel = dlg.querySelector('[data-test="organisations-list"]');
         tabel.querySelectorAll('mat-row, tr').forEach(function (r) { r.remove(); });
@@ -394,7 +400,7 @@
           tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="organisations-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection" role="cell"><mat-radio-button><div class="mdc-radio"><input type="radio" name="org-keuze" value="' + ORGANISATIES.indexOf(o) + '" class="mdc-radio__native-control"></div></mat-radio-button></mat-cell>' +
             c('name', o.naam) + c('address', o.adres) + c('postalCode', '') + c('city', o.plaats) + c('approvalNumber', o.erk) + c('identificationType', 'OAI') + c('identificationNumber', '1') + c('activity', o.act) + c('section', o.sec) + c('activityDepartment', o.hfd) + '</mat-row>');
         });
-      }, 900);
+      });
     }
     if (knop && knop.dataset.test === 'search-button' && knop.closest('app-animo-code-dialog')) {
       e.preventDefault();

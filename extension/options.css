@@ -93,3 +93,7 @@ textarea { min-height: 320px; font-family: ui-monospace, Consolas, monospace; fo
   .kaarten { grid-template-columns: repeat(2, 1fr); }
   .lijst > div { grid-template-columns: 1fr; gap: .2rem; }
 }
+
+.segment .voorbeeld { font-family: ui-monospace, Consolas, monospace; font-size: .8em; opacity: .75; margin-left: .3rem; }
+.vink-label { display: flex !important; gap: .5rem; align-items: center; font-weight: 600; cursor: pointer; }
+.vink-label input { width: 16px; height: 16px; accent-color: var(--accent); }
