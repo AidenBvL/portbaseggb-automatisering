@@ -789,6 +789,21 @@
   var RECHTSVORM = /\b(b ?v|n ?v|ltd|limited|pvt|private|llc|inc|co|company|corp|corporation|gmbh|s ?a|sarl|spa|bv|jsc|plc)\b/g;
   function kaal(s) { return norm(s).replace(RECHTSVORM, '').replace(/\s+/g, ' ').trim(); }
   function compact(s) { return norm(s).replace(/ /g, ''); }
+  var UMLAUT = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'AE', 'Ö': 'OE', 'Ü': 'UE', 'ß': 'ss', 'ẞ': 'SS' };
+  /** Umlauts uitgeschreven: "Kühne + Heitz" -> "Kuehne + Heitz". */
+  function uitgeschreven(s) { return String(s || '').normalize('NFC').replace(/[äöüÄÖÜßẞ]/g, function (c) { return UMLAUT[c]; }); }
+  /** Zoekvariant met uitgeschreven umlauts in hoofdletters ("KUEHNE + HEITZ"), of '' als er geen umlaut in staat. */
+  function umlautVariant(s) { var u = uitgeschreven(s); return u !== String(s || '').normalize('NFC') ? u.toUpperCase() : ''; }
+  /** Score voor naam a tegen zoeknaam b (40 exact, 20 begin, 10 deel); Kühne = Kuehne = Kuhne. */
+  function naamScore(a, b) {
+    return Math.max.apply(null, [[kaal(a), kaal(b)], [kaal(uitgeschreven(a)), kaal(uitgeschreven(b))]].map(function (x) {
+      var kn = x[0], kz = x[1];
+      if (!kn || !kz) return 0;
+      if (kn === kz) return 40;
+      if (kn.indexOf(kz) === 0 || kz.indexOf(kn) === 0) return 20;
+      return kn.indexOf(kz) >= 0 ? 10 : 0;
+    }));
+  }
   var STOP = { the: 1, and: 1, van: 1, der: 1, den: 1, het: 1, number: 1, street: 1 };
   function woorden(s) { return norm(s).split(' ').filter(function (w) { return w.length >= 3 && !STOP[w]; }); }
   /** Deel van de woorden van b dat ook in a voorkomt (0..1). */
@@ -861,10 +876,9 @@
     var erkZoek = zoek.erkenning || (zoek.type === 'APPROVAL_NUMBER' ? zoek.term : '');
     var naam = cel(rij, 'name') || txt(rij), s = 0, basis = false;
     if (naamZoek) {
-      var kn = kaal(naam), kz = kaal(naamZoek);
-      if (kn && kn === kz) { s += 40; basis = true; }
-      else if (kn && kz && (kn.indexOf(kz) === 0 || kz.indexOf(kn) === 0)) s += 20;
-      else if (kn && kz && kn.indexOf(kz) >= 0) s += 10;
+      var ns = naamScore(naam, naamZoek);
+      s += ns;
+      if (ns === 40) basis = true;
     }
     if (erkZoek) {
       var er = compact(cel(rij, 'approvalNumber')), ez = compact(erkZoek);
@@ -876,10 +890,10 @@
     var rol = ROL[zoek.rol];
     if (rol && rol.test(norm(cel(rij, 'activity')))) s += 15;
     if (zoek.sector && norm(cel(rij, 'activityDepartment')) === zoek.sector) s += 6;
-    if (zoek.adres) s += Math.round(overlap(zoek.adres + ' ' + (zoek.plaats || ''), cel(rij, 'address')) * 20);
-    var stad = norm(cel(rij, 'city'));
-    if (stad && zoek.plaats && stad === norm(zoek.plaats)) s += 10;
-    else if (stad && zoek.adres && norm(zoek.adres).indexOf(stad) >= 0) s += 5;
+    if (zoek.adres) s += Math.round(overlap(uitgeschreven(zoek.adres + ' ' + (zoek.plaats || '')), uitgeschreven(cel(rij, 'address'))) * 20);
+    var stad = norm(uitgeschreven(cel(rij, 'city')));
+    if (stad && zoek.plaats && stad === norm(uitgeschreven(zoek.plaats))) s += 10;
+    else if (stad && zoek.adres && norm(uitgeschreven(zoek.adres)).indexOf(stad) >= 0) s += 5;
     return Math.max(s, 0);
   }
 
@@ -906,6 +920,8 @@
    * terugval op naam/erkenningsnummer); na "No results" op trefwoorden: naam
    * zonder rechtsvorm en leestekens, de eerste woorden van de naam, losse
    * kenmerkende woorden, het erkenningsnummer zonder letters en de plaats.
+   * Staat er een umlaut in de naam of plaats, dan direct daarna ook een keer
+   * met de umlaut uitgeschreven in hoofdletters: Kühne + Heitz -> KUEHNE + HEITZ.
    */
   function orgPogingen(zoek) {
     var p = [{ type: zoek.type || 'NAME', term: zoek.term }];
@@ -921,6 +937,12 @@
       if (cijfers.length >= 3 && cijfers !== compact(zoek.erkenning)) p.push({ type: 'APPROVAL_NUMBER', term: cijfers, trefwoord: true });
       if (zoek.plaats) p.push({ type: 'CITY', term: zoek.plaats, trefwoord: true });
     }
+    p = p.reduce(function (uit, x) {
+      uit.push(x);
+      var v = x.type !== 'APPROVAL_NUMBER' ? umlautVariant(x.term) : '';
+      if (v) uit.push(Object.assign({}, x, { term: v, umlaut: true }));
+      return uit;
+    }, []);
     var gezien = {};
     return p.filter(function (x) {
       var k = x.type + '|' + norm(x.term);
@@ -961,7 +983,7 @@
       // Resultaten, maar niets dat op de naam/het nummer lijkt: verder met het volgende trefwoord.
       if (Math.max.apply(null, scores) <= 0) { geprobeerd[geprobeerd.length - 1] += ' (' + rijen.length + ' niet passend)'; continue; }
       var keuze = kiesBeste(rijen, scores, 40, 8);
-      var via = p.trefwoord ? ' (via trefwoord "' + p.term + '")' : '';
+      var via = p.trefwoord ? ' (via trefwoord "' + p.term + '")' : p.umlaut ? ' (via "' + p.term + '")' : '';
       if (keuze.rij) {
         var c = keuze.rij;
         if (!(await selecteerRij(c))) return { ok: true, melding: 'regel ' + cel(c, 'name') + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };

@@ -171,6 +171,10 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen** (drie stappen:
      GN-code op het geslacht uit de Latijnse naam en woorden uit de
      omschrijving; Animo op woorden uit de omschrijving van de code.
      Resultaten die niet op de naam/het nummer lijken tellen niet als treffer.
+   - **Umlauts**: staat er een umlaut in de naam of plaats, dan zoekt de
+     extensie direct daarna ook een keer met de umlaut uitgeschreven in
+     hoofdletters (*Kühne + Heitz* → *KUEHNE + HEITZ*, ß → SS). Bij het
+     kiezen tellen *Kühne*, *Kuehne* en *Kuhne* als dezelfde naam.
    - Alleen een **duidelijke winnaar** wordt gekozen en opgeslagen. Anders
      klikt de extensie *Cancel* en staat het veld als *handmatig* in het
      verslag, met **Zoek in Portbase** (opent het venster met de zoekterm en

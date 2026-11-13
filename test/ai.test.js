@@ -424,4 +424,17 @@ test('organisatie zoeken: na "No results" verder op trefwoorden', () => {
   assert.strictEqual(FILL.orgPogingen(FILL.orgZoek({ naam: 'QUANG PHU SEAFOOD CO., LTD' }, 'exporter', 'VN', {})).length, 1);
 });
 
+test('organisatie zoeken: umlaut ook een keer uitgeschreven (Kühne -> KUEHNE)', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  FILL.instellen({ trefwoorden: true });
+  const p = FILL.orgPogingen(FILL.orgZoek({ naam: 'Kühne + Heitz', plaats: 'Großenkneten' }, 'importer', 'DE', {}));
+  assert.deepStrictEqual(p.map((x) => x.type + ':' + x.term), ['NAME:Kühne + Heitz', 'NAME:KUEHNE + HEITZ', 'NAME:kuhne', 'NAME:heitz', 'CITY:Großenkneten', 'CITY:GROSSENKNETEN']);
+  FILL.instellen({ trefwoorden: false });
+  assert.deepStrictEqual(FILL.orgPogingen(FILL.orgZoek({ naam: 'Kühne + Heitz' }, 'importer', 'DE', {})).map((x) => x.term), ['Kühne + Heitz', 'KUEHNE + HEITZ']);
+  assert.strictEqual(FILL.orgPogingen(FILL.orgZoek({ naam: 'Koelhuis X B.V.' }, 'importer', 'NL', {})).length, 1);
+  // Een regel "KUEHNE + HEITZ" telt als exacte naam voor zoeknaam "Kühne + Heitz".
+  const rij = { textContent: 'KUEHNE + HEITZ', querySelector: () => null, querySelectorAll: () => [] };
+  assert.ok(FILL.rijScore(rij, { type: 'NAME', term: 'Kühne + Heitz', naam: 'Kühne + Heitz' }) >= 40);
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');
