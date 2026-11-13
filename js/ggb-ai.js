@@ -196,7 +196,7 @@
       description: 'Document(s) (I.9): elk aangeleverd document dat in de GGB opgenomen moet worden.',
       items: obj({
         type: str('Documentcode: HC gezondheidscertificaat, LAB gecertificeerd labrapport/analyseverslag, CATCH vangstcertificaat, OFFCERT officieel certificaat Ver. 2019/1793, PRIVATT private attestation, CITES, COI biologisch, PHYTO fytosanitair, COMM handelsdocument (factuur, paklijst, B/L), OTHER.', DOC_CODES),
-        identificatie: str('Documentnummer zoals in de GGB. Voor het HC (TRACES): ALTIJD de IMSOC-referentie uit vak I.2.a (bijv. "IMPORT.EU.IN.2026.0012345"), NIET de certificate reference uit vak I.2. Overige documenten: nummer precies zoals gedrukt.'),
+        identificatie: str('Documentnummer zoals in de GGB. Voor het HC (TRACES): ALTIJD de IMSOC-referentie uit vak I.2.a (bijv. "IMPORT.EU.IN.2026.0012345"), NIET de certificate reference uit vak I.2; alleen als er geen IMSOC-referentie op staat de certificate reference (I.2). Overige documenten: nummer precies zoals gedrukt.'),
         imsocReferentie: str('Alleen bij het HC: IMSOC-referentie uit vak I.2.a (bijv. "IMPORT.EU.VN.2026.0001234"). Leeg bij andere documenten of als niet vermeld.'),
         certificaatReferentie: str('Alleen bij het HC: certificate reference uit vak I.2 (lokaal nummer van de bevoegde autoriteit, bijv. "EIA/VSP/2026-27/02937"). Leeg bij andere documenten.'),
         datumAfgifte: str('Datum van afgifte, dd-mm-jjjj'),
@@ -254,7 +254,8 @@
     '    I.18 Transport conditions -> transportconditie; I.19 Container/Seal -> containers; I.20 Certified as or for -> gecertificeerdVoor;',
     '    I.22 For internal market -> bestemming "Import" (I.21 For transit -> "Transit");',
     '    I.2.a IMSOC reference -> nummer van het HC (identificatie én imsocReferentie); I.2 Certificate reference -> certificaatReferentie.',
-    '    Gebruik voor het HC ALTIJD de IMSOC-referentie (bijv. "IMPORT.EU.IN.2026.0012345") als nummer, nooit de certificate reference.',
+    '    Gebruik voor het HC ALTIJD de IMSOC-referentie (bijv. "IMPORT.EU.IN.2026.0012345") als nummer, niet de certificate reference.',
+    '    Staat er geen IMSOC-referentie op het HC, gebruik dan de certificate reference (I.2) als nummer (imsocReferentie leeg).',
     '    I.27 Description of consignment -> goederen (CN code, Species, Nature of commodity, Batch number, Package count, Net weight,',
     '    Manufacturing plant). Brutogewichten per product uit paklijst of B/L als het HC alleen een totaal geeft.',
     '- Goederenitems moeten identiek zijn aan het HC: maak precies één goederenitem per regel van vak I.27 (#1, #2, …),',
@@ -450,8 +451,12 @@
         imsoc = normImsoc(doc.imsocReferentie) || (isImsoc(id) ? normImsoc(id) : '');
         certRef = s(doc.certificaatReferentie) || (id && !isImsoc(id) ? id : '');
         if (imsoc) id = imsoc;
-        else {
-          w.push('IMSOC-referentie (HC vak I.2.a) niet gevonden' + (id ? '; nu staat de certificate reference "' + id + '" als nummer' : '') + '. Vul de IMSOC-referentie (bijv. IMPORT.EU.XX.2026.0000000) zelf in.');
+        else if (certRef) {
+          // Geen IMSOC-referentie: de certificate reference (I.2) is dan het nummer.
+          id = certRef;
+          w.push('IMSOC-referentie (HC vak I.2.a) niet gevonden; de certificate reference "' + certRef + '" staat als nummer van het HC.');
+        } else {
+          w.push('IMSOC-referentie (HC vak I.2.a) niet gevonden' + (id ? '; nu staat "' + id + '" als nummer' : '') + '. Vul het nummer van het HC zelf in.');
           zekerheid = 'laag';
         }
       }

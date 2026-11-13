@@ -379,8 +379,15 @@ test('HC: altijd de IMSOC-referentie (I.2.a) als nummer, certificate reference (
   r = AI.normaliseer({ documenten: [doc({ identificatie: 'IMPORT.EU.VN.2026.0000001' })] });
   assert.strictEqual(r.documenten[0].identificatie, 'IMPORT.EU.VN.2026.0000001');
   assert.strictEqual(r.documenten[0].imsocReferentie, 'IMPORT.EU.VN.2026.0000001');
-  // Geen IMSOC-referentie: waarschuwing en zekerheid laag
+  // Geen IMSOC-referentie, wel certificate reference: die is dan het nummer (met melding)
+  r = AI.normaliseer({ documenten: [doc({ identificatie: '', imsocReferentie: '', certificaatReferentie: 'EIA/VSP/2026-27/02937' })] });
+  assert.strictEqual(r.documenten[0].identificatie, 'EIA/VSP/2026-27/02937');
+  assert.strictEqual(r.documenten[0].zekerheid, 'hoog');
+  assert.ok(r.waarschuwingen.some((w) => /niet gevonden; de certificate reference "EIA\/VSP\/2026-27\/02937" staat als nummer/.test(w)));
   r = AI.normaliseer({ documenten: [doc({ identificatie: 'EIA/VSP/2026-27/02937' })] });
+  assert.strictEqual(r.documenten[0].identificatie, 'EIA/VSP/2026-27/02937');
+  // Geen IMSOC-referentie en geen certificate reference: waarschuwing en zekerheid laag
+  r = AI.normaliseer({ documenten: [doc({ identificatie: '' })] });
   assert.strictEqual(r.documenten[0].zekerheid, 'laag');
   assert.ok(r.waarschuwingen.some((w) => /IMSOC-referentie \(HC vak I\.2\.a\) niet gevonden/.test(w)));
   // Andere documenten: nummer ongewijzigd
@@ -419,9 +426,33 @@ test('organisatie zoeken: na "No results" verder op trefwoorden', () => {
   const p = FILL.orgPogingen(FILL.orgZoek({ naam: 'QUANG PHU SEAFOOD IMPORT-EXPORT CO., LTD', plaats: 'Binh An' }, 'exporter', 'VN', {}));
   assert.deepStrictEqual(p.map((x) => x.type + ':' + x.term), ['NAME:QUANG PHU SEAFOOD IMPORT-EXPORT CO., LTD', 'NAME:quang phu seafood import export', 'NAME:quang phu', 'NAME:quang', 'CITY:Binh An']);
   const i = FILL.orgPogingen(FILL.orgZoek({ naam: 'Koelhuis X B.V.', erkenningsnummer: 'NL 1001 EG' }, 'inrichting', 'NL', {}));
-  assert.deepStrictEqual(i.map((x) => x.type + ':' + x.term), ['APPROVAL_NUMBER:NL 1001 EG', 'NAME:Koelhuis X B.V.', 'NAME:koelhuis x', 'NAME:koelhuis', 'APPROVAL_NUMBER:1001']);
+  assert.deepStrictEqual(i.map((x) => x.type + ':' + x.term), ['APPROVAL_NUMBER:NL 1001 EG', 'APPROVAL_NUMBER:1001', 'NAME:Koelhuis X B.V.', 'NAME:koelhuis x', 'NAME:koelhuis']);
   FILL.instellen({ trefwoorden: false });
   assert.strictEqual(FILL.orgPogingen(FILL.orgZoek({ naam: 'QUANG PHU SEAFOOD CO., LTD' }, 'exporter', 'VN', {})).length, 1);
+});
+
+test('erkenningsnummer: trefwoorden zonder landcode, kolom ID voor Nederlandse inrichtingen', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  FILL.instellen({ trefwoorden: true });
+  assert.strictEqual(FILL.erkKern('3700/03447 CN'), '3700/03447');
+  assert.strictEqual(FILL.erkKern('NL 527 EG'), '527');
+  assert.strictEqual(FILL.erkKern('DL 1022'), '1022');
+  assert.deepStrictEqual(FILL.erkTrefwoorden('3700/03447 CN'), ['3700/03447', '03447', '3700', '370003447']);
+  const ex = FILL.orgPogingen(FILL.orgZoek({ naam: 'Guolian Aquatic Co., Ltd', erkenningsnummer: '3700/03447 CN' }, 'exporter', 'CN', {}));
+  assert.deepStrictEqual(ex.map((x) => x.type + ':' + x.term).slice(0, 3), ['NAME:Guolian Aquatic Co., Ltd', 'APPROVAL_NUMBER:3700/03447 CN', 'APPROVAL_NUMBER:3700/03447']);
+  const rij = (o, ids) => ({ textContent: o.name, querySelector: (sel) => {
+    const m = sel.match(/mat-column-(\w+)/); const k = m && m[1];
+    return { textContent: k === 'identificationNumber' ? (ids || '') : (o[k] || '') }; } });
+  // Portbase: 3700/03447 zonder CN -> exacte treffer op de kern
+  const cn = FILL.rijScore(rij({ name: 'GUOLIAN AQUATIC CO., LTD', approvalNumber: '3700/03447' }), FILL.orgZoek({ naam: 'Guolian Aquatic Co., Ltd', erkenningsnummer: '3700/03447 CN' }, 'inrichting', 'CN', {}));
+  assert.ok(cn >= 85, 'naam 40 + kern 45: ' + cn);
+  // Constellation Nijkerk: kolom Approval number leeg, NL 527 EG staat als 527 in kolom ID (OAI/TNT)
+  const zoek = FILL.orgZoek({ naam: 'Constellation Cold Logistics Nijkerk B.V.', plaats: 'Nijkerk', erkenningsnummer: 'NL 527 EG' }, 'bestemming', 'NL', {});
+  const C = { name: 'Constellation Cold Logistics Nijkerk B.V.', address: 'Gildenstraat 51', city: 'Nijkerk', approvalNumber: '', activityDepartment: 'veterinary' };
+  const met = FILL.rijScore(rij(Object.assign({ activity: 'ES - establishment' }, C), ' 6534796\n527 '), zoek);
+  const zonder = FILL.rijScore(rij(Object.assign({ activity: 'ES - establishment' }, C), ' 6534796\n1234 '), zoek);
+  assert.strictEqual(met - zonder, 35, 'ID 527 telt als erkenningsnummer');
+  assert.ok(FILL.rijScore(rij({ name: 'Iets anders B.V.', city: 'Elders' }, '6534796\n527'), zoek) >= 35, 'ook zonder naam een basis');
 });
 
 test('organisatie zoeken: umlaut ook een keer uitgeschreven (Kühne -> KUEHNE)', () => {

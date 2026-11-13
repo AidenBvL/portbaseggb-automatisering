@@ -91,7 +91,8 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen** (drie stappen:
    bijv. `IMPORT.EU.IN.2026.0012345`), niet de *certificate reference*
    (vak I.2). Die laatste staat apart in het voorstel en telt mee als
    verwijzing van een labrapport naar het HC. Ontbreekt de IMSOC-referentie,
-   dan meldt het paneel dat onder *Aandachtspunten*.
+   dan wordt de *certificate reference* het nummer en meldt het paneel dat
+   onder *Aandachtspunten*.
 4. Op het voorstel draait direct de **documentcheck**: welke documenten zijn
    voor deze GN-code/land vereist (TARIC + NVWA-regels) en zitten ze bij de
    upload, inclusief de verwijzing van het labrapport naar het HC.
@@ -171,6 +172,12 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen** (drie stappen:
      GN-code op het geslacht uit de Latijnse naam en woorden uit de
      omschrijving; Animo op woorden uit de omschrijving van de code.
      Resultaten die niet op de naam/het nummer lijken tellen niet als treffer.
+   - **Erkenningsnummers**: na *No results* ook zonder landcode en letters
+     (*3700/03447 CN* → *3700/03447*, *NL 527 EG* → *527*), de losse
+     nummerdelen en alleen de cijfers. Nederlandse inrichtingen hebben het
+     erkenningsnummer vaak niet in de kolom *Approval number* maar in de kolom
+     *ID* (bijv. Constellation Cold Logistics Nijkerk: `527` voor *NL 527 EG*);
+     dat telt ook als treffer.
    - **Umlauts**: staat er een umlaut in de naam of plaats, dan zoekt de
      extensie direct daarna ook een keer met de umlaut uitgeschreven in
      hoofdletters (*Kühne + Heitz* → *KUEHNE + HEITZ*, ß → SS). Bij het

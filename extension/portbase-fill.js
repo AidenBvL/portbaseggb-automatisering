@@ -794,6 +794,30 @@
   function uitgeschreven(s) { return String(s || '').normalize('NFC').replace(/[äöüÄÖÜßẞ]/g, function (c) { return UMLAUT[c]; }); }
   /** Zoekvariant met uitgeschreven umlauts in hoofdletters ("KUEHNE + HEITZ"), of '' als er geen umlaut in staat. */
   function umlautVariant(s) { var u = uitgeschreven(s); return u !== String(s || '').normalize('NFC') ? u.toUpperCase() : ''; }
+  /**
+   * Kern van een erkenningsnummer: losse letterblokken aan begin en eind
+   * (landcode, achtervoegsel) eraf. "3700/03447 CN" -> "3700/03447", "NL 527 EG" -> "527".
+   */
+  function erkKern(v) {
+    var w = String(v || '').trim().split(/\s+/).filter(Boolean);
+    while (w.length > 1 && /^[A-Za-z]{1,3}$/.test(w[0])) w.shift();
+    while (w.length > 1 && /^[A-Za-z]{1,3}$/.test(w[w.length - 1])) w.pop();
+    return w.join(' ').replace(/^[A-Za-z]{2}[-\s]+(?=\d)/, '').replace(/(\d)[-\s]+[A-Za-z]{1,3}$/, '$1');
+  }
+  /** Trefwoorden uit een erkenningsnummer: kern, losse nummerdelen (langste eerst), alleen cijfers. */
+  function erkTrefwoorden(v) {
+    var kern = erkKern(v), cijfers = String(v || '').replace(/\D/g, '');
+    var delen = kern.split(/[\/\-.\s]+/).filter(function (d) { return /\d/.test(d) && d.length >= 3; });
+    var t = [kern].concat(delen.length > 1 ? delen.slice().sort(function (a, b) { return b.length - a.length; }) : [], [cijfers]);
+    var zelf = String(v || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    return t.filter(function (x, i, a) { return x && x.length >= 3 && a.indexOf(x) === i && x.toUpperCase() !== zelf; });
+  }
+  /** Nummers in de kolom "ID" (identificationNumber); Nederlandse erkenningen (NL 527 EG) staan daar als "527". */
+  function idNummers(rij) {
+    var c = q('.mat-column-identificationNumber', rij);
+    return c ? String(c.textContent || '').split(/\s+/).map(compact).filter(Boolean) : [];
+  }
+
   /** Score voor naam a tegen zoeknaam b (40 exact, 20 begin, 10 deel); Kühne = Kuehne = Kuhne. */
   function naamScore(a, b) {
     return Math.max.apply(null, [[kaal(a), kaal(b)], [kaal(uitgeschreven(a)), kaal(uitgeschreven(b))]].map(function (x) {
@@ -881,9 +905,12 @@
       if (ns === 40) basis = true;
     }
     if (erkZoek) {
-      var er = compact(cel(rij, 'approvalNumber')), ez = compact(erkZoek);
+      var er = compact(cel(rij, 'approvalNumber')), ez = compact(erkZoek), ec = ez.replace(/\D/g, '');
+      var ids = idNummers(rij), kern = compact(erkKern(erkZoek));
       if (er && er === ez) { s += 50; basis = true; }
-      else if (er && ez && er.replace(/\D/g, '') === ez.replace(/\D/g, '') && ez.replace(/\D/g, '')) { s += 35; basis = true; }
+      else if (er && kern && er === kern) { s += 45; basis = true; } // 3700/03447 = 3700/03447 CN
+      else if (er && ec && er.replace(/\D/g, '') === ec) { s += 35; basis = true; }
+      else if (ec && ids.some(function (x) { return x === ez || x === kern || x.replace(/\D/g, '') === ec && /^\d+$/.test(x); })) { s += 35; basis = true; } // NL 527 EG in kolom ID: 527
       else if (er && ez) s -= 15;
     }
     if (!basis && s < 20) return 0;
@@ -920,12 +947,18 @@
    * terugval op naam/erkenningsnummer); na "No results" op trefwoorden: naam
    * zonder rechtsvorm en leestekens, de eerste woorden van de naam, losse
    * kenmerkende woorden, het erkenningsnummer zonder letters en de plaats.
+   * Het erkenningsnummer krijgt ook trefwoorden: zonder landcode en letters
+   * (3700/03447 CN -> 3700/03447, NL 527 EG -> 527), de losse nummerdelen en
+   * alleen de cijfers; bij zoeken op erkenningsnummer komen die vóór de naam.
    * Staat er een umlaut in de naam of plaats, dan direct daarna ook een keer
    * met de umlaut uitgeschreven in hoofdletters: Kühne + Heitz -> KUEHNE + HEITZ.
    */
   function orgPogingen(zoek) {
     var p = [{ type: zoek.type || 'NAME', term: zoek.term }];
+    var erkT = run.trefwoorden ? erkTrefwoorden(zoek.erkenning).map(function (t) { return { type: 'APPROVAL_NUMBER', term: t, trefwoord: true }; }) : [];
+    if (zoek.type === 'APPROVAL_NUMBER') { p = p.concat(erkT); erkT = []; }
     if (zoek.terugval && zoek.terugval.term) p.push(zoek.terugval);
+    if (erkT.length && compact(erkT[0].term) === compact(erkKern(zoek.erkenning))) p.push(erkT.shift()); // kern meteen na het volle nummer
     if (run.trefwoorden) {
       var kaalNaam = kaal(zoek.naam || '');
       if (kaalNaam) p.push({ type: 'NAME', term: kaalNaam, trefwoord: true });
@@ -933,8 +966,7 @@
       if (w.length > 2) p.push({ type: 'NAME', term: w.slice(0, 2).join(' '), trefwoord: true });
       w.filter(function (x) { return x.length >= 4 && !GENERIEK[x]; }).sort(function (a, b) { return b.length - a.length; }).slice(0, 2)
         .forEach(function (x) { p.push({ type: 'NAME', term: x, trefwoord: true }); });
-      var cijfers = String(zoek.erkenning || '').replace(/\D/g, '');
-      if (cijfers.length >= 3 && cijfers !== compact(zoek.erkenning)) p.push({ type: 'APPROVAL_NUMBER', term: cijfers, trefwoord: true });
+      p = p.concat(erkT);
       if (zoek.plaats) p.push({ type: 'CITY', term: zoek.plaats, trefwoord: true });
     }
     p = p.reduce(function (uit, x) {
@@ -1403,7 +1435,7 @@
     return qa('input:not([disabled]):not([type="hidden"])', f).length > 0;
   }
 
-  var exported = { vul: vul, stop: stop, instellen: instellen, orgPogingen: orgPogingen, verkeerSinds: verkeerSinds, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, afhandelen: afhandelen, rijScore: rijScore, gnScore: gnScore, kenmerkScore: kenmerkScore, typeOvereenkomst: typeOvereenkomst, orgZoek: orgZoek, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
+  var exported = { vul: vul, stop: stop, instellen: instellen, orgPogingen: orgPogingen, erkKern: erkKern, erkTrefwoorden: erkTrefwoorden, verkeerSinds: verkeerSinds, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, afhandelen: afhandelen, rijScore: rijScore, gnScore: gnScore, kenmerkScore: kenmerkScore, typeOvereenkomst: typeOvereenkomst, orgZoek: orgZoek, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_FILL = exported;
 })(typeof window !== 'undefined' ? window : this);
