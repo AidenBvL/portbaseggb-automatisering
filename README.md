@@ -60,7 +60,11 @@ Drie tabbladen:
 ## AI invullen: GGB maken vanuit het HC en andere documenten
 
 In het paneel op de Portbase-pagina, tabblad **AI invullen** (drie stappen:
-*Documenten → Controleren → Invullen*, bovenaan zichtbaar):
+*Documenten → Controleren → Invullen*, bovenaan zichtbaar). Met de
+kolommenknop in de kop wissel je tussen **compact** (één kolom naast het
+formulier) en de **werkruimte**: bronbestanden + documentviewer, GGB-velden en
+aandachtspunten naast elkaar. Ontwerp, componenten en de werking van Smart
+Memory staan in [docs/redesign.md](docs/redesign.md).
 
 1. Sleep het **gezondheidscertificaat (HC)** en eventueel labrapport,
    vangstcertificaat, factuur, paklijst en B/L in het paneel (PDF, JPG, PNG,
@@ -99,9 +103,26 @@ In het paneel op de Portbase-pagina, tabblad **AI invullen** (drie stappen:
    Het voorstel begint met een **samenvatting** (type, oorsprong, grenspost,
    B/L, HC-nummer, goederen, containers, ETA) en een balk met de
    **zekerheid** van de velden. Velden met zekerheid middel/laag zijn
-   gekleurd; **Alleen te controleren** verbergt de rest. De blokken
-   (Algemeen, Organisaties, Containers, Documenten, Goederenitems) zijn in te
-   klappen. Onder elk datumveld staat hoe de datum in Portbase komt.
+   gekleurd; het filter **Te controleren** (of **Laag**) verbergt de rest en
+   **Volgende** springt naar het volgende veld dat gecontroleerd moet worden.
+   De blokken (Algemeen, Organisaties, Containers, Documenten, Goederenitems)
+   zijn in te klappen. Onder elk datumveld staat hoe de datum in Portbase komt.
+   - **Documentviewer** (werkruimte): klik in een veld, op een zekerheidsbadge
+     of op het oog bij een aandachtspunt en het bijbehorende document (HC,
+     B/L, factuur…) opent ernaast, op de bladzijde uit de bron
+     (bijv. *HC vak I.12 p.1*).
+   - **Aandachtspunten** vink je één voor één af met **Akkoord** (of *Alle
+     akkoord*); de teller loopt op tot een schone staat. Kritieke punten staan
+     bovenaan.
+   - **Smart Memory** herkent de route (exporteur → ontvanger). Correcties die
+     je bij die route minstens 2× (en in minstens 75% van de zendingen) maakte,
+     worden voortaan voorgesteld (paarse rand, terug te draaien), bijv. het
+     erkenningsnummer van de coldstore of de vlaggenstaat van een schip.
+     Aandachtspunten die bij die route vaak akkoord waren, staan voorgevinkt
+     (kritieke punten nooit vanzelf). Het startscherm toont **recente
+     patronen**: met *Sjabloon laden* begin je met de vaste gegevens van de
+     vorige zending van die route. Het geheugen staat lokaal en is te
+     exporteren/importeren om met collega's te delen.
    **Exporteren** downloadt het voorstel als JSON; **Nieuw** maakt het paneel
    leeg. Het laatste voorstel wordt lokaal bewaard en kan na herladen van de
    pagina met **Herstellen** worden teruggezet (documenten opnieuw toevoegen
@@ -373,6 +394,7 @@ controleer de regels tegen de actuele wetgeving en pas ze aan.
 ```
 node test/engine.test.js
 node test/ai.test.js                     # normalisatie + documentcheck op AI-voorstel
+node test/geheugen.test.js               # Smart Memory (profielen, leren, toepassen, sjablonen)
 node test/ai-extract.test.mjs            # Claude-aanroep met nagebootste API (na npm install in ai/)
 node test/ai-aanbieders.test.mjs         # ChatGPT, Gemini, modellenlijst (na npm install in ai/)
 PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1 node test/e2e-extensie.mjs   # extensie in Chromium (Playwright)
@@ -382,7 +404,8 @@ PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1 node test/e2e-extensie.mjs   # e
 
 ```
 manifest.json                 browserextensie (Manifest V3, Edge/Chrome)
-extension/content.js          paneel op de Portbase-pagina
+extension/content.js          paneel op de Portbase-pagina (design system, werkruimte, triage, Smart Memory-weergave)
+extension/viewer.html/.css/.js  documentviewer in het paneel (extensiepagina in een iframe)
 extension/portbase-dom.js     leest de declaratie uit de Portbase-DOM
 extension/background.js       service worker: levert kennisbank, opent de tool, roept Claude aan
 extension/portbase-fill.js    vult het formulier "New declaration" met het AI-voorstel
@@ -392,6 +415,8 @@ extension/ai.bundle.js        gebundelde Anthropic SDK + extract (gebouwd uit ai
 ai/src/extract.mjs            uitlezen van documenten met Claude (structured output)
 ai/src/aanbieders.mjs         ChatGPT en Gemini, verdeler per aanbieder, modellen ophalen
 js/ggb-ai.js                  schema, prompt, normalisatie, koppeling met documentcheck
+js/geheugen.js                Smart Memory: routes herkennen, leren van correcties, sjablonen
+docs/redesign.md              ontwerp: layout-blueprint, design system, Smart Memory-specificatie
 index.html                    GUI
 css/style.css
 js/rules.default.js           handmatige regelbank + documenttypen
@@ -410,6 +435,6 @@ sync/build_taric.py           conversie TARIC -> kennisbank en regels
 sync/xlsx_reader.py           minimale xlsx-lezer (geen dependencies)
 .github/workflows/sync-kennisbank.yml  maandelijkse automatische update
 test/engine.test.js           tests voor engine, parser en TARIC-regels
-test/ai.test.js, test/ai-extract.test.mjs, test/e2e-extensie.mjs   tests voor AI invullen
+test/ai.test.js, test/geheugen.test.js, test/ai-extract.test.mjs, test/e2e-extensie.mjs   tests voor AI invullen en Smart Memory
 test/fixtures/                gereduceerde Portbase-DOM (view-declaration en nagebootst new-declaration)
 ```

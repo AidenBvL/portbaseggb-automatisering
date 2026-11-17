@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GGB-assistent voor Portbase",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Documentcheck voor de GGB/CHED in Portbase en de GGB invullen vanuit het gezondheidscertificaat met AI.",
   "action": { "default_title": "GGB Documentcheck openen" },
   "icons": { "16": "extension/icons/16.png", "48": "extension/icons/48.png", "128": "extension/icons/128.png" },
@@ -18,8 +18,11 @@
     },
     {
       "matches": ["https://food-and-consumer-products.pcs.portbase.com/*"],
-      "js": ["js/rules.default.js", "js/engine.js", "js/parser.js", "js/render.js", "js/ggb-ai.js", "extension/portbase-dom.js", "extension/portbase-fill.js", "extension/content.js"],
+      "js": ["js/rules.default.js", "js/engine.js", "js/parser.js", "js/render.js", "js/ggb-ai.js", "js/geheugen.js", "extension/portbase-dom.js", "extension/portbase-fill.js", "extension/content.js"],
       "run_at": "document_idle"
     }
+  ],
+  "web_accessible_resources": [
+    { "resources": ["extension/viewer.html", "extension/viewer.js", "extension/viewer.css"], "matches": ["https://food-and-consumer-products.pcs.portbase.com/*"] }
   ]
 }

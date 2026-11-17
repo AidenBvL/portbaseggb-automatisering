@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GGB documentviewer</title>
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body data-staat="leeg">
+  <div class="leeg" id="leeg">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+    <b>Geen document geopend</b>
+    <span>Klik op een bron (bijv. <i>HC vak I.28</i>) of een document links om het hier te tonen.</span>
+  </div>
+  <iframe id="pdf" title="Document" hidden></iframe>
+  <div class="afb" id="afb" hidden><img id="img" alt=""></div>
+  <script src="viewer.js"></script>
+</body>
+</html>

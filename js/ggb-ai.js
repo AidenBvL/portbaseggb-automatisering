@@ -139,7 +139,7 @@
       required: ['waarde', 'bron', 'zekerheid'],
       properties: {
         waarde: waarde,
-        bron: { type: 'string', description: 'Waar de waarde vandaan komt, bijv. "HC vak I.1" of "Factuur p.1". Leeg als onbekend.' },
+        bron: { type: 'string', description: 'Waar de waarde vandaan komt, met de bladzijde van het document, bijv. "HC vak I.1 p.1", "HC vak I.28 p.2" of "Factuur p.1". Leeg als onbekend.' },
         zekerheid: { type: 'string', enum: ZEKERHEID }
       }
     };
@@ -245,6 +245,8 @@
     '- Neem waarden letterlijk over uit de documenten. Verzin niets: als een gegeven niet in de documenten staat, laat het',
     '  veld leeg ("") en zet zekerheid op "laag". Afleidingen (bijv. CHED-type uit de GN-code, landcode uit een adres,',
     '  grenscontrolepost uit de haven van binnenkomst) zijn toegestaan, maar vermeld dat in "bron" en gebruik "middel".',
+    '- Zet in "bron" het document, het vak en de bladzijde (bijv. "HC vak I.28 p.2", "B/L p.1"); de gebruiker opent daarmee',
+    '  het document op die bladzijde.',
     '- Het HC is leidend. Vakken van het HC (TRACES-model) -> GGB in Portbase:',
     '    I.1 Consignor/Exporter -> exporteur; I.5 Consignee/Importer -> importeur (NIET I.6 Operator responsible);',
     '    I.7 Country of origin -> landOorsprong; I.11 Place of dispatch -> plaatsVerzending (met Approval number);',

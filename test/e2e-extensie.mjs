@@ -125,6 +125,33 @@ try {
   assert.ok(!(await page.locator('input[data-pad="bol.waarde"]').isVisible()), 'hoog verborgen');
   assert.ok(await page.locator('input[data-pad="bestemming.waarde"]').isVisible(), 'middel zichtbaar');
   await page.locator('#res-filter').click();
+  assert.strictEqual(await page.locator('#res-filter').getAttribute('aria-pressed'), 'false', 'filter weer uit');
+
+  // Aandachtspunten: één voor één afvinken tot een schone staat
+  const open = await page.locator('#triage [data-akkoord]').count();
+  assert.ok(open >= 1, 'aandachtspunten open');
+  assert.ok(new RegExp('0 / ' + open + ' gecontroleerd').test(await page.locator('#triage-teller').innerText()));
+  await page.locator('#triage [data-akkoord]').first().click();
+  await page.locator('#triage-teller', { hasText: '1 / ' + open }).waitFor();
+  if (open > 1) await page.locator('#alles-akkoord').click();
+  await page.locator('#triage .schoon', { hasText: 'Alles gecontroleerd' }).waitFor();
+  await page.locator('#triage .tp-klaar [data-ongedaan]').first().click();
+  await page.locator('#triage-teller', { hasText: (open - 1) + ' / ' + open }).waitFor();
+  await page.locator('#triage [data-akkoord]').first().click();
+  await page.locator('#triage .schoon').waitFor();
+  // Smart Memory: nieuwe route
+  assert.ok(/Nieuw profiel/i.test(await page.locator('#profiel').innerText()));
+  assert.ok(/GHAN MARINE PRODUCTS → KOELHUIS ONBEKEND/.test(await page.locator('#profiel-chip').innerText()));
+  // Werkruimte: klik op een bron opent het document in de viewer
+  await page.locator('#layout').click();
+  assert.strictEqual(await page.locator('.wrap').getAttribute('data-layout'), 'werkruimte');
+  await page.locator('tr:has(input[data-pad="grenscontrolepost.waarde"]) button.badge').click();
+  await page.frameLocator('#viewer').locator('body[data-bestand="hc.pdf"]').waitFor({ timeout: 10000 });
+  assert.strictEqual(await page.frameLocator('#viewer').locator('body').getAttribute('data-pagina'), '1');
+  await page.locator('.wrap').screenshot({ path: path.join(os.tmpdir(), 'ggb-paneel-werkruimte.png') }).catch(() => {});
+  await page.locator('#layout').click();
+  assert.strictEqual(await page.locator('.wrap').getAttribute('data-layout'), 'compact');
+  await page.locator('.dnr input').fill('426248');
 
   // Correctie door de gebruiker in het voorstel
   await page.locator('input[data-pad="vervoermiddelNaam.waarde"]').fill('MSC ANNA / IMO 9000000');
@@ -284,6 +311,9 @@ try {
   await p2.goto(URL_PB);
   await p2.locator('#ggb-documentcheck-host').waitFor({ state: 'attached' });
   await p2.locator('#tab-ai').click();
+  // Smart Memory: de route van de eerste zending staat als recent patroon klaar
+  await p2.locator('#start .patroon', { hasText: 'GHAN MARINE PRODUCTS → KOELHUIS ONBEKEND' }).waitFor();
+  assert.ok(/1 zending · laatst .* · dossier 426248/.test(await p2.locator('#start .patroon').innerText()));
   await p2.locator('#ai-via', { hasText: 'ChatGPT' }).waitFor();
   assert.ok(/gpt-nieuw/.test(await p2.locator('#ai-via').innerText()));
   await p2.locator('#file').setInputFiles({ name: 'hc.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%test\n') });
@@ -293,6 +323,9 @@ try {
   assert.strictEqual(openaiVerzoek.model, 'gpt-nieuw');
   assert.strictEqual(openaiVerzoek.messages[1].content[0].file.filename, 'hc.pdf');
   assert.strictEqual(await p2.locator('input[data-pad="bol.waarde"]').inputValue(), 'HLCUMA3260712342');
+  assert.ok(/1 eerdere zending/i.test(await p2.locator('#profiel').innerText()), 'route herkend');
+  // Aandachtspunt dat bij de eerste zending akkoord was: nu "eerder 1× akkoord" (pas na 2× vanzelf voorgevinkt)
+  assert.ok(/eerder 1× akkoord/i.test(await p2.locator('#triage').innerText()));
 
   /* ================= Handmatige modus ================= */
   await sw.evaluate(() => new Promise((r) => chrome.storage.local.set({ 'ggb.ai': { provider: 'handmatig' } }, r)));
@@ -306,7 +339,7 @@ try {
   await p3.locator('#file').setInputFiles({ name: 'hc-scan.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') });
   await p3.locator('#ctx').fill('ETA 26-09-2026 07:00');
   await p3.locator('#prompt-kopie').click();
-  await p3.locator('#prompt-kopie', { hasText: 'Gekopieerd' }).waitFor();
+  await p3.locator('.toast', { hasText: 'Prompt gekopieerd' }).waitFor();
   const klembord = await p3.evaluate(() => navigator.clipboard.readText());
   assert.ok(klembord.includes('hc-scan.pdf') && klembord.includes('ETA 26-09-2026 07:00') && klembord.includes('"goederen"'), 'prompt met bestandsnamen, extra info en schema');
   // Chat-antwoord met tekst eromheen plakken
