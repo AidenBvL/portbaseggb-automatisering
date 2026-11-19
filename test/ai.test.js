@@ -97,7 +97,7 @@ test('normaliseer: velden, documenten, goederen en waarschuwingen', () => {
   assert.strictEqual(r.documenten.length, 2, 'lege/onbekende documentregel valt weg');
   assert.strictEqual(r.documenten[0].datumAfgifte, '07-08-2026');
   assert.strictEqual(r.goederen[0].gnCode, '03061792');
-  assert.strictEqual(r.goederen[0].brutoGewicht, '21516');
+  assert.strictEqual(r.goederen[0].brutoGewicht, '21516.00', 'letterlijk, alleen scheidingstekens opgeschoond');
   assert.strictEqual(r.goederen[0].nettoGewicht, '13447.5');
   assert.ok(r.waarschuwingen.includes('Brutogewicht op B/L wijkt af van HC.'));
   assert.ok(r.waarschuwingen.some(w => /HLBU9066046/.test(w)));
@@ -360,12 +360,13 @@ test('goederenitems = HC-regels: brutogewicht naar rato verdeeld, som exact geli
   const r = AI.normaliseer({ totaalBrutoGewicht: veld('22.280'), totaalNettoGewicht: veld('15000'), totaalColli: veld('2000'),
     goederen: regels.map(([gn, net, col]) => ({ gnCode: gn, nettoGewicht: net, aantalColli: col })) });
   assert.strictEqual(r.goederen.length, 3, 'niet samengevoegd');
-  assert.deepStrictEqual(r.goederen.map((g) => g.brutoGewicht), ['5941.3', '2228', '14110.7']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoGewicht), ['5941.33', '2228.00', '14110.67']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoBron), ['rato', 'rato', 'rato']);
   assert.ok(r.waarschuwingen.some((w) => /naar rato/.test(w)));
   // Bruto per regel op het HC: niet overschrijven, wel controleren
   const r2 = AI.normaliseer({ totaalBrutoGewicht: veld('1000'), goederen: [{ gnCode: '03074399', brutoGewicht: '600', nettoGewicht: '500' }, { gnCode: '03074399', brutoGewicht: '300', nettoGewicht: '250' }] });
   assert.deepStrictEqual(r2.goederen.map((g) => g.brutoGewicht), ['600', '300']);
-  assert.ok(r2.waarschuwingen.some((w) => /wijkt af van het totaal/.test(w)));
+  assert.ok(r2.waarschuwingen.some((w) => /Som van de brutogewichten per regel \(900\.00 kg\) wijkt -100\.00 kg af van het totaal brutogewicht \(1000\.00 kg/.test(w)));
 });
 
 test('HC: altijd de IMSOC-referentie (I.2.a) als nummer, certificate reference (I.2) als verwijzing', () => {
@@ -466,6 +467,79 @@ test('organisatie zoeken: umlaut ook een keer uitgeschreven (Kühne -> KUEHNE)',
   // Een regel "KUEHNE + HEITZ" telt als exacte naam voor zoeknaam "Kühne + Heitz".
   const rij = { textContent: 'KUEHNE + HEITZ', querySelector: () => null, querySelectorAll: () => [] };
   assert.ok(FILL.rijScore(rij, { type: 'NAME', term: 'Kühne + Heitz', naam: 'Kühne + Heitz' }) >= 40);
+});
+
+// NZ-zending (paklijst geeft bruto per regel; HC alleen het totaal). Netto per regel volgens HC, factuur en paklijst.
+const NZ_NETTO = ['11574.90', '1882.44', '3053.48', '6971.42'];
+function nz(bruto, totaal = '24,284.24') {
+  return AI.normaliseer({ totaalBrutoGewicht: veld(totaal), totaalNettoGewicht: veld('23,482.24'),
+    goederen: NZ_NETTO.map((n, i) => ({ gnCode: '05119985', nettoGewicht: n, brutoGewicht: bruto[i] })) });
+}
+const somBruto = (r) => r.goederen.reduce((a, g) => a + Math.round(+g.brutoGewicht * 100), 0) / 100;
+
+test('brutogewicht: waarden uit de documenten letterlijk, niet herberekend of afgerond', () => {
+  const r = nz(['12096.50', '1926.24', '3127.70', '7133.80']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoGewicht), ['12096.50', '1926.24', '3127.70', '7133.80']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoBron), ['document', 'document', 'document', 'document']);
+  assert.ok(!r.waarschuwingen.some((w) => /bruto/i.test(w)), r.waarschuwingen.join(' | '));
+  assert.ok(AI.controleerBruto(r).ok);
+  // Notaties met duizendtallen
+  const f = nz(['12,096.50', '1.926,24', '3127,70', '7 133.80 kg']);
+  assert.deepStrictEqual(f.goederen.map((g) => g.brutoGewicht), ['12096.50', '1926.24', '3127.70', '7133.80']);
+  assert.deepStrictEqual(['12096.50', '12,096.50', '12.096,50', '22.280'].map((x) => AI.leesGewicht(x).tekst), ['12096.50', '12096.50', '12096.50', '22280']);
+});
+
+test('brutogewicht: alle regels leeg -> naar rato van netto, 2 decimalen, som exact het totaal', () => {
+  const r = nz(['', '', '', '']);
+  // 24284.24 x netto / 23482.24
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoGewicht), ['11970.22', '1946.73', '3157.77', '7209.52']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoBron), ['rato', 'rato', 'rato', 'rato']);
+  assert.strictEqual(somBruto(r), 24284.24);
+  assert.ok(r.waarschuwingen.some((w) => /goederenitem 1, 2, 3, 4 berekend naar rato/.test(w)));
+  // 0 en null tellen als leeg
+  assert.deepStrictEqual(nz([0, null, '0', '']).goederen.map((g) => g.brutoGewicht), ['11970.22', '1946.73', '3157.77', '7209.52']);
+});
+
+test('brutogewicht: deels uit de documenten, alleen de lege regels naar rato van het restant', () => {
+  const r = nz(['12096.50', '', '', '']);
+  assert.strictEqual(r.goederen[0].brutoGewicht, '12096.50');
+  // 24284.24 - 12096.50 = 12187.74 verdeeld over netto 1882.44 / 3053.48 / 6971.42
+  assert.deepStrictEqual(r.goederen.slice(1).map((g) => g.brutoGewicht), ['1926.77', '3125.38', '7135.59']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoBron), ['document', 'rato', 'rato', 'rato']);
+  assert.strictEqual(somBruto(r), 24284.24);
+  assert.ok(r.waarschuwingen.some((w) => /goederenitem 2, 3, 4 berekend naar rato van het nettogewicht: 12187\.74 kg \(totaal 24284\.24 kg min 12096\.50 kg/.test(w)));
+});
+
+test('brutogewicht: negatief of kleiner dan netto niet gebruikt (waarschuwing, naar rato)', () => {
+  const r = nz(['12096.50', '1000', '-3127.70', '7133.80']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoBron), ['document', 'rato', 'rato', 'document']);
+  assert.ok(r.waarschuwingen.some((w) => /Goederenitem 2: brutogewicht \(1000\) is kleiner dan het nettogewicht \(1882\.44\); niet gebruikt/.test(w)));
+  assert.ok(r.waarschuwingen.some((w) => /Goederenitem 3: brutogewicht "-3127\.70" is negatief; niet gebruikt/.test(w)));
+  assert.strictEqual(somBruto(r), 24284.24);
+});
+
+test('brutogewicht: som wijkt af van het totaal -> waarschuwing, niets aangepast; geen totaal -> waarschuwing', () => {
+  const r = nz(['12096.50', '1926.24', '3127.70', '7133.70']);
+  assert.deepStrictEqual(r.goederen.map((g) => g.brutoGewicht), ['12096.50', '1926.24', '3127.70', '7133.70'], 'niet stil overschreven');
+  const c = AI.controleerBruto(r);
+  assert.deepStrictEqual([c.ok, c.som, c.totaal, c.verschil], [false, '24284.14', '24284.24', '-0.10']);
+  assert.ok(r.waarschuwingen.some((w) => /wijkt -0\.10 kg af van het totaal brutogewicht \(24284\.24 kg/.test(w)));
+  // Binnen 0.01 kg is goed
+  assert.ok(AI.controleerBruto(nz(['12096.50', '1926.24', '3127.70', '7133.81'])).ok);
+  // Lege regels zonder totaal: niet te verdelen
+  const z = nz(['12096.50', '', '', ''], '');
+  assert.deepStrictEqual(z.goederen.map((g) => g.brutoGewicht), ['12096.50', '', '', '']);
+  assert.ok(z.waarschuwingen.some((w) => /ontbreekt voor goederenitem 2, 3, 4 en er is geen totaal brutogewicht/.test(w)));
+  // Regels uit de documenten al groter dan het totaal: niet te verdelen
+  const o = nz(['24000', '2000', '', '']);
+  assert.ok(o.waarschuwingen.some((w) => /goederenitem 3, 4 niet te berekenen: .* blijft er -1715\.76 kg over/.test(w)));
+});
+
+test('AI-instructies: bruto per regel uit paklijst/factuur/B/L, niet alleen van het HC', () => {
+  const b = AI.SCHEMA.properties.goederen.items.properties.brutoGewicht.description;
+  assert.ok(/paklijst, factuur, B\/L of HC/.test(b) && !/HC-regel/.test(b), b);
+  assert.ok(/Brutogewicht per regel \(goederen\[\]\.brutoGewicht\): neem het letterlijk over uit de paklijst/.test(AI.SYSTEM));
+  assert.ok(!/alleen als het op het HC staat/.test(AI.SYSTEM));
 });
 
 console.log('\n' + passed + ' AI-tests geslaagd');

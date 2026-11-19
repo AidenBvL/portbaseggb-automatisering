@@ -272,9 +272,24 @@ I.22 → *Import*, I.27 → goederenitems.
 
 **Goederenitems zijn identiek aan het HC**: elke regel van I.27 (#1, #2, …)
 wordt één goederenitem, in dezelfde volgorde, ook als GN-code en soort
-gelijk zijn. Het HC geeft per regel alleen het nettogewicht; het totale
-brutogewicht (I.26) wordt daarom naar rato van het nettogewicht over de
-regels verdeeld (1 decimaal, de som klopt exact). Per goederenitem worden
+gelijk zijn. **Brutogewicht per regel**, in deze volgorde:
+
+1. Uit de documenten: paklijst, factuur, B/L of HC (de AI zet het per regel
+   in het voorstel). Letterlijk overgenomen, niet herberekend of afgerond;
+   `12,096.50` en `12.096,50` worden `12096.50`.
+2. Alleen de lege regels naar rato: (totaal brutogewicht I.26 − de regels uit
+   de documenten) × netto van de regel / netto van de lege regels, op 2
+   decimalen. Het afrondingsverschil gaat naar de laatste lege regel, zodat de
+   som exact het totaal is.
+
+Een waarde die negatief is of kleiner dan het nettogewicht wordt niet
+gebruikt: je krijgt een waarschuwing en die regel wordt naar rato berekend.
+Per regel staat in het voorstel waar het bruto vandaan komt: *document*,
+*berekend (rato)* of *aangepast* (door jou gewijzigd). Bovenaan het blok
+Goederenitems staat of de som per regel gelijk is aan het totaal (tolerantie
+0.01 kg). Is dat niet zo, dan krijg je een duidelijke melding en wordt er
+niets stil aangepast. Na het invullen leest de extensie *Gross weight* uit het
+Portbase-formulier terug en controleert ze de som opnieuw. Per goederenitem worden
 ook de container (*Equipment number*) en het erkenningsnummer gekozen; de
 *Consumer package indicator* blijft op de standaardwaarde van Portbase.
 

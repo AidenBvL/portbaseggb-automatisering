@@ -571,6 +571,12 @@
       if (p && aiResultaat) {
         zetPad(aiResultaat, p, e.target.value);
         if (e.target.hasAttribute('data-datum')) toonDatumHint(e.target);
+        var bm = p.match(/^goederen\.(\d+)\.brutoGewicht$/);
+        if (bm) {
+          aiResultaat.goederen[+bm[1]].brutoBron = 'handmatig';
+          if ($('bruto-bron-' + bm[1])) $('bruto-bron-' + bm[1]).innerHTML = brutoBadge(aiResultaat.goederen[+bm[1]]);
+        }
+        if (bm || p === 'totaalBrutoGewicht.waarde') renderBrutoCheck();
         bewaarVoorstel();
       }
     });
@@ -978,6 +984,7 @@
     if (!r.id) r.id = 'v' + aiTijd.toString(36) + Math.random().toString(36).slice(2, 6);
     r.triage = r.triage || {};
     laatsteVerslag = [];
+    brutoNaInvullen = null;
     zFilter = 'alle';
     $('herstel').innerHTML = '';
     // Bronbestanden inklappen: compact staat het voorstel dan bovenaan, in de werkruimte krijgt de viewer de ruimte.
@@ -1206,6 +1213,62 @@
     doel.focus({ preventScroll: true });
   }
 
+  /* ---- brutogewicht per regel: herkomst en controle ---- */
+
+  // Herkomst van het brutogewicht per regel -> zekerheid (voor kleur en filter "Te controleren")
+  var BRUTO_Z = { document: '', rato: 'middel', handmatig: '', onbekend: 'middel', '': 'laag' };
+  function brutoHerkomst(g) { return g.brutoBron || (g.brutoGewicht ? 'onbekend' : ''); }
+  var Z_RANG = { hoog: 0, middel: 1, laag: 2 };
+  function slechtste(l) { return l.reduce(function (a, z) { return (Z_RANG[z] || 0) > (Z_RANG[a] || 0) ? z : a; }, 'hoog'); }
+
+  function brutoBadge(g) {
+    switch (brutoHerkomst(g)) {
+      case 'document': return '<span class="badge ok" title="Uit de documenten (paklijst, factuur, B/L of HC); niet herberekend of afgerond">document</span>';
+      case 'rato': return '<span class="badge middel" title="Berekend: totaal brutogewicht (HC I.26) min de regels uit de documenten, verdeeld naar rato van het nettogewicht">berekend (rato)</span>';
+      case 'handmatig': return '<span class="badge info" title="Door jou aangepast in het voorstel">aangepast</span>';
+      case 'onbekend': return '<span class="badge middel" title="Voorstel van een oudere versie: niet bekend of dit uit een document komt of berekend is">herkomst onbekend</span>';
+      default: return '<span class="badge laag" title="Geen brutogewicht voor deze regel">leeg</span>';
+    }
+  }
+
+  /** Som bruto per regel tegen het totaal (0.01 kg); alleen een melding, er wordt niets aangepast. */
+  function renderBrutoCheck() {
+    var el = $('bruto-check');
+    if (!el || !aiResultaat) return;
+    var c = AI.controleerBruto(aiResultaat), g = aiResultaat.goederen;
+    var tel = function (b) { return g.filter(function (x) { return (x.brutoBron || '') === b; }).length; };
+    var herkomst = [[tel('document'), 'uit document'], [tel('rato'), 'berekend (rato)'], [tel('handmatig'), 'aangepast']]
+      .filter(function (x) { return x[0]; }).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ');
+    if (!c.heeftTotaal) {
+      el.innerHTML = '<div class="melding aandacht"><b>Brutogewicht niet te controleren:</b> geen totaal brutogewicht (HC I.26). Vul het totaal in bij Algemeen.</div>';
+    } else if (c.leeg) {
+      el.innerHTML = '<div class="melding fout"><b>Brutogewicht ontbreekt</b> voor ' + c.leeg + ' regel' + (c.leeg === 1 ? '' : 's') + '. Som van de ingevulde regels ' + esc(c.som) + ' kg, totaal ' + esc(c.totaal) + ' kg.</div>';
+    } else if (!c.ok) {
+      el.innerHTML = '<div class="melding fout" id="bruto-verschil"><b>Som brutogewicht per regel ≠ totaal.</b> Som ' + esc(c.som) + ' kg, totaal ' + esc(c.totaal) + ' kg (HC I.26), verschil ' + esc(c.verschil) + ' kg. Er is niets aangepast: corrigeer de regels of het totaal.' + (herkomst ? '<div class="small">' + esc(herkomst) + '</div>' : '') + '</div>';
+    } else {
+      el.innerHTML = '<div class="melding ok"><b>Brutogewicht klopt:</b> som per regel = totaal ' + esc(c.totaal) + ' kg' + (herkomst ? ' · ' + esc(herkomst) : '') + '.</div>';
+    }
+  }
+
+  /** Na het invullen: Gross weight terug uit het Portbase-formulier lezen en de som controleren. */
+  function controleerBrutoInPortbase() {
+    var waarden = FILL.brutoInFormulier();
+    if (!waarden.length) return { soort: 'info', tekst: 'Gross weight kon na het invullen niet uit het formulier worden teruggelezen; controleer de som zelf.' };
+    var totaal = AI.leesGewicht(aiResultaat.totaalBrutoGewicht.waarde).getal;
+    var som = waarden.reduce(function (a, w) { return a + Math.round(AI.leesGewicht(w).getal * 100); }, 0);
+    var anders = waarden.map(function (w, i) {
+      var v = aiResultaat.goederen[i];
+      return v && Math.round(AI.leesGewicht(w).getal * 100) !== Math.round(AI.leesGewicht(v.brutoGewicht).getal * 100) ? 'regel ' + (i + 1) + ': ' + (w || 'leeg') + ' i.p.v. ' + v.brutoGewicht : '';
+    }).filter(Boolean);
+    var somKg = (som / 100).toFixed(2), verschil = ((som - Math.round(totaal * 100)) / 100).toFixed(2);
+    if (!totaal) return { soort: 'aandacht', tekst: 'Gross weight in Portbase: som ' + somKg + ' kg; geen totaal brutogewicht om mee te vergelijken.' };
+    if (Math.abs(som - Math.round(totaal * 100)) > 1 || anders.length) {
+      return { soort: 'fout', tekst: 'Gross weight in Portbase: som ' + somKg + ' kg, totaal ' + totaal.toFixed(2) + ' kg (verschil ' + verschil + ' kg).' + (anders.length ? ' Afwijkend van het voorstel: ' + anders.join('; ') + '.' : '') + ' Niets aangepast; controleer de goederenregels voordat je indient.' };
+    }
+    return { soort: 'ok', tekst: 'Gross weight in Portbase: som ' + somKg + ' kg = totaal brutogewicht (' + waarden.length + ' regels).' };
+  }
+  var brutoNaInvullen = null;
+
   /* ---- aandachtspunten-triage ---- */
 
   var NIVEAU_ICO = { kritiek: 'kritiek', let: 'let', info: 'info' };
@@ -1329,19 +1392,22 @@
     });
     html += blok('blok-docs', 'Documenten (I.9)', docs, telPil(r.documenten.filter(function (d) { return d.opnemen; }).length, 'ok'));
 
-    html += blok('blok-goed', 'Goederenitems (I.31-I.34)', r.goederen.map(function (g, i) {
+    html += blok('blok-goed', 'Goederenitems (I.31-I.34)', (r.goederen.length ? '<div id="bruto-check"></div>' : '') + r.goederen.map(function (g, i) {
+      var bz = BRUTO_Z[brutoHerkomst(g)];
       return groep('Goods item ' + (i + 1) + ' ' + zekerheidBadge(g.zekerheid, g.bron) + (g.gnCode ? ' <span class="muted small">GN ' + esc(g.gnCode) + '</span>' : ''), FILL.GOED.map(function (d) {
+        if (d.key === 'brutoGewicht') return rij(esc(d.naam), invoer('goederen.' + i + '.brutoGewicht', g.brutoGewicht, bz), bz, '<span id="bruto-bron-' + i + '">' + brutoBadge(g) + '</span>');
         return rij(esc(d.naam), invoer('goederen.' + i + '.' + d.key, g[d.key], d.key === 'gnCode' ? g.zekerheid : ''));
       }).join('') +
         rij('Code op HC (zoekterm GN)', invoer('goederen.' + i + '.gnCodeHc', g.gnCodeHc)) +
         rij('Soort (wetensch. naam, I.28)', invoer('goederen.' + i + '.wetenschappelijkeNaam', g.wetenschappelijkeNaam)) +
         rij('Aard product (HC I.28)', invoer('goederen.' + i + '.aardProduct', g.aardProduct)) +
         rij('ANIMO code', '<select data-animo="' + i + '"><option value="">– kies –</option>' + AI.ANIMO_CODES.map(function (a) {
-          return '<option value="' + esc(a.code) + '"' + (a.code === g.animoCode ? ' selected' : '') + '>' + esc(a.code + ' – ' + a.omschrijving) + '</option>'; }).join('') + '</select>'), g.zekerheid);
+          return '<option value="' + esc(a.code) + '"' + (a.code === g.animoCode ? ' selected' : '') + '>' + esc(a.code + ' – ' + a.omschrijving) + '</option>'; }).join('') + '</select>'), slechtste([g.zekerheid, bz || 'hoog']));
     }).join('') || '<div class="melding aandacht">Geen goederenitems herkend.</div>', telPil(r.goederen.length));
 
     html += '</div><div id="ai-verslag"></div>';
     $('ai-result').innerHTML = html;
+    renderBrutoCheck();
     $('check-kaart').innerHTML = '<details class="kaart" id="blok-check" open><summary>Benodigde documenten <span class="rechts" id="check-status"></span></summary><div id="ai-check"></div></details>';
     zetZFilter(zFilter);
     renderProfiel();
@@ -1450,6 +1516,8 @@
         }
       }, vulOpties()));
       laatsteVerslag = verslag;
+      brutoNaInvullen = controleerBrutoInPortbase();
+      if (brutoNaInvullen.soort === 'fout') toast('Let op: som Gross weight in Portbase klopt niet met het totaal', 'info');
       verslagFilter = 'alle';
       renderVerslag();
       verslagEl.scrollIntoView({ block: 'start' });
@@ -1472,6 +1540,7 @@
     var zichtbaar = verslag.map(function (v, i) { v.index = i; return v; }).filter(function (v) { return v.status !== 'overgeslagen' || v.melding; });
     var aanwezig = ST_VOLGORDE.filter(function (k) { return tel[k]; });
     verslagEl.innerHTML = '<h3>Resultaat</h3>' +
+      (brutoNaInvullen ? '<div class="melding ' + brutoNaInvullen.soort + '" id="bruto-portbase">' + esc(brutoNaInvullen.tekst) + '</div>' : '') +
       '<div class="filters" id="verslag-filters"><button data-filter="alle" aria-pressed="true">Alle ' + zichtbaar.length + '</button>' +
         aanwezig.map(function (k) { return '<button data-filter="' + esc(k) + '" aria-pressed="false">' + ST_ICO[k] + ' ' + tel[k] + ' ' + esc(k) + '</button>'; }).join('') + '</div>' +
       '<ul class="verslag">' + zichtbaar.map(function (v) {

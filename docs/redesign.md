@@ -204,7 +204,7 @@ aandeel en verdwijnt de regel vanzelf.
   aanhalingen weggelaten (*"Som van de colli (40) wijkt af … (44)"* is
   dezelfde soort als *"… (2000) wijkt af … (2100)"*).
 - Ernst: **kritiek** (ongeldig containernummer, netto > bruto, geen HC,
-  ontbreekt), **let op**, of **info** (berekend, afgeleid, standaard).
+  ontbreekt, som brutogewicht ≠ totaal, ongeldig brutogewicht uit een document), **let op**, of **info** (berekend, afgeleid, standaard).
 - Was een soort bij dit profiel minstens 2× en in minstens 75 % van de
   gevallen akkoord, dan staat hij **voorgevinkt** met een paarse badge
   *"eerder 3× akkoord"*. Kritieke punten worden **nooit** vanzelf

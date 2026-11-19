@@ -106,6 +106,10 @@ test('aandachtspunten: sleutel zonder getallen, ernst, eerder akkoord, kritiek n
   assert.strictEqual(G.niveau('Containernummer X heeft een ongeldig controlecijfer (ISO 6346)'), 'kritiek');
   assert.strictEqual(G.niveau('Brutogewicht per goederenitem berekend naar rato van het nettogewicht'), 'info');
   assert.strictEqual(G.niveau('Som van de colli (40) wijkt af van het totaal op het HC (44).'), 'let');
+  assert.strictEqual(G.niveau('Som van de brutogewichten per regel (24284.14 kg) wijkt -0.10 kg af van het totaal brutogewicht (24284.24 kg, HC I.26).'), 'kritiek');
+  assert.strictEqual(G.niveau('Goederenitem 2: brutogewicht (1000) is kleiner dan het nettogewicht (1882.44); niet gebruikt, de regel wordt naar rato berekend.'), 'kritiek');
+  assert.strictEqual(G.niveau('Goederenitem 3: brutogewicht "-3127.70" is negatief; niet gebruikt, de regel wordt naar rato berekend.'), 'kritiek');
+  assert.strictEqual(G.niveau('Brutogewicht van goederenitem 2, 3, 4 berekend naar rato van het nettogewicht: 12187.74 kg'), 'info');
   const KRIT = 'Goederenitem 1: nettogewicht (2) is groter dan brutogewicht (1).';
   const g = G.leeg();
   for (const id of ['a', 'b', 'c']) {

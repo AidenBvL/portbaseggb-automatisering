@@ -442,7 +442,15 @@ try {
   let somBruto = 0;
   for (let i = 0; i < 6; i++) somBruto += Number(await w4('[data-test="gross-weight"]', i));
   assert.strictEqual(Math.round(somBruto * 10) / 10, 22280);
-  assert.strictEqual(await w4('[data-test="gross-weight"]', 0), String(Math.round(22280 * 4000 / 15000 * 10) / 10));
+  assert.strictEqual(await w4('[data-test="gross-weight"]', 0), (22280 * 4000 / 15000).toFixed(2));
+  // Herkomst per regel en controle van de som (in het voorstel en na het invullen in Portbase)
+  assert.strictEqual(await p4.locator('#bruto-bron-0').innerText(), 'BEREKEND (RATO)');
+  assert.ok(/Brutogewicht klopt: som per regel = totaal 22280\.00 kg · 6 berekend \(rato\)/.test(await p4.locator('#bruto-check').innerText()));
+  assert.ok(/Gross weight in Portbase: som 22280\.00 kg = totaal brutogewicht \(6 regels\)/.test(await p4.locator('#bruto-portbase').innerText()));
+  // Aanpassen in het voorstel: herkomst "aangepast" en direct een duidelijke melding bij een verschil
+  await p4.locator('input[data-pad="goederen.1.brutoGewicht"]').fill('1000');
+  assert.strictEqual(await p4.locator('#bruto-bron-1').innerText(), 'AANGEPAST');
+  assert.ok(/Som brutogewicht per regel ≠ totaal\. Som .* kg, totaal 22280\.00 kg \(HC I\.26\), verschil -1228\.00 kg/.test(await p4.locator('#bruto-verschil').innerText()));
   assert.strictEqual(await w4('input[formcontrolname="equipmentNumber"]'), 'CSQU3054383');
   const verslag4 = await p4.locator('#ai-verslag').innerText();
   assert.ok(!/HANDMATIG|NIET GEVONDEN|FOUT/i.test(verslag4.split('\n').slice(0, 2).join(' ')), verslag4.slice(0, 300));

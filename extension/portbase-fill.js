@@ -1428,6 +1428,19 @@
   }
 
   /** Is er een bewerkbaar declaratieformulier op de pagina? */
+  /**
+   * Brutogewichten zoals ze ná het invullen in het Portbase-formulier staan (Gross weight per goods item),
+   * om de som te controleren. Leeg als de velden niet (meer) op de pagina staan.
+   */
+  function brutoInFormulier() {
+    var def = GOED.filter(function (d) { return d.key === 'brutoGewicht'; })[0];
+    for (var i = 0; i < def.sel.length; i++) {
+      var l = qa(def.sel[i]).filter(function (el) { return el.closest('app-form-goods-items') || !q('app-form-goods-items'); });
+      if (l.length) return l.map(function (el) { return String(el.value || '').trim(); });
+    }
+    return [];
+  }
+
   function formulierAanwezig() {
     var f = q('app-declaration-form');
     if (!f) return false;
@@ -1435,7 +1448,7 @@
     return qa('input:not([disabled]):not([type="hidden"])', f).length > 0;
   }
 
-  var exported = { vul: vul, stop: stop, instellen: instellen, orgPogingen: orgPogingen, erkKern: erkKern, erkTrefwoorden: erkTrefwoorden, verkeerSinds: verkeerSinds, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, afhandelen: afhandelen, rijScore: rijScore, gnScore: gnScore, kenmerkScore: kenmerkScore, typeOvereenkomst: typeOvereenkomst, orgZoek: orgZoek, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
+  var exported = { vul: vul, stop: stop, instellen: instellen, orgPogingen: orgPogingen, erkKern: erkKern, erkTrefwoorden: erkTrefwoorden, verkeerSinds: verkeerSinds, vulVeld: vulVeld, zoekInDialoog: zoekInDialoog, afhandelen: afhandelen, rijScore: rijScore, gnScore: gnScore, kenmerkScore: kenmerkScore, typeOvereenkomst: typeOvereenkomst, orgZoek: orgZoek, lijstRijen: lijstRijen, formulierAanwezig: formulierAanwezig, brutoInFormulier: brutoInFormulier, besteOptie: besteOptie, ALGEMEEN: ALGEMEEN, DOCUMENT: DOCUMENT, GOED: GOED, CONTAINER: CONTAINER };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_FILL = exported;
 })(typeof window !== 'undefined' ? window : this);

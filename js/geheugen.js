@@ -115,6 +115,8 @@
   function niveau(tekst) {
     var t = s(tekst).toLowerCase();
     if (/ongeldig|controlecijfer|groter dan|geen gezondheidscertificaat|ontbreekt|verplicht/.test(t)) return 'kritiek';
+    // Brutogewicht: afwijkende som, ongeldige waarde uit een document of niet te verdelen – nooit vanzelf akkoord
+    if (/af van het totaal brutogewicht|is negatief|kleiner dan het nettogewicht|niet te berekenen/.test(t)) return 'kritiek';
     if (/berekend|overgenomen|standaard|afgeleid|naar rato|staat als nummer/.test(t)) return 'info';
     return 'let';
   }

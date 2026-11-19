@@ -214,7 +214,7 @@
         gnCode: str('GN-code (I.31), 8 cijfers zonder punten/spaties, bijv. 03061792'),
         gnCodeHc: str('De code precies zoals op het HC in vak I.27/I.28 ("CN code", "HS code", "Commodity"), alleen de cijfers, bijv. 160232 of 030617. Daarmee + de wetenschappelijke naam zoekt de declarant de GN-code in Portbase. Leeg als het HC geen code geeft.'),
         omschrijving: str('Goederenomschrijving (I.31), incl. soort (wetenschappelijke naam) indien vermeld'),
-        brutoGewicht: str('Brutogewicht van deze HC-regel in kg; leeg als het HC het per regel niet geeft'),
+        brutoGewicht: str('Brutogewicht van deze regel in kg, letterlijk uit paklijst, factuur, B/L of HC (in die volgorde). Leeg alleen als geen enkel document een brutogewicht per regel geeft'),
         nettoGewicht: str('Nettogewicht in kg, alleen cijfers met punt als decimaalteken'),
         aantalColli: str('Aantal verpakkingen (I.32), alleen cijfers'),
         verpakkingstype: str('Package type (I.32), bijv. Carton, Bag, Box, Pallet'),
@@ -259,12 +259,15 @@
     '    Gebruik voor het HC ALTIJD de IMSOC-referentie (bijv. "IMPORT.EU.IN.2026.0012345") als nummer, niet de certificate reference.',
     '    Staat er geen IMSOC-referentie op het HC, gebruik dan de certificate reference (I.2) als nummer (imsocReferentie leeg).',
     '    I.27 Description of consignment -> goederen (CN code, Species, Nature of commodity, Batch number, Package count, Net weight,',
-    '    Manufacturing plant). Brutogewichten per product uit paklijst of B/L als het HC alleen een totaal geeft.',
+    '    Manufacturing plant).',
     '- Goederenitems moeten identiek zijn aan het HC: maak precies één goederenitem per regel van vak I.27 (#1, #2, …),',
     '  in dezelfde volgorde, ook als GN-code en soort gelijk zijn. Niet samenvoegen en niet splitsen. Per regel: Commodity',
     '  (GN-code), Species, Nature of commodity + Treatment type (aard), Batch number, Package count, Net weight en',
-    '  Manufacturing plant (erkenningsnummer). Brutogewicht per regel alleen als het op het HC staat, anders leeg laten:',
-    '  de extensie verdeelt het totale brutogewicht (I.26) naar rato van het nettogewicht. Neem de totalen I.24/I.26 over.',
+    '  Manufacturing plant (erkenningsnummer). Neem de totalen I.24/I.26 over.',
+    '- Brutogewicht per regel (goederen[].brutoGewicht): neem het letterlijk over uit de paklijst, factuur of B/L (in die',
+    '  volgorde), en anders van het HC als dat het per regel geeft. Koppel de regels op product, batch/item-nummer, colli',
+    '  en nettogewicht. Niet zelf verdelen, herberekenen of afronden. Laat het alleen leeg als geen enkel document een',
+    '  brutogewicht per regel geeft: dan verdeelt de extensie het totaal (I.26) naar rato van het nettogewicht.',
     '  Gebruik factuur, paklijst en B/L voor B/L-nummer, containers, zegels, colli en gewichten als die niet op het HC staan.',
     '- Datums altijd als dd-mm-jjjj, tijden als uu:mm, landen als ISO alpha-2, GN-codes als 8 cijfers zonder scheidingstekens,',
     '  gewichten in kg met een punt als decimaalteken.',
@@ -367,6 +370,43 @@
     else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(v)) v = v.replace(/,/g, '');
     else v = v.replace(',', '.');
     return /^\d+(\.\d+)?$/.test(v) ? String(+v) : '';
+  }
+
+  /**
+   * Gewicht uit een document lezen, zonder af te ronden: "12096.50", "12,096.50" en "12.096,50" -> "12096.50".
+   * Eén scheidingsteken met precies 3 cijfers erachter ("22.280", "1,926") telt als duizendtallen.
+   * @returns {tekst, getal, negatief} – tekst '' als er geen (geldig) getal staat
+   */
+  function leesGewicht(v) {
+    var t = s(v).replace(/\s|kgs?/gi, '');
+    var neg = /^[-−]/.test(t);
+    t = t.replace(/^[-−+]/, '');
+    if (!t) return { tekst: '', getal: 0, negatief: false };
+    var punt = t.lastIndexOf('.'), komma = t.lastIndexOf(',');
+    if (punt >= 0 && komma >= 0) {
+      var dec = punt > komma ? '.' : ',', dui = dec === '.' ? ',' : '.';
+      t = t.split(dui).join('').replace(dec, '.');
+    } else if (/^\d{1,3}([.,]\d{3})+$/.test(t)) {
+      t = t.replace(/[.,]/g, '');
+    } else t = t.replace(',', '.');
+    if (!/^\d+(\.\d+)?$/.test(t)) return { tekst: '', getal: 0, negatief: false };
+    t = t.replace(/^0+(?=\d)/, '');
+    return { tekst: t, getal: +t, negatief: neg };
+  }
+  function centen(v) { return Math.round((+v || 0) * 100); }
+  function kg(c) { return (c / 100).toFixed(2); }
+
+  /**
+   * Controle: som van het brutogewicht per regel tegen het totaal (HC I.26), tolerantie 0.01 kg.
+   * @returns {totaal, som, verschil, leeg (aantal lege regels), ok}
+   */
+  function controleerBruto(r) {
+    var totaal = centen(leesGewicht(r.totaalBrutoGewicht && r.totaalBrutoGewicht.waarde).getal);
+    var items = r.goederen || [], som = 0, leeg = 0;
+    items.forEach(function (g) { var b = leesGewicht(g.brutoGewicht); if (b.tekst && !b.negatief) som += centen(b.getal); else leeg++; });
+    var verschil = som - totaal;
+    return { totaal: kg(totaal), som: kg(som), verschil: kg(verschil), leeg: leeg, heeftTotaal: totaal > 0,
+      ok: totaal > 0 && !leeg && Math.abs(verschil) <= 1 };
   }
 
   /** ISO 6346-controlecijfer van een containernummer. */
@@ -483,7 +523,8 @@
         gnCode: gn || normGn(g.gnCodeHc),
         gnCodeHc: normGn(g.gnCodeHc),
         omschrijving: s(g.omschrijving),
-        brutoGewicht: normGetal(g.brutoGewicht),
+        brutoGewicht: '',
+        brutoBron: '',
         nettoGewicht: normGetal(g.nettoGewicht),
         aantalColli: normGetal(g.aantalColli),
         verpakkingstype: s(g.verpakkingstype),
@@ -497,8 +538,15 @@
         bron: s(g.bron),
         zekerheid: ZEKERHEID.indexOf(g.zekerheid) >= 0 ? g.zekerheid : 'laag'
       };
-      if (item.brutoGewicht && item.nettoGewicht && +item.nettoGewicht > +item.brutoGewicht) {
-        w.push('Goederenitem ' + (i + 1) + ': nettogewicht (' + item.nettoGewicht + ') is groter dan brutogewicht (' + item.brutoGewicht + ').');
+      // Brutogewicht uit de documenten (paklijst/factuur/B/L/HC) letterlijk overnemen, mits geldig.
+      var bg = leesGewicht(g.brutoGewicht);
+      if (bg.tekst && bg.negatief) {
+        w.push('Goederenitem ' + (i + 1) + ': brutogewicht "' + s(g.brutoGewicht) + '" is negatief; niet gebruikt, de regel wordt naar rato berekend.');
+      } else if (bg.tekst && bg.getal > 0 && item.nettoGewicht && bg.getal < +item.nettoGewicht) {
+        w.push('Goederenitem ' + (i + 1) + ': brutogewicht (' + bg.tekst + ') is kleiner dan het nettogewicht (' + item.nettoGewicht + '); niet gebruikt, de regel wordt naar rato berekend.');
+      } else if (bg.tekst && bg.getal > 0) {
+        item.brutoGewicht = bg.tekst;
+        item.brutoBron = 'document';
       }
       return item;
     }).filter(function (g) { return g.gnCode || g.omschrijving; });
@@ -518,29 +566,48 @@
   }
 
   /**
-   * Het HC geeft per regel (I.27) meestal alleen nettogewicht. Ontbreekt het
-   * brutogewicht per regel, dan wordt het totaal (I.26) naar rato van het
-   * nettogewicht verdeeld (1 decimaal; de laatste regel vangt de afronding op).
-   * Anders: controle dat de som klopt met het totaal.
+   * Brutogewicht per goederenregel, in deze volgorde:
+   *  1. uit de documenten (paklijst/factuur/B/L/HC, via de AI in goederen[i].brutoGewicht): letterlijk, niet
+   *     herberekend of afgerond (brutoBron 'document');
+   *  2. alleen de lege regels naar rato van hun nettogewicht (brutoBron 'rato'):
+   *     beschikbaar = totaal (I.26) - som van de regels uit de documenten,
+   *     regel = netto x beschikbaar / netto van de lege regels, 2 decimalen; het afrondingsverschil gaat naar de
+   *     laatste lege regel, zodat de som exact het totaal is. Gerekend in centen (geen afrondingsfouten).
+   * Daarna de controle: som per regel == totaal (0.01 kg). Bij een verschil een waarschuwing; er wordt niets aangepast.
    */
   function verdeelBruto(r, w) {
-    var items = r.goederen, totaal = +r.totaalBrutoGewicht.waarde;
+    var items = r.goederen;
     if (!items.length) return;
-    var netto = items.map(function (g) { return +g.nettoGewicht || 0; });
-    var somNetto = netto.reduce(function (a, b) { return a + b; }, 0);
-    var leeg = items.filter(function (g) { return !g.brutoGewicht; });
-    if (totaal && leeg.length === items.length && somNetto > 0) {
-      var rest = totaal;
-      items.forEach(function (g, i) {
-        var v = i === items.length - 1 ? rest : Math.round(totaal * netto[i] / somNetto * 10) / 10;
-        rest = Math.round((rest - v) * 10) / 10;
-        g.brutoGewicht = String(Math.round(v * 10) / 10);
-      });
-      w.push('Brutogewicht per goederenitem berekend naar rato van het nettogewicht (totaal ' + totaal + ' kg, HC I.26); controleer of dat zo gewenst is.');
-    } else if (totaal && !leeg.length) {
-      var som = items.reduce(function (a, g) { return a + (+g.brutoGewicht || 0); }, 0);
-      if (Math.abs(som - totaal) > 1) w.push('Som van de brutogewichten (' + Math.round(som * 10) / 10 + ' kg) wijkt af van het totaal op het HC (' + totaal + ' kg).');
+    var totaalC = centen(leesGewicht(r.totaalBrutoGewicht.waarde).getal);
+    var leeg = [], vastC = 0;
+    items.forEach(function (g, i) { if (g.brutoGewicht) vastC += centen(g.brutoGewicht); else leeg.push(i); });
+    var nrs = function (l) { return l.map(function (i) { return i + 1; }).join(', '); };
+    if (leeg.length && !totaalC) {
+      w.push('Brutogewicht ontbreekt voor goederenitem ' + nrs(leeg) + ' en er is geen totaal brutogewicht (HC I.26); vul het zelf in.');
+    } else if (leeg.length) {
+      var beschikbaarC = totaalC - vastC;
+      var nettoC = leeg.map(function (i) { return centen(items[i].nettoGewicht); });
+      var somNettoC = nettoC.reduce(function (a, b) { return a + b; }, 0);
+      if (beschikbaarC <= 0) {
+        w.push('Brutogewicht voor goederenitem ' + nrs(leeg) + ' niet te berekenen: na aftrek van de regels uit de documenten (' + kg(vastC) + ' kg) blijft er ' + kg(beschikbaarC) + ' kg over van het totaal (' + kg(totaalC) + ' kg). Controleer de gewichten.');
+      } else if (somNettoC <= 0) {
+        w.push('Brutogewicht voor goederenitem ' + nrs(leeg) + ' niet te berekenen: nettogewicht ontbreekt. Vul het zelf in.');
+      } else {
+        var verdeeld = 0;
+        leeg.forEach(function (i, k) {
+          var c = k === leeg.length - 1 ? beschikbaarC - verdeeld : Math.round(nettoC[k] * beschikbaarC / somNettoC);
+          verdeeld += c;
+          items[i].brutoGewicht = kg(c);
+          items[i].brutoBron = 'rato';
+        });
+        w.push('Brutogewicht van goederenitem ' + nrs(leeg) + ' berekend naar rato van het nettogewicht: ' + kg(beschikbaarC) + ' kg' +
+          (vastC ? ' (totaal ' + kg(totaalC) + ' kg min ' + kg(vastC) + ' kg uit de documenten)' : ' (totaal HC I.26)') + '; controleer of dat zo gewenst is.');
+        if (beschikbaarC < somNettoC) w.push('Berekend brutogewicht voor goederenitem ' + nrs(leeg) + ' (' + kg(beschikbaarC) + ' kg) is kleiner dan hun nettogewicht (' + kg(somNettoC) + ' kg); controleer de gewichten.');
+      }
     }
+    var c = controleerBruto(r);
+    if (c.heeftTotaal && !c.leeg && !c.ok) w.push('Som van de brutogewichten per regel (' + c.som + ' kg) wijkt ' + c.verschil.replace(/^(?!-)/, '+') + ' kg af van het totaal brutogewicht (' + c.totaal + ' kg, HC I.26). Er is niets aangepast; corrigeer de regels of het totaal.');
+    var somNetto = items.reduce(function (t, g) { return t + (+g.nettoGewicht || 0); }, 0);
     var tn = +r.totaalNettoGewicht.waarde;
     if (tn && somNetto && Math.abs(somNetto - tn) > 1) w.push('Som van de nettogewichten (' + Math.round(somNetto * 10) / 10 + ' kg) wijkt af van het totaal op het HC (' + tn + ' kg).');
     var tc = +r.totaalColli.waarde, somColli = items.reduce(function (a, g) { return a + (+g.aantalColli || 0); }, 0);
@@ -724,7 +791,8 @@
     BCP_NL: BCP_NL, zoekInLijst: zoekInLijst,
     normaliseer: normaliseer, naarDeclaratie: naarDeclaratie, gebruikersPrompt: gebruikersPrompt,
     normDatum: normDatum, naarPortbaseDatum: naarPortbaseDatum, vanPortbaseDatum: vanPortbaseDatum, DATUMFORMATEN: DATUMFORMATEN,
-    isImsoc: isImsoc, invulInstellingen: invulInstellingen, normTijd: normTijd, normLand: normLand, normGetal: normGetal, containerGeldig: containerGeldig
+    isImsoc: isImsoc, invulInstellingen: invulInstellingen, normTijd: normTijd, normLand: normLand, normGetal: normGetal, containerGeldig: containerGeldig,
+    leesGewicht: leesGewicht, controleerBruto: controleerBruto
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_AI = exported;
