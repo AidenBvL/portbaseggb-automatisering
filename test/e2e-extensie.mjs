@@ -458,6 +458,67 @@ try {
   await p4.screenshot({ path: path.join(os.tmpdir(), 'ggb-quang.png') });
   assert.deepStrictEqual(fouten, []);
 
+  /* ================= Geheugen: Portbase-regel per organisatie leren ================= */
+  // Importeur "Kühne + Heitz": drie regels KUHNE + HEITZ HOLLAND B.V. in Portbase, de assistent kan niet kiezen.
+  const KH = { declaratieType: v('PRD'), landOorsprong: v('VN'), bestemming: v('Import'),
+    importeur: { naam: 'Kühne + Heitz', adres: '', plaats: '', land: 'NL', erkenningsnummer: '', bron: 'HC I.5', zekerheid: 'hoog' },
+    documenten: [], goederen: [], containers: [], waarschuwingen: [] };
+  const vulKH = async (pg) => {
+    pg.on('pageerror', (e) => fouten.push('kh: ' + e.message));
+    await pg.goto(URL_PB);
+    await pg.locator('#ggb-documentcheck-host').waitFor({ state: 'attached' });
+    await pg.locator('#tab-ai').click();
+    await pg.locator('#blok-hand:not([hidden])').waitFor();
+    await pg.locator('#json-in').fill(JSON.stringify(KH));
+    await pg.locator('#json-verwerk').click();
+    await pg.locator('#ai-fill').click();
+    await pg.locator('#ai-verslag h3').waitFor({ timeout: 300000 });
+  };
+  const p5 = await context.newPage();
+  await vulKH(p5);
+  assert.ok(/Nog niet geleerd/.test(await p5.locator('[data-geleerd="importeur"]').textContent()));
+  const imp5 = p5.locator('#ai-verslag li', { hasText: 'Importer' });
+  assert.ok(/handmatig|kies zelf/i.test(await imp5.innerText()), 'zonder geheugen geen keuze: ' + await imp5.innerText());
+  // De gebruiker opent het venster via het verslag, kiest zelf de importeur in Dordrecht en klikt Save
+  await imp5.locator('button[data-dialoog]').click();
+  await imp5.locator('.dlg-melding').waitFor({ timeout: 120000 });
+  const dlg5 = p5.locator('mat-dialog-container');
+  await dlg5.locator('mat-row', { hasText: '2404021' }).locator('input[type="radio"]').click();
+  await dlg5.locator('[data-test="save"]').click();
+  await dlg5.waitFor({ state: 'detached' });
+  const mem = await sw.evaluate(() => new Promise((r) => chrome.storage.local.get('ggb.geheugen', (x) => r(x['ggb.geheugen']))));
+  assert.strictEqual(mem.organisaties.length, 1, 'één organisatie geleerd');
+  const org = mem.organisaties[0];
+  assert.strictEqual(org.rol, 'importer');
+  assert.deepStrictEqual(org.namen, ['Kühne + Heitz']);
+  assert.deepStrictEqual(org.rij, { naam: 'KUHNE + HEITZ HOLLAND B.V.', adres: 'Wilgenbos 20', postcode: '3311 JX', plaats: 'Dordrecht', erkenningsnummer: '',
+    idType: 'OAI EOR', idNummer: '2404021 NL806694324', activiteit: 'IM - importer', sectie: 'OTH-OPER', hoofdstuk: 'veterinary' });
+  assert.ok(/Bekend in Portbase/.test(await p5.locator('[data-geleerd="importeur"]').textContent()), 'paneel toont het meteen');
+
+  // Volgende zending met "Kühne + Heitz": de geleerde regel wordt direct gekozen
+  const p6 = await context.newPage();
+  await vulKH(p6);
+  assert.strictEqual(await p6.locator('[data-test="organisation-dialog-importer"]').innerText(), 'KUHNE + HEITZ HOLLAND B.V. | Dordrecht | IM - importer');
+  const imp6 = await p6.locator('#ai-verslag li', { hasText: 'Importer' }).innerText();
+  assert.ok(/gekozen: KUHNE \+ HEITZ HOLLAND B\.V\. · Dordrecht · IM - importer \(geleerd\)/.test(imp6), imp6);
+  assert.ok(/Dordrecht · OAI EOR 2404021 NL806694324 · IM - importer/.test(await p6.locator('[data-geleerd="importeur"]').textContent()));
+
+  // Instellingen: geleerde organisaties bekijken en zelf toevoegen door een regel te plakken
+  const o2 = await context.newPage();
+  await o2.goto(`chrome-extension://${extId}/extension/options.html#organisaties`);
+  await o2.locator('.org', { hasText: 'Wilgenbos 20' }).waitFor();
+  assert.ok(/Kühne \+ Heitz/.test(await o2.locator('.org').first().innerText()));
+  await o2.locator('#org-rol').selectOption('bestemming');
+  await o2.locator('#org-namen').fill('Kühne + Heitz');
+  await o2.locator('#org-plak').fill('Name\nAddress\nPostal code\nCity\nApproval number\nID type\nID number\nActivity\nSection\nChapter\n\nKUHNE + HEITZ HOLLAND B.V.\nWilgenbos 20\n3311 JX\nDordrecht\nNL 9999 EG\nOAI\n2404022\nES - establishment\nFOOD-OTH\nfood');
+  assert.strictEqual(await o2.locator('#ov-erkenningsnummer').inputValue(), 'NL 9999 EG');
+  await o2.locator('#org-opslaan').click();
+  await o2.locator('.org-groep', { hasText: 'Plaats van bestemming' }).waitFor();
+  const mem2 = await sw.evaluate(() => new Promise((r) => chrome.storage.local.get('ggb.geheugen', (x) => r(x['ggb.geheugen']))));
+  assert.strictEqual(mem2.organisaties.length, 2);
+  await o2.screenshot({ path: path.join(os.tmpdir(), 'ggb-opties-organisaties.png'), fullPage: true });
+  assert.deepStrictEqual(fouten, []);
+
   console.log('\nE2E geslaagd');
 } finally {
   await context.close();

@@ -40,7 +40,8 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     return true; // asynchroon antwoord
   }
   if (msg && msg.type === 'ggb:openOpties') {
-    chrome.runtime.openOptionsPage();
+    if (msg.pagina) chrome.tabs.create({ url: chrome.runtime.getURL('extension/options.html#' + String(msg.pagina).replace(/[^a-z]/g, '')) });
+    else chrome.runtime.openOptionsPage();
     sendResponse({ ok: true });
     return false;
   }

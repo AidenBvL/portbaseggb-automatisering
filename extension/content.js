@@ -195,6 +195,7 @@
     'tr.doel td{background:var(--pb-z)}tr.doel input{box-shadow:0 0 0 3px rgba(31,79,209,.18)}',
     '.datum-hint{display:block;font-size:.68rem;color:var(--pb);margin-top:.1rem}.datum-hint:empty{display:none}',
     '#voorstel.f-controle tr[data-z="hoog"],#voorstel.f-controle .groep[data-z="hoog"],#voorstel.f-laag tr[data-z="hoog"],#voorstel.f-laag tr[data-z="middel"],#voorstel.f-laag .groep[data-z="hoog"],#voorstel.f-laag .groep[data-z="middel"]{display:none}',
+    '.geleerd{padding:.3rem .25rem .1rem;font-size:.76rem;line-height:1.5}.geleerd:empty{display:none}.geleerd .badge{margin-right:.2rem}',
     '.uit .groep{opacity:.55}.uit .groep .gt .dn{text-decoration:line-through}',
     '.herstel{display:flex;align-items:center;gap:.5rem;justify-content:space-between}',
     /* Smart Memory: profiel + patronen */
@@ -559,7 +560,12 @@
       if (b) toonBestand(+b.getAttribute('data-viewer'), 1);
     });
     try {
-      chrome.storage.onChanged.addListener(function (wijz, gebied) { if (gebied === 'local' && wijz['ggb.ai']) laadInstellingen(); });
+      chrome.storage.onChanged.addListener(function (wijz, gebied) {
+        if (gebied !== 'local') return;
+        if (wijz['ggb.ai']) laadInstellingen();
+        // Geheugen aangepast op de instellingenpagina (geleerde organisaties): opnieuw inlezen.
+        if (wijz[GEHEUGEN] && !bewaarBezig) laadGeheugen();
+      });
     } catch (e) { /* negeren */ }
     laadInstellingen(function () { if (aiInst.provider === 'handmatig') zetModus('hand'); });
     toonHerstel();
@@ -635,6 +641,9 @@
       if (sj != null) laadSjabloon(sj);
       if (t.id === 'mem-export') exporteerGeheugen();
       if (t.id === 'mem-vergeet') vergeetHuidigProfiel();
+      var ov = t.getAttribute('data-org-vergeet');
+      if (ov != null) vergeetGeleerdeOrganisatie(ov);
+      if (t.hasAttribute('data-org-beheer')) openOpties('organisaties');
     });
     ai.addEventListener('change', function (e) { if (e.target.id === 'mem-import') importeerGeheugen(e.target.files[0], e.target); });
   }
@@ -722,8 +731,8 @@
     }
   }
 
-  function openOpties() {
-    try { chrome.runtime.sendMessage({ type: 'ggb:openOpties' }); } catch (e) { /* negeren */ }
+  function openOpties(pagina) {
+    try { chrome.runtime.sendMessage({ type: 'ggb:openOpties', pagina: typeof pagina === 'string' ? pagina : '' }); } catch (e) { /* negeren */ }
   }
 
   function zetPad(obj, pad, waarde) {
@@ -743,14 +752,16 @@
       chrome.storage.local.get(GEHEUGEN, function (x) {
         geheugen = G.laad(x && x[GEHEUGEN]);
         if (!aiResultaat) renderStart();
-        else { renderProfiel(); renderKop(); }
+        else { renderProfiel(); renderKop(); renderGeleerd(); }
       });
     } catch (e) { renderStart(); }
   }
+  var bewaarBezig = false;
   function bewaarGeheugen() {
     var o = {};
     o[GEHEUGEN] = geheugen;
-    try { chrome.storage.local.set(o); } catch (e) { /* negeren */ }
+    bewaarBezig = true;
+    try { chrome.storage.local.set(o, function () { setTimeout(function () { bewaarBezig = false; }, 50); }); } catch (e) { bewaarBezig = false; }
   }
 
   /**
@@ -881,6 +892,90 @@
     renderProfiel(); renderKop();
     toast('Profiel vergeten', 'mem');
   }
+
+  /* ---- organisaties: welke Portbase-regel bij een naam hoort (leren en tonen) ---- */
+
+  var ROL_VAN_VELD = { exporteur: 'exporter', importeur: 'importer', plaatsBestemming: 'bestemming', plaatsVerzending: 'inrichting' };
+  var VELD_VAN_ROL = { exporter: 'exporteur', importer: 'importeur', bestemming: 'plaatsBestemming', inrichting: 'plaatsVerzending' };
+
+  function geleerdVoor(veld) {
+    var p = aiResultaat && aiResultaat[veld];
+    return p && p.naam ? G.vindOrganisatie(geheugen, p.naam, ROL_VAN_VELD[veld], '') : null;
+  }
+
+  /** Regel onder een organisatie in het voorstel: bekende Portbase-regel, of uitleg hoe het geleerd wordt. */
+  function geleerdHtml(veld) {
+    var p = aiResultaat && aiResultaat[veld];
+    if (!p || !p.naam) return '';
+    var e = geleerdVoor(veld);
+    if (!e) return '<span class="muted small">' + ico('mem', true) + ' Nog niet geleerd. Kies in Portbase de juiste regel en klik <i>Save</i>; dan weet de assistent het de volgende keer.</span>';
+    return '<span class="badge mem">' + ico('mem', true) + 'Bekend in Portbase</span> <span class="small" title="' + esc(G.rijTekst(e.rij)) + '">' + esc(G.rijTekst(e.rij)) + '</span>' +
+      ' <span class="muted small">(' + e.keer + '× gekozen)</span> <button class="link small" data-org-vergeet="' + esc(e.id) + '">Vergeten</button> · <button class="link small" data-org-beheer="1">Beheren</button>';
+  }
+  function renderGeleerd() {
+    alle('[data-geleerd]', $('ai-result') || shadow).forEach(function (el) { el.innerHTML = geleerdHtml(el.getAttribute('data-geleerd')); });
+  }
+  function vergeetGeleerdeOrganisatie(id) {
+    G.vergeetOrganisatie(geheugen, id);
+    bewaarGeheugen();
+    renderGeleerd();
+    toast('Organisatie vergeten', 'mem');
+  }
+
+  var ORG_KNOPPEN = [[/organisation-dialog-exporter/, 'exporter'], [/organisation-dialog-importer/, 'importer'], [/place-of-destination/, 'bestemming'], [/^(organisation-dialog|establishment-dialog)$/, 'inrichting']];
+  var laatsteOrgKnop = null;
+
+  /** Rol van een organisatievenster uit de titel ("Importer", "Place of destination", …). */
+  function rolUitTitel(venster) {
+    var t = String((venster.querySelector('h2, [mat-dialog-title]') || {}).textContent || '').toLowerCase();
+    if (/export|consignor/.test(t)) return 'exporter';
+    if (/import|consignee/.test(t)) return 'importer';
+    if (/destination/.test(t)) return 'bestemming';
+    if (/establishment|origin|dispatch|approval/.test(t)) return 'inrichting';
+    return '';
+  }
+
+  /**
+   * De gebruiker klikt Save in een Portbase-organisatievenster: de gekozen regel
+   * onthouden bij de naam op het HC (uit het voorstel) en de rol. Alleen echte
+   * klikken van de gebruiker (isTrusted), niet de klikken van de invuller zelf.
+   */
+  function leerUitVenster(venster) {
+    if (!venster.querySelector('[data-test="organisations-list"], [data-test="search-type"]')) return;
+    var rijen = Array.prototype.slice.call(venster.querySelectorAll('[data-test="organisations-list-row"], [data-test="organisations-list"] mat-row, [data-test="organisations-list"] tr.mat-mdc-row'));
+    var rijEl = rijen.filter(function (r) {
+      return r.querySelector('input:checked, .mat-mdc-radio-checked, .mat-radio-checked') || /\b(selected|mat-mdc-row-selected)\b/.test(r.className || '');
+    })[0];
+    if (!rijEl) return;
+    var rij = G.rijUitCellen(function (k) { var c = rijEl.querySelector('.mat-column-' + k); return c ? String(c.textContent || '').replace(/\s+/g, ' ').trim() : ''; });
+    if (!rij.naam) return;
+    var ctx = venster.__ggbZoek || null;
+    var rol = (ctx && ctx.rol) || (laatsteOrgKnop && Date.now() - laatsteOrgKnop.tijd < 30 * 60000 ? laatsteOrgKnop.rol : '') || rolUitTitel(venster);
+    if (!G.ROLLEN[rol]) return;
+    var veld = VELD_VAN_ROL[rol], p = aiResultaat && aiResultaat[veld];
+    var naam = (ctx && ctx.naam) || (p && p.naam) || '';
+    var landEl = venster.querySelector('input[data-test="search-country"]');
+    var land = ((landEl && landEl.value) || (ctx && ctx.land) || '').trim().slice(0, 2).toUpperCase();
+    var res = G.leerOrganisatie(geheugen, { rol: rol, naam: naam, land: /^[A-Z]{2}$/.test(land) ? land : '', rij: rij, bron: 'portbase' });
+    if (!res) return;
+    bewaarGeheugen();
+    toast('Onthouden als ' + G.ROLLEN[rol].toLowerCase() + ': ' + (naam && G.pastNaam(naam, rij.naam) !== 3 ? naam + ' → ' : '') + rij.naam + (rij.plaats ? ', ' + rij.plaats : ''), 'mem');
+    renderGeleerd();
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.isTrusted) return;
+    var knop = e.target && e.target.closest && e.target.closest('button');
+    if (!knop) return;
+    var dt = knop.getAttribute('data-test') || '';
+    for (var i = 0; i < ORG_KNOPPEN.length; i++) {
+      if (ORG_KNOPPEN[i][0].test(dt)) { laatsteOrgKnop = { rol: ORG_KNOPPEN[i][1], tijd: Date.now() }; return; }
+    }
+    if (dt === 'save') {
+      var venster = knop.closest('mat-dialog-container, .mat-mdc-dialog-container, [role="dialog"]');
+      if (venster) { try { leerUitVenster(venster); } catch (x) { /* nooit Portbase hinderen */ } }
+    }
+  }, true);
 
   /* ======================= documentviewer ======================= */
 
@@ -1362,7 +1457,7 @@
       var p = r[o[0]];
       return groep(esc(o[1]) + ' ' + zekerheidBadge(p.zekerheid, p.bron), [['naam', 'Naam'], ['adres', 'Adres'], ['plaats', 'Plaats'], ['land', 'Land (ISO)'], ['erkenningsnummer', 'Erkenningsnummer']].map(function (x) {
         return rij(x[1], invoer(o[0] + '.' + x[0], p[x[0]]));
-      }).join(''), p.zekerheid);
+      }).join('') + '</table><div class="geleerd" data-geleerd="' + o[0] + '">' + geleerdHtml(o[0]) + '</div><table class="velden">', p.zekerheid);
     }).join(''), telPil(orgs.filter(function (o) { return r[o[0]].zekerheid !== 'hoog'; }).length, 'let'), true);
 
     if (r.containers.length) {
@@ -1485,7 +1580,7 @@
 
   function vulOpties() {
     var inv = aiInst.invullen || {};
-    return { datumFormaat: datumFormaat(), maxWacht: inv.maxWacht || 120, trefwoorden: inv.trefwoorden !== false };
+    return { datumFormaat: datumFormaat(), maxWacht: inv.maxWacht || 120, trefwoorden: inv.trefwoorden !== false, geheugen: geheugen };
   }
 
   var ST_ICO = { ingevuld: '✓', handmatig: '!', 'niet gevonden': '?', fout: '✕', overgeslagen: '–' };

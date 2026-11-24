@@ -158,4 +158,79 @@ test('vergeten en samenvoegen (geheugen van een collega)', () => {
   assert.deepStrictEqual(G.laad({ versie: 99 }), G.leeg(), 'onbekende versie: leeg');
 });
 
+/* ---------------- organisaties (Portbase-keuzes) ---------------- */
+
+const PLAK = ['Name', 'Address', 'Postal code', 'City', 'Approval number', 'ID type', 'ID number', 'Activity', 'Section', 'Chapter', '',
+  'KUHNE + HEITZ HOLLAND B.V.', 'Wilgenbos 20', '3311 JX', 'Dordrecht', 'OAI', 'EOR', '2404021', 'NL806694324', 'IM - importer', 'OTH-OPER', 'veterinary'].join('\n');
+const KUHNE = { naam: 'KUHNE + HEITZ HOLLAND B.V.', adres: 'Wilgenbos 20', postcode: '3311 JX', plaats: 'Dordrecht', erkenningsnummer: '',
+  idType: 'OAI EOR', idNummer: '2404021 NL806694324', activiteit: 'IM - importer', sectie: 'OTH-OPER', hoofdstuk: 'veterinary' };
+
+test('organisatie: regel uit Portbase plakken (kolommen onder elkaar, twee ID\'s; of tabelrij met tabs)', () => {
+  assert.deepStrictEqual(G.rijUitTekst(PLAK), KUHNE);
+  const tab = 'KUHNE + HEITZ HOLLAND B.V.\tWilgenbos 20\t3311 JX\tDordrecht\t\tOAI EOR\t2404021 NL806694324\tIM - importer\tOTH-OPER\tveterinary';
+  assert.deepStrictEqual(G.rijUitTekst(tab), KUHNE);
+  // Met erkenningsnummer en zonder postcode
+  const r = G.rijUitTekst('Quang Phu Seafood\nLand plot 1358\nBinh An\nDL 1022\nOAI\n1\nPP - establish_pp\nFFP\nfood');
+  assert.strictEqual(r.plaats, 'Binh An'); assert.strictEqual(r.erkenningsnummer, 'DL 1022'); assert.strictEqual(r.idNummer, '1'); assert.strictEqual(r.activiteit, 'PP - establish_pp');
+});
+
+test('organisatie: "Kühne + Heitz" op het HC = de geleerde Portbase-regel (per rol)', () => {
+  const g = G.leeg();
+  const res = G.leerOrganisatie(g, { rol: 'importer', naam: 'Kühne + Heitz', land: 'NL', rij: KUHNE });
+  assert.ok(res.nieuw);
+  for (const naam of ['Kühne + Heitz', 'KUEHNE + HEITZ', 'Kuhne+Heitz Holland BV', 'KUHNE + HEITZ HOLLAND B.V.']) {
+    const e = G.vindOrganisatie(g, naam, 'importer');
+    assert.ok(e, naam);
+    assert.strictEqual(e.rij.idNummer, '2404021 NL806694324');
+  }
+  assert.strictEqual(G.vindOrganisatie(g, 'Kühne + Heitz', 'bestemming'), null, 'andere rol: niet geleerd');
+  assert.strictEqual(G.vindOrganisatie(g, 'Heitz', 'importer'), null, 'te kort / ander begin');
+  assert.strictEqual(G.vindOrganisatie(g, 'Kühne + Nagel', 'importer'), null);
+  // Nog een keer gekozen: geen dubbele regel, teller omhoog
+  G.leerOrganisatie(g, { rol: 'importer', naam: 'Kuehne + Heitz Holland', rij: KUHNE });
+  assert.strictEqual(g.organisaties.length, 1);
+  assert.strictEqual(g.organisaties[0].keer, 2);
+});
+
+test('organisatie: dezelfde regel herkennen in Portbase (naam, activiteit, ID)', () => {
+  assert.ok(G.zelfdeRij(KUHNE, Object.assign({}, KUHNE, { idType: 'OAI', idNummer: '2404021' })));
+  assert.ok(!G.zelfdeRij(KUHNE, Object.assign({}, KUHNE, { activiteit: 'ES - establishment' })), 'zelfde bedrijf, andere activiteit');
+  assert.ok(!G.zelfdeRij(KUHNE, Object.assign({}, KUHNE, { plaats: 'Rotterdam', idNummer: '2404099' })), 'zelfde naam, andere vestiging');
+});
+
+test('organisatie: andere regel kiezen voor dezelfde naam vervangt de oude (correctie)', () => {
+  const g = G.leeg();
+  G.leerOrganisatie(g, { rol: 'importer', naam: 'Kühne + Heitz', rij: Object.assign({}, KUHNE, { plaats: 'Rotterdam', idNummer: '2404099', postcode: '3000 AA' }) });
+  G.leerOrganisatie(g, { rol: 'importer', naam: 'Kühne + Heitz', rij: KUHNE });
+  assert.strictEqual(g.organisaties.length, 1);
+  assert.strictEqual(G.vindOrganisatie(g, 'Kühne + Heitz', 'importer').rij.plaats, 'Dordrecht');
+});
+
+test('organisatie: bewaard in het geheugen, samenvoegen met dat van een collega', () => {
+  const g = G.leeg();
+  G.leerOrganisatie(g, { rol: 'importer', naam: 'Kühne + Heitz', rij: KUHNE });
+  const kopie = G.laad(JSON.parse(JSON.stringify(g)));
+  assert.strictEqual(kopie.organisaties.length, 1);
+  assert.deepStrictEqual(G.laad({ versie: 1, dossiers: [] }).organisaties, [], 'ouder geheugen zonder organisaties');
+  const ander = G.leeg();
+  G.voegSamen(ander, g);
+  G.voegSamen(ander, g);
+  assert.strictEqual(ander.organisaties.length, 1, 'niet dubbel');
+});
+
+test('invuller: geleerde regel wint in het Portbase-venster', () => {
+  const FILL = require('../extension/portbase-fill.js');
+  const g = G.leeg();
+  G.leerOrganisatie(g, { rol: 'importer', naam: 'Kühne + Heitz', land: 'NL', rij: KUHNE });
+  FILL.instellen({ geheugen: g });
+  const zoek = FILL.orgZoek({ naam: 'Kühne + Heitz' }, 'importer', 'NL', {});
+  assert.strictEqual(zoek.geleerd.naam, 'KUHNE + HEITZ HOLLAND B.V.');
+  assert.strictEqual(FILL.orgPogingen(zoek)[0].term, 'KUHNE + HEITZ HOLLAND B.V.', 'eerst op de Portbase-naam');
+  const cellen = (o) => ({ textContent: o.name, querySelector: (sel) => { const k = sel.replace('.mat-column-', ''); return k in o ? { textContent: o[k] } : null; }, querySelectorAll: () => [] });
+  const rij = (x) => cellen(Object.assign({ name: KUHNE.naam, address: 'Wilgenbos 20', postalCode: '3311 JX', city: 'Dordrecht', approvalNumber: '', identificationType: 'OAI EOR', identificationNumber: '2404021 NL806694324', activity: 'IM - importer', section: 'OTH-OPER', activityDepartment: 'veterinary' }, x));
+  const goed = FILL.rijScore(rij({}), zoek), andere = FILL.rijScore(rij({ city: 'Rotterdam', postalCode: '3000 AA', identificationNumber: '2404099' }), zoek);
+  assert.ok(goed >= 1000 && andere < 100, goed + ' / ' + andere);
+  FILL.instellen({ geheugen: null });
+});
+
 console.log('\n' + passed + ' geheugen-tests geslaagd');

@@ -97,3 +97,23 @@ textarea { min-height: 320px; font-family: ui-monospace, Consolas, monospace; fo
 .segment .voorbeeld { font-family: ui-monospace, Consolas, monospace; font-size: .8em; opacity: .75; margin-left: .3rem; }
 .vink-label { display: flex !important; gap: .5rem; align-items: center; font-weight: 600; cursor: pointer; }
 .vink-label input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* Geleerde organisaties */
+.org-form { display: grid; grid-template-columns: 200px 1fr 90px; gap: .8rem; }
+textarea.kort { min-height: 130px; }
+.org-velden { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; }
+.org-velden label { display: block; font-size: .74rem; color: var(--zacht); font-weight: 600; margin-bottom: .15rem; }
+.org-velden input { padding: .4rem .5rem; font-size: .85rem; }
+.teller { font-size: .78rem; font-weight: 600; color: var(--zacht); background: var(--vlak-2); border-radius: 999px; padding: .05rem .5rem; margin-left: .3rem; }
+.org-groep { margin-top: .9rem; } .org-groep h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--zacht); margin: 0 0 .4rem; }
+.org { border: 1px solid var(--rand); border-radius: 10px; padding: .65rem .8rem; margin-bottom: .5rem; display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; }
+.org .t { font-weight: 700; }
+.org .d { color: var(--zacht); font-size: .84rem; }
+.org .cols { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .1rem .8rem; font-size: .78rem; margin-top: .3rem; }
+.org .cols span { color: var(--zacht); } .org .cols b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.org .namen { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; font-size: .8rem; margin-top: .25rem; }
+.chip { display: inline-flex; align-items: center; gap: .25rem; background: var(--accent-zacht); color: var(--accent); border-radius: 999px; padding: .05rem .2rem .05rem .55rem; }
+.chip button { border: 0; background: none; color: inherit; cursor: pointer; font: inherit; padding: 0 .3rem; border-radius: 999px; }
+.chip button:hover { background: rgba(0,0,0,.08); }
+.namen input { width: 180px; padding: .2rem .45rem; font-size: .8rem; }
+@media (max-width: 860px) { .org-form, .org-velden, .org .cols { grid-template-columns: 1fr 1fr; } }

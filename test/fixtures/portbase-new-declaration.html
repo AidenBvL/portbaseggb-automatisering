@@ -198,7 +198,11 @@
     { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'AN PHUOC HAMLET, BINH AN COMMUNE, CHAU THANH DISTRICT, KIEN GIANG PROVINCE, VIETNAM', plaats: 'Chau Thanh', erk: '', land: 'VN', act: 'EX - exporter', sec: 'FOOD-OTH', hfd: 'food' },
     { naam: 'QUANG PHU SEAFOOD IMPORT EXPORT COMPANY LIMITED', adres: 'LAND PLOT N 1358 / MAP SHEET 3 / GROUP 2 / AN PHUOC HAMLET', plaats: 'Binh An', erk: '', land: 'VN', act: 'EX - exporter', sec: 'CFFP', hfd: 'fishing' },
     { naam: 'Testbestemming GmbH', adres: 'Teststraße 1', plaats: 'Teststadt', erk: '99999ES', land: 'DE', act: 'ES - establishment', sec: 'FOOD-OTH', hfd: 'food' },
-    { naam: 'Testbestemming GmbH', adres: 'Teststraße 2', plaats: 'Andere Stadt', erk: '', land: 'DE', act: 'IM - importer', sec: 'FOOD-OTH', hfd: 'food' }
+    { naam: 'Testbestemming GmbH', adres: 'Teststraße 2', plaats: 'Andere Stadt', erk: '', land: 'DE', act: 'IM - importer', sec: 'FOOD-OTH', hfd: 'food' },
+    // Zelfde naam drie keer (zoals in Portbase): alleen het geheugen weet welke de importeur is
+    { naam: 'KUHNE + HEITZ HOLLAND B.V.', adres: 'Havenstraat 1', pc: '3000 AA', plaats: 'Rotterdam', erk: '', idt: 'OAI', idn: '2404099', land: 'NL', act: 'IM - importer', sec: 'OTH-OPER', hfd: 'veterinary' },
+    { naam: 'KUHNE + HEITZ HOLLAND B.V.', adres: 'Wilgenbos 20', pc: '3311 JX', plaats: 'Dordrecht', erk: '', idt: 'OAI EOR', idn: '2404021 NL806694324', land: 'NL', act: 'IM - importer', sec: 'OTH-OPER', hfd: 'veterinary' },
+    { naam: 'KUHNE + HEITZ HOLLAND B.V.', adres: 'Wilgenbos 20', pc: '3311 JX', plaats: 'Dordrecht', erk: 'NL 9999 EG', idt: 'OAI', idn: '2404022', land: 'NL', act: 'ES - establishment', sec: 'FOOD-OTH', hfd: 'food' }
   ];
   // ANIMO-codedialoog: ingekorte kopie van <app-animo-code-dialog> (opent hier na Save in de GN-codedialoog)
   var ANIMO = [['101101', 'Vers Vlees, slachtafvallen en vleesproducten / Vlees van als landbouwhuisdier gehouden hoefdieren'], ['101105', 'Vers Vlees, slachtafvallen en vleesproducten / Gehakt vlees, vleesbereidingen en separatorvlees'],
@@ -398,7 +402,7 @@
         hits.forEach(function (o) {
           var c = function (k, v) { return '<mat-cell class="mat-mdc-cell cell field mat-column-' + k + '" role="cell"> ' + v + ' </mat-cell>'; };
           tabel.insertAdjacentHTML('beforeend', '<mat-row role="row" data-test="organisations-list-row" class="mat-mdc-row mdc-data-table__row cdk-row"><mat-cell class="mat-mdc-cell mat-column-selection" role="cell"><mat-radio-button><div class="mdc-radio"><input type="radio" name="org-keuze" value="' + ORGANISATIES.indexOf(o) + '" class="mdc-radio__native-control"></div></mat-radio-button></mat-cell>' +
-            c('name', o.naam) + c('address', o.adres) + c('postalCode', '') + c('city', o.plaats) + c('approvalNumber', o.erk) + c('identificationType', 'OAI') + c('identificationNumber', '1') + c('activity', o.act) + c('section', o.sec) + c('activityDepartment', o.hfd) + '</mat-row>');
+            c('name', o.naam) + c('address', o.adres) + c('postalCode', o.pc || '') + c('city', o.plaats) + c('approvalNumber', o.erk) + c('identificationType', o.idt || 'OAI') + c('identificationNumber', o.idn || '1') + c('activity', o.act) + c('section', o.sec) + c('activityDepartment', o.hfd) + '</mat-row>');
         });
       });
     }

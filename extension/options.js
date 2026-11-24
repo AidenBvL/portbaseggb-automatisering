@@ -43,6 +43,7 @@ function toonPagina() {
   document.querySelectorAll('nav a').forEach(function (a) { a.classList.toggle('actief', a.getAttribute('data-pagina') === p); });
   if (p === 'prompt') $('prompt-tekst').value = AI.handmatigePrompt([], '');
   if (p === 'invullen') renderInvullen();
+  if (p === 'organisaties') laadOrganisaties();
 }
 // Direct wisselen bij klikken (niet wachten op hashchange).
 document.querySelectorAll('nav a').forEach(function (a) {
@@ -170,6 +171,108 @@ $('datumformaat').addEventListener('click', function (e) {
 });
 $('maxwacht').addEventListener('change', function () { inst.invullen.maxWacht = +this.value; opslaan(true); });
 $('trefwoorden').addEventListener('change', function () { inst.invullen.trefwoorden = this.checked; opslaan(true); });
+
+/* ---------------- geleerde organisaties ---------------- */
+
+var G = window.GGB_GEHEUGEN;
+var GEHEUGEN = 'ggb.geheugen';
+var geheugen = G.leeg();
+
+function laadOrganisaties() {
+  chrome.storage.local.get(GEHEUGEN, function (x) { geheugen = G.laad(x && x[GEHEUGEN]); renderOrganisaties(); });
+}
+function bewaarOrganisaties(melding) {
+  // Altijd op de nieuwste versie verder (het paneel kan intussen dossiers hebben toegevoegd).
+  var o = {};
+  o[GEHEUGEN] = geheugen;
+  chrome.storage.local.set(o, function () { if (melding) toast(melding); renderOrganisaties(); });
+}
+function wijzigGeheugen(fn, melding) {
+  chrome.storage.local.get(GEHEUGEN, function (x) {
+    geheugen = G.laad(x && x[GEHEUGEN]);
+    fn(geheugen);
+    bewaarOrganisaties(melding);
+  });
+}
+chrome.storage.onChanged.addListener(function (w, gebied) {
+  if (gebied === 'local' && w[GEHEUGEN] && !$('pagina-organisaties').hidden) { geheugen = G.laad(w[GEHEUGEN].newValue); renderOrganisaties(); }
+});
+
+function datumKort(t) { var d = new Date(t), p = function (n) { return (n < 10 ? '0' : '') + n; }; return p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear(); }
+
+function renderOrganisaties() {
+  var f = String($('org-filter').value || '').toLowerCase();
+  var lijst = geheugen.organisaties.filter(function (o) {
+    return !f || (G.rijTekst(o.rij) + ' ' + (o.namen || []).join(' ') + ' ' + G.ROLLEN[o.rol]).toLowerCase().indexOf(f) >= 0;
+  });
+  $('org-teller').textContent = geheugen.organisaties.length;
+  if (!geheugen.organisaties.length) {
+    $('org-lijst').innerHTML = '<p class="hint">Nog niets geleerd. Kies in Portbase in een zoekvenster (Exporter, Importer, Place of destination, Establishment) de juiste regel en klik <i>Save</i>, of voeg hierboven een regel toe.</p>';
+    return;
+  }
+  $('org-lijst').innerHTML = Object.keys(G.ROLLEN).map(function (rol) {
+    var r = lijst.filter(function (o) { return o.rol === rol; });
+    if (!r.length) return '';
+    return '<div class="org-groep"><h3>' + esc(G.ROLLEN[rol]) + ' (' + r.length + ')</h3>' + r.map(function (o) {
+      var c = G.normRij(o.rij);
+      return '<div class="org" data-id="' + esc(o.id) + '"><div><div class="t">' + esc(c.naam) + '</div><div class="d">' + esc([c.adres, [c.postcode, c.plaats].filter(Boolean).join(' '), o.land].filter(Boolean).join(', ')) + '</div></div>' +
+        '<div class="d" style="text-align:right">' + (o.keer ? o.keer + '× gekozen · ' : 'nog niet gebruikt · ') + esc(datumKort(o.tijd)) + (o.bron === 'handmatig' ? ' · zelf toegevoegd' : '') + '<br><button class="knop gevaar" data-weg="' + esc(o.id) + '" style="padding:.2rem .6rem;margin-top:.3rem">Vergeten</button></div>' +
+        '<div class="cols">' + G.KOLOMMEN.slice(4).map(function (k) { return '<div><span>' + esc(k[2]) + '</span><b title="' + esc(c[k[0]]) + '">' + esc(c[k[0]] || '–') + '</b></div>'; }).join('') + '</div>' +
+        '<div class="namen"><span class="hint" style="margin:0">Naam op het HC:</span>' + (o.namen || []).map(function (n, i) { return '<span class="chip">' + esc(n) + '<button data-naam-weg="' + i + '" title="Verwijderen">×</button></span>'; }).join('') +
+        '<input type="text" data-naam-erbij placeholder="+ naam toevoegen (Enter)"></div></div>';
+    }).join('') + '</div>';
+  }).join('') || '<p class="hint">Geen treffers.</p>';
+}
+
+$('org-filter').addEventListener('input', renderOrganisaties);
+$('org-lijst').addEventListener('click', function (e) {
+  var kaart = e.target.closest('.org');
+  if (!kaart) return;
+  var id = kaart.getAttribute('data-id');
+  if (e.target.hasAttribute('data-weg')) {
+    if (!confirm('Deze organisatie vergeten?')) return;
+    wijzigGeheugen(function (g) { G.vergeetOrganisatie(g, id); }, 'Organisatie vergeten');
+  }
+  var nw = e.target.getAttribute('data-naam-weg');
+  if (nw != null) wijzigGeheugen(function (g) { g.organisaties.forEach(function (o) { if (o.id === id) o.namen.splice(+nw, 1); }); }, 'Naam verwijderd');
+});
+$('org-lijst').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !e.target.hasAttribute('data-naam-erbij')) return;
+  var naam = e.target.value.trim(), id = e.target.closest('.org').getAttribute('data-id');
+  if (!naam) return;
+  wijzigGeheugen(function (g) { g.organisaties.forEach(function (o) { if (o.id === id && o.namen.indexOf(naam) < 0) o.namen.push(naam); }); }, 'Naam toegevoegd');
+});
+
+function renderOrgVelden(rij) {
+  rij = G.normRij(rij || {});
+  $('org-velden').innerHTML = G.KOLOMMEN.map(function (k) {
+    return '<div><label for="ov-' + k[0] + '">' + esc(k[2]) + '</label><input type="text" id="ov-' + k[0] + '" data-kolom="' + k[0] + '" value="' + esc(rij[k[0]]) + '"></div>';
+  }).join('');
+}
+function orgVeldenRij() {
+  var r = {};
+  document.querySelectorAll('#org-velden [data-kolom]').forEach(function (i) { r[i.getAttribute('data-kolom')] = i.value; });
+  return G.normRij(r);
+}
+$('org-plak').addEventListener('input', function () {
+  var r = G.rijUitTekst(this.value);
+  renderOrgVelden(r);
+  $('org-melding').textContent = r.naam ? 'Ingelezen: ' + G.rijTekst(r) : '';
+});
+$('org-opslaan').addEventListener('click', function () {
+  var rij = orgVeldenRij(), rol = $('org-rol').value, land = $('org-land').value.trim().toUpperCase();
+  if (!rij.naam) { $('org-melding').textContent = 'Vul minstens de naam (Name) van de Portbase-regel in.'; return; }
+  var namen = $('org-namen').value.split(';').map(function (n) { return n.trim(); }).filter(Boolean);
+  wijzigGeheugen(function (g) {
+    var res = G.leerOrganisatie(g, { rol: rol, naam: namen[0] || '', land: land, rij: rij, bron: 'handmatig' });
+    if (res) {
+      namen.slice(1).forEach(function (n) { if (res.organisatie.namen.indexOf(n) < 0) res.organisatie.namen.push(n); });
+      if (res.nieuw) res.organisatie.keer = 0;
+    }
+  }, 'Opgeslagen: ' + rij.naam + ' (' + G.ROLLEN[rol].toLowerCase() + ')');
+  $('org-plak').value = ''; $('org-namen').value = ''; renderOrgVelden({}); $('org-melding').textContent = '';
+});
+renderOrgVelden({});
 
 /* ---------------- handmatige prompt ---------------- */
 

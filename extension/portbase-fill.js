@@ -45,7 +45,12 @@
   var TEMPO = 350;
 
   /* Toestand van de lopende invulronde: max. wachttijd op zoekresultaten, trefwoorden, stoppen, voortgang. */
-  var run = { maxWacht: 120000, trefwoorden: true, gestopt: false, status: function () {} };
+  var run = { maxWacht: 120000, trefwoorden: true, gestopt: false, status: function () {}, geheugen: null };
+  /** Smart Memory (js/geheugen.js): in de browser als GGB_GEHEUGEN, in Node via require. */
+  function GH() {
+    if (root.GGB_GEHEUGEN) return root.GGB_GEHEUGEN;
+    try { return typeof require === 'function' ? require('../js/geheugen.js') : null; } catch (e) { return null; }
+  }
   function maxWacht() { return run.maxWacht; }
   /** Stopt de lopende invulronde (knop "Stop" in het paneel). */
   function stop() { run.gestopt = true; }
@@ -54,6 +59,7 @@
     run.maxWacht = Math.max(10, +opts.maxWacht || 120) * 1000;
     run.trefwoorden = opts.trefwoorden !== false;
     run.status = typeof opts.status === 'function' ? opts.status : function () {};
+    if ('geheugen' in opts) run.geheugen = opts.geheugen || null;
   }
 
   async function wachtOp(fn, timeout) {
@@ -545,6 +551,9 @@
   function orgZoek(org, rol, land, r) {
     org = org || {};
     var z = { naam: org.naam || '', adres: org.adres || '', plaats: org.plaats || '', erkenning: org.erkenningsnummer || '', land: land || '', rol: rol, sector: sectorVan(r) };
+    // Geleerd (Smart Memory): bij deze naam en rol hoort een vaste Portbase-regel.
+    var G = GH(), e = G && run.geheugen ? G.vindOrganisatie(run.geheugen, z.naam, rol, '') : null;
+    if (e) { z.geleerd = G.normRij(e.rij); z.geleerdId = e.id; if (e.land) z.land = e.land; }
     if (z.erkenning && (rol === 'inrichting' || rol === 'bestemming')) return Object.assign(z, { type: 'APPROVAL_NUMBER', term: z.erkenning, terugval: z.naam ? { type: 'NAME', term: z.naam } : null });
     return Object.assign(z, { type: 'NAME', term: z.naam, terugval: z.erkenning ? { type: 'APPROVAL_NUMBER', term: z.erkenning } : null });
   }
@@ -679,7 +688,7 @@
       if (opts.voortgang) opts.voortgang(t, { stap: Math.min(stap, stappen), totaal: stappen });
     };
     run.gestopt = false;
-    instellen({ maxWacht: opts.maxWacht, trefwoorden: opts.trefwoorden, status: function (t) { if (opts.voortgang) opts.voortgang(fase + (t ? ' · ' + t : ''), { stap: Math.min(stap, stappen), totaal: stappen }); } });
+    instellen({ maxWacht: opts.maxWacht, trefwoorden: opts.trefwoorden, geheugen: opts.geheugen, status: function (t) { if (opts.voortgang) opts.voortgang(fase + (t ? ' · ' + t : ''), { stap: Math.min(stap, stappen), totaal: stappen }); } });
     var verslag = [];
     var form = q('app-declaration-form') || document;
 
@@ -896,6 +905,9 @@
    * keren voor met een andere activiteit en een ander adres.
    */
   function rijScore(rij, zoek) {
+    // Precies de geleerde regel: altijd de winnaar.
+    var G = zoek.geleerd && GH();
+    if (G && G.zelfdeRij(zoek.geleerd, G.rijUitCellen(function (k) { return cel(rij, k); }))) return GELEERD;
     var naamZoek = zoek.naam || (zoek.type !== 'APPROVAL_NUMBER' ? zoek.term : '');
     var erkZoek = zoek.erkenning || (zoek.type === 'APPROVAL_NUMBER' ? zoek.term : '');
     var naam = cel(rij, 'name') || txt(rij), s = 0, basis = false;
@@ -923,6 +935,8 @@
     else if (stad && zoek.adres && norm(uitgeschreven(zoek.adres)).indexOf(stad) >= 0) s += 5;
     return Math.max(s, 0);
   }
+
+  var GELEERD = 1000;
 
   async function zoekOrganisatieEenmaal(dialoog, zoek, type, term) {
     var termEl = q('input[data-test="search-term"]', dialoog);
@@ -955,6 +969,13 @@
    */
   function orgPogingen(zoek) {
     var p = [{ type: zoek.type || 'NAME', term: zoek.term }];
+    // Geleerde regel: eerst op het erkenningsnummer of de exacte Portbase-naam.
+    if (zoek.geleerd) {
+      var gl = [];
+      if (zoek.geleerd.erkenningsnummer) gl.push({ type: 'APPROVAL_NUMBER', term: zoek.geleerd.erkenningsnummer, geleerd: true });
+      gl.push({ type: 'NAME', term: zoek.geleerd.naam, geleerd: true });
+      p = gl.concat(p);
+    }
     var erkT = run.trefwoorden ? erkTrefwoorden(zoek.erkenning).map(function (t) { return { type: 'APPROVAL_NUMBER', term: t, trefwoord: true }; }) : [];
     if (zoek.type === 'APPROVAL_NUMBER') { p = p.concat(erkT); erkT = []; }
     if (zoek.terugval && zoek.terugval.term) p.push(zoek.terugval);
@@ -1015,7 +1036,7 @@
       // Resultaten, maar niets dat op de naam/het nummer lijkt: verder met het volgende trefwoord.
       if (Math.max.apply(null, scores) <= 0) { geprobeerd[geprobeerd.length - 1] += ' (' + rijen.length + ' niet passend)'; continue; }
       var keuze = kiesBeste(rijen, scores, 40, 8);
-      var via = p.trefwoord ? ' (via trefwoord "' + p.term + '")' : p.umlaut ? ' (via "' + p.term + '")' : '';
+      var via = keuze.rij && scores[rijen.indexOf(keuze.rij)] >= GELEERD ? ' (geleerd)' : p.trefwoord ? ' (via trefwoord "' + p.term + '")' : p.umlaut ? ' (via "' + p.term + '")' : '';
       if (keuze.rij) {
         var c = keuze.rij;
         if (!(await selecteerRij(c))) return { ok: true, melding: 'regel ' + cel(c, 'name') + ' aangeklikt, maar Portbase nam de keuze niet over; kies zelf' };
@@ -1345,6 +1366,7 @@
     knop.click();
     var dialoog = await wachtOp(function () { var d = dialogen(); return d.length > voor ? d[d.length - 1] : null; }, 15000);
     if (!dialoog) return { ok: false, melding: run.gestopt ? 'gestopt' : 'dialoog ging niet open' };
+    dialoog.__ggbZoek = zoek; // voor het leren (content.js): welke HC-naam en rol bij dit venster horen
     var res = await verwerkDialoog(dialoog, zoek);
     res.dialoog = dialoog;
     return res;

@@ -123,6 +123,21 @@ Memory staan in [docs/redesign.md](docs/redesign.md).
      patronen**: met *Sjabloon laden* begin je met de vaste gegevens van de
      vorige zending van die route. Het geheugen staat lokaal en is te
      exporteren/importeren om met collega's te delen.
+   - **Geleerde organisaties**: kies je in een Portbase-zoekvenster
+     (Exporter, Importer, Place of destination, Establishment) zelf een
+     regel en klik je *Save*, dan onthoudt de assistent welke Portbase-regel
+     bij de naam op het HC hoort, per rol: bijv. importeur *Kühne + Heitz* =
+     *KUHNE + HEITZ HOLLAND B.V. · Wilgenbos 20 · 3311 JX Dordrecht · OAI
+     EOR 2404021 NL806694324 · IM - importer · OTH-OPER · veterinary*. Bij de
+     volgende zending zoekt de invuller op die naam en kiest precies die regel
+     (ook als er meerdere regels met dezelfde naam zijn); in het verslag staat
+     *(geleerd)* en in het voorstel *Bekend in Portbase*. Kühne, Kuehne en
+     Kuhne en een kortere naam ("Kühne + Heitz" ~ "… Holland B.V.") tellen
+     als dezelfde naam. Kies je later een andere regel voor dezelfde naam, dan
+     vervangt die de oude. Bekijken, namen toevoegen, vergeten of zelf
+     toevoegen (regel uit Portbase plakken) kan bij *Opties → Geleerde
+     organisaties*. Alleen klikken van de gebruiker leren, niet de keuzes die
+     de assistent zelf maakt.
    **Exporteren** downloadt het voorstel als JSON; **Nieuw** maakt het paneel
    leeg. Het laatste voorstel wordt lokaal bewaard en kan na herladen van de
    pagina met **Herstellen** worden teruggezet (documenten opnieuw toevoegen

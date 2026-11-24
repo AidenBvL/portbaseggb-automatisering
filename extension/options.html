@@ -13,6 +13,7 @@
       <nav>
         <a href="#aanbieder" data-pagina="aanbieder"><span class="ico">✦</span>AI-aanbieder</a>
         <a href="#invullen" data-pagina="invullen"><span class="ico">⇥</span>Invullen in Portbase</a>
+        <a href="#organisaties" data-pagina="organisaties"><span class="ico">◎</span>Geleerde organisaties</a>
         <a href="#prompt" data-pagina="prompt"><span class="ico">⧉</span>Handmatige prompt</a>
         <a href="#privacy" data-pagina="privacy"><span class="ico">⛨</span>Privacy &amp; gegevens</a>
         <a href="#over" data-pagina="over"><span class="ico">ⓘ</span>Over</a>
@@ -64,6 +65,36 @@
         <div class="paneel lijst">
           <div><b>HC-nummer</b><span>Bij gezondheidscertificaten uit TRACES wordt altijd de <b>IMSOC-referentie</b> (vak I.2.a, bijv. <code>IMPORT.EU.IN.2026.0012345</code>) als nummer gebruikt, niet de certificate reference (I.2). De certificate reference telt wel mee als verwijzing van een labrapport.</span></div>
           <div><b>Nooit verzenden</b><span>De extensie klikt alleen op <i>Save</i> in de zoekvensters, nooit op <i>Save</i>/<i>Send</i> van de declaratie.</span></div>
+        </div>
+      </section>
+
+      <!-- ============ GELEERDE ORGANISATIES ============ -->
+      <section class="pagina" id="pagina-organisaties" hidden>
+        <header>
+          <h1>Geleerde organisaties</h1>
+          <p>Welke regel in het Portbase-zoekvenster bij een naam op het gezondheidscertificaat hoort. Kies je in Portbase zelf een regel en klik je <i>Save</i>, dan wordt die hier onthouden (per rol). Bij een volgende zending met dezelfde naam zoekt de assistent die regel op en kiest hem direct.</p>
+        </header>
+
+        <div class="paneel">
+          <div class="rij-kop"><h2>Zelf toevoegen</h2></div>
+          <div class="org-form">
+            <div class="veld"><label for="org-rol">Rol</label>
+              <select id="org-rol"><option value="importer">Importeur</option><option value="exporter">Exporteur</option><option value="bestemming">Plaats van bestemming</option><option value="inrichting">Inrichting van oorsprong</option></select></div>
+            <div class="veld"><label for="org-namen">Naam op het HC</label><input type="text" id="org-namen" placeholder="bijv. Kühne + Heitz (meerdere: scheiden met ;)"></div>
+            <div class="veld"><label for="org-land">Land</label><input type="text" id="org-land" maxlength="2" placeholder="NL" style="max-width:5rem"></div>
+          </div>
+          <div class="veld">
+            <label for="org-plak">Regel uit Portbase plakken</label>
+            <textarea id="org-plak" class="kort" spellcheck="false" placeholder="Selecteer in het Portbase-zoekvenster de regel (eventueel met de koppen erboven), kopieer en plak hier."></textarea>
+            <p class="hint">Tabelrij (met tabs) of kolommen onder elkaar; koppen mogen erbij. Controleer de velden hieronder voordat je opslaat.</p>
+          </div>
+          <div class="org-velden" id="org-velden"></div>
+          <div class="rij-kop" style="margin-top:.8rem"><span id="org-melding" class="hint"></span><button class="knop primair" id="org-opslaan">Opslaan</button></div>
+        </div>
+
+        <div class="paneel">
+          <div class="rij-kop"><h2>Onthouden <span class="teller" id="org-teller"></span></h2><input type="text" id="org-filter" placeholder="Zoeken…" style="max-width:220px"></div>
+          <div id="org-lijst"></div>
         </div>
       </section>
 
@@ -129,6 +160,7 @@
   </div>
   <div class="toast" id="toast" role="status"></div>
   <script src="../js/ggb-ai.js"></script>
+  <script src="../js/geheugen.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

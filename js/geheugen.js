@@ -18,6 +18,15 @@
  *    (ongeldig containernummer, netto > bruto, ...) nooit automatisch, tenzij de
  *    gebruiker expliciet "altijd akkoord voor dit profiel" koos.
  *
+ * Organisaties (Portbase-keuzes): welke regel in het Portbase-zoekvenster bij
+ * een naam op het HC hoort, per rol (exporteur, importeur, plaats van
+ * bestemming, inrichting). Bijv. "Kühne + Heitz" als importeur =
+ * KUHNE + HEITZ HOLLAND B.V. | Wilgenbos 20 | 3311 JX | Dordrecht | OAI EOR |
+ * 2404021 NL806694324 | IM - importer | OTH-OPER | veterinary. Geleerd als de
+ * gebruiker in Portbase een regel kiest en op Save klikt, of handmatig
+ * toegevoegd (regel uit Portbase plakken). Bij het invullen zoekt de invuller
+ * dan op die naam en kiest precies die regel.
+ *
  * Opslag gebeurt door de aanroeper (chrome.storage.local); niets verlaat de pc.
  */
 (function (root) {
@@ -30,11 +39,12 @@
   var RECHTSVORM = /\b(b ?v|n ?v|ltd|limited|co|company|corp|corporation|gmbh|llc|inc|s ?a|spa|sarl|plc|jsc|pvt|private)\b/g;
   function kaal(v) { return norm(v).replace(RECHTSVORM, ' ').replace(/\s+/g, ' ').trim(); }
 
-  function leeg() { return { versie: VERSIE, dossiers: [], regels: {} }; }
+  function leeg() { return { versie: VERSIE, dossiers: [], regels: {}, organisaties: [] }; }
   /** Opgeslagen geheugen inlezen (onbekend of oud formaat: leeg beginnen). */
   function laad(x) {
     if (!x || x.versie !== VERSIE || !Array.isArray(x.dossiers)) return leeg();
     x.regels = x.regels || {};
+    if (!Array.isArray(x.organisaties)) x.organisaties = [];
     return x;
   }
 
@@ -259,6 +269,175 @@
   function dossierOpId(g, id) { return g.dossiers.filter(function (d) { return d.id === id; })[0] || null; }
   function zetUit(g, profielSleutel, veldSleutel, uit) { var r = regelsVan(g, profielSleutel); if (uit) r.uit[veldSleutel] = true; else delete r.uit[veldSleutel]; }
   function zetAltijdAkkoord(g, profielSleutel, tekst, aan) { var r = regelsVan(g, profielSleutel), k = waarschuwingSleutel(tekst); if (aan) r.altijdAkkoord[k] = true; else delete r.altijdAkkoord[k]; }
+  /* ---------------- organisaties (Portbase-keuzes) ---------------- */
+
+  var MAX_ORGS = 500;
+  var ROLLEN = { exporter: 'Exporteur', importer: 'Importeur', bestemming: 'Plaats van bestemming', inrichting: 'Inrichting van oorsprong' };
+  /* Kolommen van het Portbase-organisatievenster: [veld, kolomklasse (.mat-column-…), kop]. */
+  var KOLOMMEN = [['naam', 'name', 'Name'], ['adres', 'address', 'Address'], ['postcode', 'postalCode', 'Postal code'], ['plaats', 'city', 'City'],
+    ['erkenningsnummer', 'approvalNumber', 'Approval number'], ['idType', 'identificationType', 'ID type'], ['idNummer', 'identificationNumber', 'ID number'],
+    ['activiteit', 'activity', 'Activity'], ['sectie', 'section', 'Section'], ['hoofdstuk', 'activityDepartment', 'Chapter']];
+
+  function normRij(r) {
+    var x = {};
+    KOLOMMEN.forEach(function (k) { x[k[0]] = s(r && r[k[0]]).replace(/\s+/g, ' '); });
+    return x;
+  }
+  /** Regel uit de cellen van een Portbase-tabelrij: cel(kolomklasse) -> tekst. */
+  function rijUitCellen(cel) {
+    var x = {};
+    KOLOMMEN.forEach(function (k) { x[k[0]] = cel(k[1]); });
+    return normRij(x);
+  }
+
+  /** Woorden van een bedrijfsnaam zonder rechtsvorm; Kühne = Kuehne = Kuhne, "+" en "&" tellen niet. */
+  function naamWoorden(v) {
+    var t = s(v).replace(/[äÄ]/g, 'a').replace(/[öÖ]/g, 'o').replace(/[üÜ]/g, 'u');
+    t = norm(t).replace(/([a-z])([aou])e(?=[a-z])/g, function (m, a, b) { return a + b; }); // kuehne -> kuhne
+    return t.replace(RECHTSVORM, ' ').split(/\s+/).filter(Boolean);
+  }
+  /**
+   * Past naam a bij naam b? 3 = gelijk, 2 = de kortste is het begin van de langste
+   * ("Kühne + Heitz" ~ "KUHNE + HEITZ HOLLAND B.V."; minstens 2 woorden of 8 letters), 0 = niet.
+   */
+  function pastNaam(a, b) {
+    var ta = naamWoorden(a), tb = naamWoorden(b);
+    if (!ta.length || !tb.length) return 0;
+    if (ta.join(' ') === tb.join(' ')) return 3;
+    var kort = ta.length <= tb.length ? ta : tb, lang = kort === ta ? tb : ta;
+    if (kort.length < 2 && kort.join('').length < 8) return 0;
+    return kort.every(function (w, i) { return lang[i] === w; }) ? 2 : 0;
+  }
+
+  function ids(v) { return s(v).split(/[\s,;/]+/).map(function (x) { return norm(x).replace(/ /g, ''); }).filter(Boolean); }
+  function compactN(v) { return norm(v).replace(/ /g, ''); }
+
+  /**
+   * Is regel b dezelfde Portbase-regel als a? Zelfde naam, zelfde activiteit (als
+   * beide bekend), en een overeenkomend ID-nummer, erkenningsnummer, of
+   * postcode + plaats / adres + plaats.
+   */
+  function zelfdeRij(a, b) {
+    a = normRij(a); b = normRij(b);
+    if (!a.naam || pastNaam(a.naam, b.naam) !== 3) return false;
+    if (a.activiteit && b.activiteit && norm(a.activiteit) !== norm(b.activiteit)) return false;
+    var ia = ids(a.idNummer), ib = ids(b.idNummer);
+    if (ia.length && ib.length) return ia.some(function (x) { return ib.indexOf(x) >= 0; });
+    if (a.erkenningsnummer && b.erkenningsnummer) return compactN(a.erkenningsnummer) === compactN(b.erkenningsnummer);
+    var plaats = norm(a.plaats) && norm(a.plaats) === norm(b.plaats);
+    if (a.postcode && b.postcode) return plaats && compactN(a.postcode) === compactN(b.postcode);
+    if (a.adres && b.adres) return plaats && norm(a.adres) === norm(b.adres);
+    return !!plaats;
+  }
+
+  /** Korte omschrijving van een regel: naam · plaats · ID · activiteit. */
+  function rijTekst(r) {
+    r = normRij(r);
+    var id = [r.idType, r.idNummer].filter(Boolean).join(' ');
+    return [r.naam, [r.postcode, r.plaats].filter(Boolean).join(' '), r.erkenningsnummer, id, r.activiteit].filter(Boolean).join(' · ');
+  }
+
+  /**
+   * Geleerde organisatie voor een naam (van het HC) in een rol, of null.
+   * Een geleerde naam of de Portbase-naam moet passen; bij gelijke stand wint
+   * exact boven "begint met", dan de vaakst gebruikte.
+   */
+  function vindOrganisatie(g, naam, rol, land) {
+    if (!g || !g.organisaties || !s(naam)) return null;
+    var best = null, score = 0;
+    g.organisaties.forEach(function (e) {
+      if (e.rol !== rol) return;
+      if (land && e.land && s(land).toUpperCase() !== s(e.land).toUpperCase()) return;
+      var sc = [e.rij.naam].concat(e.namen || []).reduce(function (m, n) { return Math.max(m, pastNaam(naam, n)); }, 0);
+      if (sc < 2) return;
+      sc = sc * 1e6 + (e.keer || 0) * 1e3 + ((e.tijd || 0) % 1e3) / 1e3;
+      if (sc > score) { score = sc; best = e; }
+    });
+    return best;
+  }
+
+  /**
+   * Leert een keuze: bij naam (van het HC) in rol hoort Portbase-regel rij.
+   * Kiest de gebruiker voor dezelfde naam een andere regel, dan vervangt die
+   * de oude (correctie). Geeft {organisatie, nieuw} of null.
+   */
+  function leerOrganisatie(g, x) {
+    if (!g.organisaties) g.organisaties = [];
+    var rij = normRij(x.rij), rol = s(x.rol), naam = s(x.naam), land = s(x.land).toUpperCase().slice(0, 2);
+    if (!rij.naam || !ROLLEN[rol]) return null;
+    var e = g.organisaties.filter(function (o) { return o.rol === rol && zelfdeRij(o.rij, rij); })[0];
+    // Correctie: deze naam hoorde eerder bij een andere regel.
+    if (naam) g.organisaties.forEach(function (o) {
+      if (o === e || o.rol !== rol) return;
+      var voor = (o.namen || []).length;
+      o.namen = (o.namen || []).filter(function (n) { return pastNaam(n, naam) !== 3; });
+      if (o.namen.length < voor && pastNaam(o.rij.naam, rij.naam) === 3) o.weg = true; // zelfde bedrijf, verkeerde regel
+    });
+    g.organisaties = g.organisaties.filter(function (o) { return !o.weg; });
+    var nieuw = !e;
+    if (!e) {
+      e = { id: 'org-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7), rol: rol, land: land, namen: [], rij: rij, bron: s(x.bron) || 'portbase', keer: 0, tijd: 0 };
+      g.organisaties.unshift(e);
+    }
+    e.rij = Object.assign({}, e.rij, Object.keys(rij).reduce(function (o, k) { if (rij[k]) o[k] = rij[k]; return o; }, {}));
+    if (land) e.land = land;
+    if (naam && pastNaam(naam, e.rij.naam) !== 3 && !(e.namen || []).some(function (n) { return pastNaam(n, naam) === 3; })) e.namen.push(naam);
+    e.keer = (e.keer || 0) + 1;
+    e.tijd = x.tijd || Date.now();
+    if (g.organisaties.length > MAX_ORGS) g.organisaties.length = MAX_ORGS;
+    return { organisatie: e, nieuw: nieuw };
+  }
+
+  function vergeetOrganisatie(g, id) { g.organisaties = (g.organisaties || []).filter(function (o) { return o.id !== id; }); }
+
+  var ID_TYPE = /^(OAI|EOR|EORI|VAT|TIN|CRN|KVK|NAT|OTH|DUNS|LEI|BTW|UID|SIRET)$/i;
+  var KOPPEN = KOLOMMEN.map(function (k) { return norm(k[2]); }).concat(['postal code', 'id type', 'id number', 'approval number']);
+
+  /**
+   * Regel uit een stuk geplakte tekst uit Portbase: een tabelrij (tabs tussen de
+   * kolommen) of de kolommen onder elkaar, met of zonder de koppen ervoor.
+   * Meerdere ID's (bijv. OAI + EOR) mogen onder elkaar staan.
+   */
+  function rijUitTekst(tekst) {
+    var regels = s(tekst).split(/\r?\n/).map(function (r) { return r.replace(/ /g, ' ').trim(); });
+    var tab = regels.filter(function (r) { return r.indexOf('\t') >= 0 && KOPPEN.indexOf(norm(r.split('\t')[0])) < 0; })[0];
+    if (tab) {
+      var c = tab.split('\t').map(function (x) { return x.trim(); });
+      if (c.length >= 10) { var x = {}; KOLOMMEN.forEach(function (k, i) { x[k[0]] = c[i]; }); return normRij(x); }
+      regels = c;
+    }
+    var v = regels.filter(function (r) { return r && KOPPEN.indexOf(norm(r)) < 0; });
+    var r = { naam: v.shift() || '', adres: v.shift() || '' };
+    if (v[0] && /^(\d{4}\s?[A-Z]{2}|\d{3,6}(-\d{3,4})?|[A-Z]{1,2}\d[\dA-Z]?\s?\d[A-Z]{2}|[A-Z]{1,2}-?\d{4,5})$/i.test(v[0]) && v.length > 1) r.postcode = v.shift();
+    // Achteraan: activiteit ("IM - importer"), sectie (OTH-OPER) en hoofdstuk (veterinary).
+    var ai = -1;
+    v.forEach(function (x, i) { if (/^[A-Z]{2,3}\s+-\s+\S/.test(x)) ai = i; });
+    if (ai >= 0) {
+      var staart = v.splice(ai);
+      r.activiteit = staart[0]; r.sectie = staart[1] || ''; r.hoofdstuk = staart.slice(2).join(' ');
+    }
+    if (v.length && !ID_TYPE.test(v[0])) r.plaats = v.shift();
+    // Midden: erkenningsnummer (optioneel), ID-types, ID-nummers.
+    var types = v.filter(function (x) { return x.split(/\s+/).every(function (w) { return ID_TYPE.test(w); }); });
+    var rest = v.filter(function (x) { return types.indexOf(x) < 0; });
+    var nTypes = types.join(' ').split(/\s+/).filter(Boolean).length;
+    if (rest.length > nTypes) r.erkenningsnummer = rest.shift();
+    r.idType = types.join(' ');
+    r.idNummer = rest.join(' ');
+    return normRij(r);
+  }
+
+  function voegOrganisatiesSamen(g, lijst) {
+    var n = 0;
+    (lijst || []).forEach(function (o) {
+      if (!o || !o.rij || !ROLLEN[o.rol]) return;
+      var e = g.organisaties.filter(function (x) { return x.id === o.id || (x.rol === o.rol && zelfdeRij(x.rij, o.rij)); })[0];
+      if (!e) { g.organisaties.push(kopie(o)); n++; return; }
+      (o.namen || []).forEach(function (naam) { if (!e.namen.some(function (m) { return pastNaam(m, naam) === 3; })) e.namen.push(naam); });
+    });
+    return n;
+  }
+
   function vergeetProfiel(g, profielSleutel) { g.dossiers = g.dossiers.filter(function (d) { return d.profiel !== profielSleutel; }); delete g.regels[profielSleutel]; }
 
   /** Geheugen van een collega samenvoegen (dossiers op id, regels per profiel). */
@@ -272,6 +451,8 @@
       var doel = regelsVan(g, k), bron = x.regels[k];
       Object.assign(doel.uit, bron.uit || {}); Object.assign(doel.altijdAkkoord, bron.altijdAkkoord || {});
     });
+    if (!g.organisaties) g.organisaties = [];
+    g.laatstSamengevoegdeOrganisaties = voegOrganisatiesSamen(g, x.organisaties);
     return nieuw.length;
   }
 
@@ -280,7 +461,9 @@
     leeg: leeg, laad: laad, profiel: profiel, velden: velden, waarschuwingSleutel: waarschuwingSleutel, niveau: niveau,
     leer: leer, herken: herken, suggesties: suggesties, triageAdvies: triageAdvies, pasToe: pasToe, sjabloon: sjabloon,
     recentePatronen: recentePatronen, dossierOpId: dossierOpId, zetUit: zetUit, zetAltijdAkkoord: zetAltijdAkkoord,
-    vergeetProfiel: vergeetProfiel, voegSamen: voegSamen, kopie: kopie
+    vergeetProfiel: vergeetProfiel, voegSamen: voegSamen, kopie: kopie,
+    ROLLEN: ROLLEN, KOLOMMEN: KOLOMMEN, rijUitCellen: rijUitCellen, rijUitTekst: rijUitTekst, normRij: normRij, rijTekst: rijTekst,
+    pastNaam: pastNaam, zelfdeRij: zelfdeRij, vindOrganisatie: vindOrganisatie, leerOrganisatie: leerOrganisatie, vergeetOrganisatie: vergeetOrganisatie
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   else root.GGB_GEHEUGEN = exported;
