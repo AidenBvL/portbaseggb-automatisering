@@ -427,30 +427,36 @@ try {
   assert.strictEqual(await k4('[data-test="document-type"] .mat-mdc-select-value'), 'Health certificate (636)');
   assert.strictEqual(await w4('[data-test="document-number"]'), 'IMPORT.EU.VN.2026.0000001');
   assert.strictEqual(await k4('app-form-documents [data-test="organisation-dialog"]'), 'Quang Phu Seafood Import Export Company Limited | Binh An | DL 1022 | PP - establish_pp');
-  // Goederen: identiek aan het HC (6 regels I.27 -> 6 goederenitems), GN-code + Latijnse naam, Animo, erkenningsnummer
-  assert.strictEqual(await p4.locator('app-form-goods-items form > mat-card').count(), 6, '6 HC-regels = 6 goederenitems');
-  for (let i = 0; i < 6; i++) {
-    assert.strictEqual(await w4('[data-test="gn-code-selector"]', i), i < 4 ? '03074399 Wilde dieren' : '030752 Wilde dieren', 'GN item ' + (i + 1) + ': "Wild stock" -> Wilde dieren (8 cijfers; octopus via 6 cijfers)');
+  // Goederen: HC-regels met dezelfde GN-code, soort en bedrijf samengevoegd (#1-#4 inktvis, #5-#6 octopus -> 2 goederenitems)
+  assert.strictEqual(await p4.locator('app-form-goods-items form > mat-card').count(), 2, '6 HC-regels -> 2 goederenitems');
+  assert.strictEqual(await p4.locator('#samen-0').innerText(), 'Samengevoegd: HC-regels #1, #2, #3, #4');
+  assert.strictEqual(await p4.locator('#samen-1').innerText(), 'Samengevoegd: HC-regels #5, #6');
+  assert.ok(/2 items \(6 HC-regels\)/.test(await p4.locator('#feiten').textContent()), await p4.locator('#feiten').textContent());
+  const aandacht4 = await p4.locator('.wrap').textContent();
+  assert.ok(aandacht4.includes('Goederenitem 1 = HC-regels #1, #2, #3, #4 samengevoegd (zelfde GN-code 03074399, soort Sepia lycidas, bedrijf DL 1022): colli 500 + 200 + 150 + 550 = 1400, netto 4000 + 1500 + 1200 + 3800 = 10500 kg'), 'waarschuwing samenvoegen');
+  assert.ok(/Goods item 1 \(HC-regels #1, #2, #3, #4 samengevoegd\)/.test(await p4.locator('#ai-verslag').innerText()), 'verslag noemt het samenvoegen');
+  for (let i = 0; i < 2; i++) {
+    assert.strictEqual(await w4('[data-test="gn-code-selector"]', i), i < 1 ? '03074399 Wilde dieren' : '030752 Wilde dieren', 'GN item ' + (i + 1) + ': "Wild stock" -> Wilde dieren (8 cijfers; octopus via 6 cijfers)');
     assert.strictEqual(await w4('[data-test="animo-code-selector"]', i), '102108', 'Animo item ' + (i + 1));
     assert.ok(/DL 1022/.test(await w4('app-form-goods-items [data-test="organisation-selector"]', i)), 'erkenningsnummer item ' + (i + 1));
     assert.strictEqual(await k4('app-form-goods-items mat-select[formcontrolname="equipmentNumber"] .mat-mdc-select-value', i), 'CSQU3054383', 'container item ' + (i + 1));
   }
   assert.ok(/^Weekdieren/.test(await w4('[data-test="goods-description"]', 0)), 'omschrijving door Portbase na GN-keuze');
-  assert.strictEqual(await w4('[data-test="packaging-number-of-packages"]', 3), '550');
-  assert.strictEqual(await w4('[data-test="nett-weight"]', 4), '2300');
+  assert.strictEqual(await w4('[data-test="packaging-number-of-packages"]', 0), '1400', 'colli opgeteld');
+  assert.strictEqual(await w4('[data-test="nett-weight"]', 1), '4500', 'netto opgeteld');
   // Brutogewicht: totaal HC I.26 (22280) naar rato van netto verdeeld, som klopt exact
   let somBruto = 0;
-  for (let i = 0; i < 6; i++) somBruto += Number(await w4('[data-test="gross-weight"]', i));
+  for (let i = 0; i < 2; i++) somBruto += Number(await w4('[data-test="gross-weight"]', i));
   assert.strictEqual(Math.round(somBruto * 10) / 10, 22280);
-  assert.strictEqual(await w4('[data-test="gross-weight"]', 0), (22280 * 4000 / 15000).toFixed(2));
+  assert.strictEqual(await w4('[data-test="gross-weight"]', 0), (22280 * 10500 / 15000).toFixed(2));
   // Herkomst per regel en controle van de som (in het voorstel en na het invullen in Portbase)
   assert.strictEqual(await p4.locator('#bruto-bron-0').innerText(), 'BEREKEND (RATO)');
-  assert.ok(/Brutogewicht klopt: som per regel = totaal 22280\.00 kg · 6 berekend \(rato\)/.test(await p4.locator('#bruto-check').innerText()));
-  assert.ok(/Gross weight in Portbase: som 22280\.00 kg = totaal brutogewicht \(6 regels\)/.test(await p4.locator('#bruto-portbase').innerText()));
+  assert.ok(/Brutogewicht klopt: som per regel = totaal 22280\.00 kg · 2 berekend \(rato\)/.test(await p4.locator('#bruto-check').innerText()));
+  assert.ok(/Gross weight in Portbase: som 22280\.00 kg = totaal brutogewicht \(2 regels\)/.test(await p4.locator('#bruto-portbase').innerText()));
   // Aanpassen in het voorstel: herkomst "aangepast" en direct een duidelijke melding bij een verschil
   await p4.locator('input[data-pad="goederen.1.brutoGewicht"]').fill('1000');
   assert.strictEqual(await p4.locator('#bruto-bron-1').innerText(), 'AANGEPAST');
-  assert.ok(/Som brutogewicht per regel ≠ totaal\. Som .* kg, totaal 22280\.00 kg \(HC I\.26\), verschil -1228\.00 kg/.test(await p4.locator('#bruto-verschil').innerText()));
+  assert.ok(/Som brutogewicht per regel ≠ totaal\. Som .* kg, totaal 22280\.00 kg \(HC I\.26\), verschil -5684\.00 kg/.test(await p4.locator('#bruto-verschil').innerText()));
   assert.strictEqual(await w4('input[formcontrolname="equipmentNumber"]'), 'CSQU3054383');
   const verslag4 = await p4.locator('#ai-verslag').innerText();
   assert.ok(!/HANDMATIG|NIET GEVONDEN|FOUT/i.test(verslag4.split('\n').slice(0, 2).join(' ')), verslag4.slice(0, 300));

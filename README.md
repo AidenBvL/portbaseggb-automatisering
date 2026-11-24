@@ -285,9 +285,29 @@ EU-land liggen), I.15 → vervoermiddel (naam + vlag), I.16 → grenscontrolepos
 I.2.a → nummer van het HC (IMSOC-referentie), I.18 → transportconditie, I.19 → containers, I.20 → *certified as or for*,
 I.22 → *Import*, I.27 → goederenitems.
 
-**Goederenitems zijn identiek aan het HC**: elke regel van I.27 (#1, #2, …)
-wordt één goederenitem, in dezelfde volgorde, ook als GN-code en soort
-gelijk zijn. **Brutogewicht per regel**, in deze volgorde:
+**Goederenitems**: elke regel van HC-vak I.27 (#1, #2, …) wordt een
+goederenitem, behalve regels met **dezelfde GN-code, soort (Species) én
+erkenningsnummer (Manufacturing plant)**: die worden samengevoegd tot één
+goederenitem. Colli, netto- en brutogewicht worden opgeteld; verschillende
+omschrijvingen, batchnummers of aard/behandeling komen er allemaal in,
+gescheiden door " / ". Verschilt een van de drie, dan is het een apart
+goederenitem. De volgorde van het HC blijft (positie van de eerste regel).
+De AI doet dit volgens de prompt; als de AI de regels toch los geeft, voegt
+de extensie ze zelf samen. Samenvoegen is altijd duidelijk zichtbaar:
+
+- een aandachtspunt per samengevoegd item met de losse aantallen en
+  gewichten, bijv. *Goederenitem 1 = HC-regels #1, #2, #3, #4 samengevoegd
+  (zelfde GN-code 03074399, soort Sepia lycidas, bedrijf DL 1022): colli
+  500 + 200 + 150 + 550 = 1400, netto 4000 + 1500 + 1200 + 3800 = 10500 kg*;
+- in het voorstel een label *Samengevoegd: HC-regels #1, #2, #3, #4* bij het
+  goederenitem, met een regel *Samengevoegd uit* (colli, netto, bruto en batch
+  per HC-regel), en in de samenvatting *2 items (6 HC-regels)*;
+- in het invulverslag *Goods item 1 (HC-regels #1, #2, #3, #4 samengevoegd)*.
+
+Verschillen de regels in verpakking, Animo-code of container, dan wordt de
+eerste gebruikt en staat dat ook bij de aandachtspunten.
+
+**Brutogewicht per goederenitem**, in deze volgorde:
 
 1. Uit de documenten: paklijst, factuur, B/L of HC (de AI zet het per regel
    in het voorstel). Letterlijk overgenomen, niet herberekend of afgerond;

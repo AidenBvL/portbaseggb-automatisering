@@ -542,4 +542,29 @@ test('AI-instructies: bruto per regel uit paklijst/factuur/B/L, niet alleen van 
   assert.ok(!/alleen als het op het HC staat/.test(AI.SYSTEM));
 });
 
+test('goederenitems: HC-regels met zelfde GN-code, soort en bedrijf samengevoegd (colli/gewichten opgeteld, duidelijk gemeld)', () => {
+  const regel = (n, x) => Object.assign({ gnCode: '03074399', wetenschappelijkeNaam: 'Sepia lycidas', erkenningsnummer: 'DL 1022', verpakkingstype: 'Carton', aardProduct: 'Wild stock; Frozen', bron: 'HC I.27 #' + n, zekerheid: 'hoog' }, x);
+  const r = AI.normaliseer({ totaalBrutoGewicht: veld('6000'), goederen: [
+    regel(1, { aantalColli: '500', nettoGewicht: '4000', brutoGewicht: '4400', batchnummer: 'L1', omschrijving: 'Cuttlefish whole' }),
+    regel(2, { gnCode: '03075200', wetenschappelijkeNaam: 'Octopus membranaceus', aantalColli: '100', nettoGewicht: '500', brutoGewicht: '600' }),
+    regel(3, { aantalColli: '200', nettoGewicht: '800', brutoGewicht: '900', batchnummer: 'L2', omschrijving: 'Cuttlefish cleaned', aardProduct: 'Wild stock; Frozen, cleaned' }),
+    regel(4, { erkenningsnummer: 'DL 999', aantalColli: '10', nettoGewicht: '90', brutoGewicht: '100' })] });
+  assert.deepStrictEqual(r.goederen.map((g) => g.hcRegels), ['#1, #3', '#2', '#4'], 'volgorde van de eerste regel; ander bedrijf of soort apart');
+  const g = r.goederen[0];
+  assert.deepStrictEqual([g.aantalColli, g.nettoGewicht, g.brutoGewicht, g.brutoBron], ['700', '4800', '5300.00', 'document']);
+  assert.strictEqual(g.batchnummer, 'L1 / L2');
+  assert.strictEqual(g.omschrijving, 'Cuttlefish whole / Cuttlefish cleaned');
+  assert.strictEqual(g.aardProduct, 'Wild stock; Frozen / Wild stock; Frozen, cleaned');
+  assert.ok(g.samengevoegd && !r.goederen[1].samengevoegd);
+  assert.ok(r.waarschuwingen.includes('Goederenitem 1 = HC-regels #1, #3 samengevoegd (zelfde GN-code 03074399, soort Sepia lycidas, bedrijf DL 1022): colli 500 + 200 = 700, netto 4000 + 800 = 4800 kg, bruto 4400 + 900 = 5300.00 kg; batches L1 / L2.'), r.waarschuwingen.join(' | '));
+  // Door de AI al samengevoegd: gemarkeerd en gemeld
+  const a = AI.normaliseer({ goederen: [regel(1, { hcRegels: '#1, #2', aantalColli: '700', nettoGewicht: '4800' })] });
+  assert.ok(a.goederen[0].samengevoegd);
+  assert.ok(a.waarschuwingen.some((w) => /Goederenitem 1 = HC-regels #1, #2 samengevoegd/.test(w)));
+  // Prompt en schema
+  assert.ok(/voeg regels van HC-vak I\.27 \(#1, #2, …\) samen tot één goederenitem als GN-code,/.test(AI.SYSTEM));
+  assert.ok(/meld in "waarschuwingen" welke regels zijn samengevoegd/.test(AI.SYSTEM) && !/Niet samenvoegen/.test(AI.SYSTEM));
+  assert.ok(AI.SCHEMA.properties.goederen.items.required.includes('hcRegels'));
+});
+
 console.log('\n' + passed + ' AI-tests geslaagd');

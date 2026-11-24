@@ -209,16 +209,17 @@
     },
     goederen: {
       type: 'array',
-      description: 'Goods item(s) (I.31-I.34): één item per GN-code / partij zoals op het HC.',
+      description: 'Goods item(s) (I.31-I.34): één item per regel van HC-vak I.27, behalve regels met dezelfde GN-code, soort (Species) én erkenningsnummer (Manufacturing plant): die samen in één item.',
       items: obj({
+        hcRegels: str('Regel(s) van HC-vak I.27 in dit goederenitem, bijv. "#1" of bij samenvoegen "#1, #2, #4".'),
         gnCode: str('GN-code (I.31), 8 cijfers zonder punten/spaties, bijv. 03061792'),
         gnCodeHc: str('De code precies zoals op het HC in vak I.27/I.28 ("CN code", "HS code", "Commodity"), alleen de cijfers, bijv. 160232 of 030617. Daarmee + de wetenschappelijke naam zoekt de declarant de GN-code in Portbase. Leeg als het HC geen code geeft.'),
         omschrijving: str('Goederenomschrijving (I.31), incl. soort (wetenschappelijke naam) indien vermeld'),
-        brutoGewicht: str('Brutogewicht van deze regel in kg, letterlijk uit paklijst, factuur, B/L of HC (in die volgorde). Leeg alleen als geen enkel document een brutogewicht per regel geeft'),
-        nettoGewicht: str('Nettogewicht in kg, alleen cijfers met punt als decimaalteken'),
-        aantalColli: str('Aantal verpakkingen (I.32), alleen cijfers'),
+        brutoGewicht: str('Brutogewicht van deze regel in kg, letterlijk uit paklijst, factuur, B/L of HC (in die volgorde); bij samengevoegde regels de som. Leeg alleen als geen enkel document een brutogewicht per regel geeft'),
+        nettoGewicht: str('Nettogewicht in kg, alleen cijfers met punt als decimaalteken; bij samengevoegde regels de som'),
+        aantalColli: str('Aantal verpakkingen (I.32), alleen cijfers; bij samengevoegde regels de som'),
         verpakkingstype: str('Package type (I.32), bijv. Carton, Bag, Box, Pallet'),
-        batchnummer: str('Batchnummer / lotnummer (I.34)'),
+        batchnummer: str('Batchnummer / lotnummer (I.34); bij samengevoegde regels met verschillende batches alle batches, gescheiden door " / "'),
         aanvullendeEenheden: str('Additional units (I.33), indien vermeld'),
         erkenningsnummer: str('Activity / approval number (I.15): erkenningsnummer van de inrichting van oorsprong, bijv. "1234" of "IN-1234"'),
         animoCode: str('Animo-code (Portbase/NVWA) voor dit goederenitem: kies ALTIJD de best passende code uit de lijst (zie de keuzehulp in de instructies): ' + ANIMO_CODES.map(function (a) { return a.code + ' = ' + a.omschrijving; }).join('; ') + '. Alleen leeg als het product helemaal niet in de lijst past.', ANIMO_CODES.map(function (a) { return a.code; }).concat([''])),
@@ -260,21 +261,27 @@
     '    Staat er geen IMSOC-referentie op het HC, gebruik dan de certificate reference (I.2) als nummer (imsocReferentie leeg).',
     '    I.27 Description of consignment -> goederen (CN code, Species, Nature of commodity, Batch number, Package count, Net weight,',
     '    Manufacturing plant).',
-    '- Goederenitems moeten identiek zijn aan het HC: maak precies één goederenitem per regel van vak I.27 (#1, #2, …),',
-    '  in dezelfde volgorde, ook als GN-code en soort gelijk zijn. Niet samenvoegen en niet splitsen. Per regel: Commodity',
-    '  (GN-code), Species, Nature of commodity + Treatment type (aard), Batch number, Package count, Net weight en',
-    '  Manufacturing plant (erkenningsnummer). Neem de totalen I.24/I.26 over.',
+    '- Goederenitems: voeg regels van HC-vak I.27 (#1, #2, …) samen tot één goederenitem als GN-code,',
+    '  wetenschappelijke naam (Species) én erkenningsnummer van de Manufacturing plant gelijk zijn.',
+    '  Tel dan colli, nettogewicht en brutogewicht van die regels op. Neem verschillende omschrijvingen,',
+    '  batchnummers of aard/behandeling allemaal over, gescheiden door " / ". Verschilt één van die drie',
+    '  (GN-code, soort of bedrijf), maak dan een apart goederenitem. Houd de volgorde van het HC aan',
+    '  (positie van de eerste regel) en meld in "waarschuwingen" welke regels zijn samengevoegd, met de',
+    '  losse aantallen en gewichten. Neem de totalen I.24/I.26 over.',
+    '  Zet in hcRegels welke regels in het goederenitem zitten (bijv. "#1" of "#1, #2, #4"). Per regel: Commodity (GN-code),',
+    '  Species, Nature of commodity + Treatment type (aard), Batch number, Package count, Net weight en Manufacturing plant',
+    '  (erkenningsnummer).',
     '- Brutogewicht per regel (goederen[].brutoGewicht): neem het letterlijk over uit de paklijst, factuur of B/L (in die',
     '  volgorde), en anders van het HC als dat het per regel geeft. Koppel de regels op product, batch/item-nummer, colli',
-    '  en nettogewicht. Niet zelf verdelen, herberekenen of afronden. Laat het alleen leeg als geen enkel document een',
-    '  brutogewicht per regel geeft: dan verdeelt de extensie het totaal (I.26) naar rato van het nettogewicht.',
+    '  en nettogewicht. Niet zelf verdelen, herberekenen of afronden; alleen bij samengevoegde regels de som. Laat het',
+    '  alleen leeg als geen enkel document een brutogewicht per regel geeft: dan verdeelt de extensie het totaal (I.26)',
+    '  naar rato van het nettogewicht.',
     '  Gebruik factuur, paklijst en B/L voor B/L-nummer, containers, zegels, colli en gewichten als die niet op het HC staan.',
     '- Datums altijd als dd-mm-jjjj, tijden als uu:mm, landen als ISO alpha-2, GN-codes als 8 cijfers zonder scheidingstekens,',
     '  gewichten in kg met een punt als decimaalteken.',
     '- Neem elk aangeleverd document op onder "documenten" (één regel per document) met het nummer precies zoals gedrukt,',
     '  ook factuur, paklijst en B/L (als COMM). Welke documenten in de GGB komen, bepaalt de declarant aan de hand van de',
     '  NVWA-regels (meestal alleen het HC, soms een labrapport). Vermeld bij een labrapport naar welk HC-nummer het verwijst.',
-    '- Maak één goederenitem per GN-code/partij zoals op het HC. Tel gewichten niet zelf op tenzij nodig, en meld het dan.',
     '- Neem bij exporteur (I.1), importeur (I.5/I.6), plaats van bestemming (I.7/I.12) en plaats van verzending (I.11,',
     '  inrichting van oorsprong) naam, adres, plaats, land en erkenningsnummer letterlijk over: daarmee wordt in Portbase',
     '  het juiste bedrijf gekozen (dezelfde naam komt vaak meerdere keren voor met een ander adres of andere activiteit).',
@@ -520,6 +527,7 @@
       var gn = normGn(g.gnCode);
       if (gn && gn.length !== 8 && gn.length !== 10) w.push('Goederenitem ' + (i + 1) + ': GN-code "' + gn + '" heeft niet 8 cijfers; vul de volledige code aan.');
       var item = {
+        hcRegels: hcRegels(g, i),
         gnCode: gn || normGn(g.gnCodeHc),
         gnCodeHc: normGn(g.gnCodeHc),
         omschrijving: s(g.omschrijving),
@@ -551,6 +559,7 @@
       return item;
     }).filter(function (g) { return g.gnCode || g.omschrijving; });
 
+    r.goederen = voegGoederenSamen(r.goederen, w);
     verdeelBruto(r, w);
     if (!r.declaratieType.waarde) {
       var dierlijk = r.goederen.some(function (g) { return /^(0[1-5]|1[56]|2[01]|3[05])/.test(g.gnCode); });
@@ -612,6 +621,75 @@
     if (tn && somNetto && Math.abs(somNetto - tn) > 1) w.push('Som van de nettogewichten (' + Math.round(somNetto * 10) / 10 + ' kg) wijkt af van het totaal op het HC (' + tn + ' kg).');
     var tc = +r.totaalColli.waarde, somColli = items.reduce(function (a, g) { return a + (+g.aantalColli || 0); }, 0);
     if (tc && somColli && somColli !== tc) w.push('Som van de colli (' + somColli + ') wijkt af van het totaal op het HC (' + tc + ').');
+  }
+
+  /** HC-regels van een goederenitem: veld hcRegels, anders "#n" uit de bron (bijv. "HC I.27 #3"), anders de positie. */
+  function hcRegels(g, i) {
+    var t = s(g.hcRegels) || s(g.bron), nrs = [];
+    t.replace(/#\s*(\d+)/g, function (m, n) { if (nrs.indexOf('#' + n) < 0) nrs.push('#' + n); return m; });
+    return nrs.length ? nrs.join(', ') : '#' + (i + 1);
+  }
+
+  function getalTekst(n) { return String(Math.round(n * 1000) / 1000); }
+  function samen(lijst) { return lijst.map(s).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).join(' / '); }
+
+  /**
+   * Goederenitems met dezelfde GN-code, soort (Species) én erkenningsnummer
+   * (Manufacturing plant) worden één goederenitem: colli, netto- en
+   * brutogewicht opgeteld, verschillende omschrijvingen/batches/aard samen met
+   * " / ". Volgorde van het HC (positie van de eerste regel). Alleen als alle
+   * drie bekend zijn; per samengevoegd item een duidelijke waarschuwing met de
+   * losse aantallen en gewichten. Ook items die de AI zelf al samenvoegde
+   * (hcRegels "#1, #2") worden gemarkeerd.
+   */
+  function voegGoederenSamen(items, w) {
+    var groepen = [], perSleutel = {};
+    items.forEach(function (g) {
+      var k = g.gnCode && g.wetenschappelijkeNaam && g.erkenningsnummer
+        ? [g.gnCode, lijstNorm(g.wetenschappelijkeNaam), lijstNorm(g.erkenningsnummer).replace(/ /g, '')].join('|') : '';
+      if (k && perSleutel[k]) perSleutel[k].push(g);
+      else { var l = [g]; groepen.push(l); if (k) perSleutel[k] = l; }
+    });
+    return groepen.map(function (l, nr) {
+      var g = l[0];
+      if (l.length === 1) {
+        g.samengevoegd = g.hcRegels.indexOf(',') >= 0;
+        if (g.samengevoegd) w.push('Goederenitem ' + (nr + 1) + ' = HC-regels ' + g.hcRegels + ' samengevoegd (zelfde GN-code ' + g.gnCode + ', soort ' + (g.wetenschappelijkeNaam || '?') + ', bedrijf ' + (g.erkenningsnummer || '?') + '); controleer de opgetelde colli en gewichten.');
+        return g;
+      }
+      var som = function (k) { return l.reduce(function (t, x) { return t + (+x[k] || 0); }, 0); };
+      var allemaal = function (k) { return l.every(function (x) { return x[k] !== ''; }); };
+      var regels = l.map(function (x) { return x.hcRegels; }).join(', ');
+      var brutoDoc = l.every(function (x) { return x.brutoBron === 'document' && x.brutoGewicht; });
+      var m = Object.assign({}, g, {
+        hcRegels: regels, samengevoegd: true, regelsApart: l.map(function (x) { return { hcRegels: x.hcRegels, aantalColli: x.aantalColli, nettoGewicht: x.nettoGewicht, brutoGewicht: x.brutoBron === 'document' ? x.brutoGewicht : '', batchnummer: x.batchnummer }; }),
+        aantalColli: allemaal('aantalColli') ? getalTekst(som('aantalColli')) : (som('aantalColli') ? getalTekst(som('aantalColli')) : ''),
+        nettoGewicht: som('nettoGewicht') ? getalTekst(som('nettoGewicht')) : '',
+        brutoGewicht: brutoDoc ? kg(l.reduce(function (t, x) { return t + centen(x.brutoGewicht); }, 0)) : '',
+        brutoBron: brutoDoc ? 'document' : '',
+        omschrijving: samen(l.map(function (x) { return x.omschrijving; })),
+        batchnummer: samen(l.map(function (x) { return x.batchnummer; })),
+        aardProduct: samen(l.map(function (x) { return x.aardProduct; })),
+        aanvullendeEenheden: samen(l.map(function (x) { return x.aanvullendeEenheden; })),
+        bron: l.map(function (x) { return x.bron; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).join('; '),
+        zekerheid: l.reduce(function (z, x) { return ZEKERHEID.indexOf(x.zekerheid) > ZEKERHEID.indexOf(z) ? x.zekerheid : z; }, 'hoog')
+      });
+      ['gnCodeHc', 'verpakkingstype', 'animoCode', 'containernummer'].forEach(function (k) { if (!m[k]) m[k] = l.map(function (x) { return x[k]; }).filter(Boolean)[0] || ''; });
+      var reeks = function (k, eenheid) {
+        var v = l.map(function (x) { return x[k] || '?'; });
+        return v.join(' + ') + ' = ' + (m[k] || '?') + (eenheid || '');
+      };
+      var tekst = 'Goederenitem ' + (nr + 1) + ' = HC-regels ' + regels + ' samengevoegd (zelfde GN-code ' + m.gnCode + ', soort ' + m.wetenschappelijkeNaam + ', bedrijf ' + m.erkenningsnummer + '): colli ' + reeks('aantalColli') + ', netto ' + reeks('nettoGewicht', ' kg');
+      if (brutoDoc) tekst += ', bruto ' + l.map(function (x) { return x.brutoGewicht; }).join(' + ') + ' = ' + m.brutoGewicht + ' kg';
+      else if (l.some(function (x) { return x.brutoGewicht; })) tekst += '; brutogewicht niet voor alle regels in de documenten, wordt naar rato berekend';
+      if (m.batchnummer.indexOf(' / ') >= 0) tekst += '; batches ' + m.batchnummer;
+      w.push(tekst + '.');
+      ['verpakkingstype', 'animoCode', 'containernummer'].forEach(function (k) {
+        var v = l.map(function (x) { return x[k]; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+        if (v.length > 1) w.push('Goederenitem ' + (nr + 1) + ' (HC-regels ' + regels + '): verschillende ' + { verpakkingstype: 'verpakkingssoorten', animoCode: 'Animo-codes', containernummer: 'containers' }[k] + ' (' + v.join(', ') + '); ' + v[0] + ' gebruikt, controleer.');
+      });
+      return m;
+    });
   }
 
   function uniek(arr) {

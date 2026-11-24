@@ -769,9 +769,10 @@
       for (var gf = 0; gf < GOED.length; gf++) {
         if (GOED[gf].nietInvullen) continue; // Portbase vult de omschrijving zelf na het kiezen van de GN-code
         var gres = await vulVeld(GOED[gf], item[GOED[gf].key], gk, opts, zoekVoor(GOED[gf], item));
-        push('Goods item ' + (g + 1), gres);
+        var sec = 'Goods item ' + (g + 1) + (item.samengevoegd ? ' (HC-regels ' + item.hcRegels + ' samengevoegd)' : '');
+        push(sec, gres);
         // Na de GN-code de bijbehorende Animo-code kiezen.
-        if (GOED[gf].key === 'gnCode') push('Goods item ' + (g + 1), await vulAnimo(gk, item, gres, opts));
+        if (GOED[gf].key === 'gnCode') push(sec, await vulAnimo(gk, item, gres, opts));
       }
     }
 

@@ -195,6 +195,7 @@
     'tr.doel td{background:var(--pb-z)}tr.doel input{box-shadow:0 0 0 3px rgba(31,79,209,.18)}',
     '.datum-hint{display:block;font-size:.68rem;color:var(--pb);margin-top:.1rem}.datum-hint:empty{display:none}',
     '#voorstel.f-controle tr[data-z="hoog"],#voorstel.f-controle .groep[data-z="hoog"],#voorstel.f-laag tr[data-z="hoog"],#voorstel.f-laag tr[data-z="middel"],#voorstel.f-laag .groep[data-z="hoog"],#voorstel.f-laag .groep[data-z="middel"]{display:none}',
+    '.badge.samen{background:#fff1d6;color:#8a4b00;border:1px solid #f3cf8a;text-transform:none;letter-spacing:0}',
     '.geleerd{padding:.3rem .25rem .1rem;font-size:.76rem;line-height:1.5}.geleerd:empty{display:none}.geleerd .badge{margin-right:.2rem}',
     '.uit .groep{opacity:.55}.uit .groep .gt .dn{text-decoration:line-through}',
     '.herstel{display:flex;align-items:center;gap:.5rem;justify-content:space-between}',
@@ -1240,7 +1241,7 @@
       ['Grenspost', r.grenscontrolepost.waarde || '–'],
       ['B/L', r.bol.waarde || '–'],
       ['HC (IMSOC)', hc ? hc.identificatie || '–' : '–'],
-      ['Goederen', r.goederen.length + ' item' + (r.goederen.length === 1 ? '' : 's') + (netto ? ' · ' + netto.toLocaleString('nl-NL') + ' kg' : '')],
+      ['Goederen', r.goederen.length + ' item' + (r.goederen.length === 1 ? '' : 's') + (aantalHcRegels(r) > r.goederen.length ? ' (' + aantalHcRegels(r) + ' HC-regels)' : '') + (netto ? ' · ' + netto.toLocaleString('nl-NL') + ' kg' : '')],
       ['Containers', r.containers.map(function (c) { return c.containernummer; }).join(', ') || '–'],
       ['ETA', r.aankomstDatum.waarde || '–']
     ];
@@ -1436,6 +1437,18 @@
 
   /* ---- hele voorstel ---- */
 
+  /** Aantal regels van HC-vak I.27 achter de goederenitems (samengevoegde items tellen per regel). */
+  function aantalHcRegels(r) {
+    return r.goederen.reduce(function (t, g) { return t + Math.max(1, String(g.hcRegels || '').split(',').filter(function (x) { return x.trim(); }).length); }, 0);
+  }
+  /** Losse HC-regels van een samengevoegd goederenitem: colli en gewichten per regel. */
+  function samenTabel(g) {
+    if (!g.regelsApart || !g.regelsApart.length) return '<span class="small">HC-regels ' + esc(g.hcRegels) + ' (samengevoegd door de AI; controleer de opgetelde colli en gewichten)</span>';
+    return '<span class="small">' + g.regelsApart.map(function (x) {
+      return '<b>' + esc(x.hcRegels) + '</b> ' + esc(x.aantalColli || '?') + ' colli, ' + esc(x.nettoGewicht || '?') + ' kg netto' + (x.brutoGewicht ? ', ' + esc(x.brutoGewicht) + ' kg bruto' : '') + (x.batchnummer ? ', batch ' + esc(x.batchnummer) : '');
+    }).join('<br>') + '</span>';
+  }
+
   function renderAiResultaat() {
     var r = aiResultaat;
     memPaden = {};
@@ -1489,10 +1502,12 @@
 
     html += blok('blok-goed', 'Goederenitems (I.31-I.34)', (r.goederen.length ? '<div id="bruto-check"></div>' : '') + r.goederen.map(function (g, i) {
       var bz = BRUTO_Z[brutoHerkomst(g)];
-      return groep('Goods item ' + (i + 1) + ' ' + zekerheidBadge(g.zekerheid, g.bron) + (g.gnCode ? ' <span class="muted small">GN ' + esc(g.gnCode) + '</span>' : ''), FILL.GOED.map(function (d) {
+      return groep('Goods item ' + (i + 1) + ' ' + zekerheidBadge(g.zekerheid, g.bron) + (g.gnCode ? ' <span class="muted small">GN ' + esc(g.gnCode) + '</span>' : '') +
+        (g.samengevoegd ? ' <span class="badge samen" id="samen-' + i + '" title="Regels van HC-vak I.27 met dezelfde GN-code, soort en bedrijf zijn samengevoegd tot dit goederenitem">Samengevoegd: HC-regels ' + esc(g.hcRegels) + '</span>' : (g.hcRegels ? ' <span class="muted small">HC ' + esc(g.hcRegels) + '</span>' : '')), FILL.GOED.map(function (d) {
         if (d.key === 'brutoGewicht') return rij(esc(d.naam), invoer('goederen.' + i + '.brutoGewicht', g.brutoGewicht, bz), bz, '<span id="bruto-bron-' + i + '">' + brutoBadge(g) + '</span>');
         return rij(esc(d.naam), invoer('goederen.' + i + '.' + d.key, g[d.key], d.key === 'gnCode' ? g.zekerheid : ''));
       }).join('') +
+        (g.samengevoegd ? rij('Samengevoegd uit', samenTabel(g)) : '') +
         rij('Code op HC (zoekterm GN)', invoer('goederen.' + i + '.gnCodeHc', g.gnCodeHc)) +
         rij('Soort (wetensch. naam, I.28)', invoer('goederen.' + i + '.wetenschappelijkeNaam', g.wetenschappelijkeNaam)) +
         rij('Aard product (HC I.28)', invoer('goederen.' + i + '.aardProduct', g.aardProduct)) +
